@@ -209,6 +209,10 @@ const hydrateSiteTicker = () => {
 
   tickerMount.innerHTML = renderSiteTickerFallback()
 
+  if (tickerMount.dataset.tickerMode === 'static') {
+    return
+  }
+
   siteTickerRequest ??= loadHomepageTickers()
 
   void siteTickerRequest.then((tickerResult) => {
@@ -655,7 +659,7 @@ export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downlo
     </div>
   </nav>
 
-  <div id="siteTickerMount"></div>
+  <div id="siteTickerMount" data-ticker-mode="${activeKey === 'home' ? 'live' : 'static'}"></div>
 
   ${mainContent}
 
