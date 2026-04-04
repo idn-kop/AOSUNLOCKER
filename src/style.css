@@ -2560,6 +2560,10 @@ h6 {
     padding-bottom: 86px;
   }
 
+  .logo-note {
+    display: none;
+  }
+
   .top-bar,
   .main-nav {
     display: none;
@@ -2819,9 +2823,20 @@ h6 {
   }
 
   .ticker-label {
-    margin: 0 0 0.55rem 0.8rem;
-    padding: 0.42rem 0.74rem;
-    font-size: 0.72rem;
+    margin: 0 0 0.35rem 0.8rem;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 999px;
+    font-size: 0;
+    letter-spacing: 0;
+    box-shadow: 0 10px 20px rgba(201, 60, 69, 0.16);
+  }
+
+  .ticker-label i {
+    margin: 0 !important;
+    font-size: 0.9rem;
   }
 
   .ticker-items {
