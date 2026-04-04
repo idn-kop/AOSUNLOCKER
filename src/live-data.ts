@@ -62,7 +62,8 @@ const brandLabelMap: Record<BrandId, string> = {
 }
 
 const LIVE_CACHE_PREFIX = 'aosunlocker-live-cache:'
-const LIVE_CACHE_TTL = 1000 * 60 * 5
+const LIVE_CACHE_TTL = 1000 * 60 * 15
+const LIVE_FETCH_TIMEOUT = 3200
 
 const getAppsScriptUrl = () => window.AOSUNLOCKER_CONFIG?.appsScriptUrl?.trim() ?? ''
 
@@ -107,31 +108,39 @@ const toDisplayLabel = (value: string) =>
     .trim()
 
 const readCache = <T>(key: string) => {
-  try {
-    const raw = window.sessionStorage.getItem(`${LIVE_CACHE_PREFIX}${key}`)
-    if (!raw) return null
+  const storageKey = `${LIVE_CACHE_PREFIX}${key}`
+  const stores = [window.sessionStorage, window.localStorage]
 
-    const parsed = JSON.parse(raw) as { timestamp?: number; value?: T }
-    if (!parsed?.timestamp || Date.now() - parsed.timestamp > LIVE_CACHE_TTL) {
-      window.sessionStorage.removeItem(`${LIVE_CACHE_PREFIX}${key}`)
-      return null
+  for (const store of stores) {
+    try {
+      const raw = store.getItem(storageKey)
+      if (!raw) continue
+
+      const parsed = JSON.parse(raw) as { timestamp?: number; value?: T }
+      if (!parsed?.timestamp || Date.now() - parsed.timestamp > LIVE_CACHE_TTL) {
+        store.removeItem(storageKey)
+        continue
+      }
+
+      return parsed.value ?? null
+    } catch {
+      // ignore storage failures
     }
-
-    return parsed.value ?? null
-  } catch {
-    return null
   }
+
+  return null
 }
 
 const writeCache = <T>(key: string, value: T) => {
+  const storageKey = `${LIVE_CACHE_PREFIX}${key}`
   try {
-    window.sessionStorage.setItem(
-      `${LIVE_CACHE_PREFIX}${key}`,
-      JSON.stringify({
-        timestamp: Date.now(),
-        value,
-      }),
-    )
+    const payload = JSON.stringify({
+      timestamp: Date.now(),
+      value,
+    })
+
+    window.sessionStorage.setItem(storageKey, payload)
+    window.localStorage.setItem(storageKey, payload)
   } catch {
     // ignore storage failures
   }
@@ -141,7 +150,14 @@ const fetchJsonCached = async <T>(cacheKey: string, url: string) => {
   const cached = readCache<T>(cacheKey)
   if (cached) return cached
 
-  const response = await fetch(url)
+  const controller = new AbortController()
+  const timeout = window.setTimeout(() => controller.abort(), LIVE_FETCH_TIMEOUT)
+  const response = await fetch(url, {
+    signal: controller.signal,
+    cache: 'force-cache',
+  }).finally(() => {
+    window.clearTimeout(timeout)
+  })
   if (!response.ok) throw new Error('Request failed.')
 
   const data = (await response.json()) as T
