@@ -1,0 +1,229 @@
+<!doctype html>
+<html>
+  <head>
+    <base target="_top" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AOSUNLOCKER Admin</title>
+    <?!= include('Styles'); ?>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand-block">
+          <p class="eyebrow">Google Sheets Admin</p>
+          <h1>AOSUNLOCKER</h1>
+          <p class="muted">Manage live download entries from one place.</p>
+        </div>
+
+        <div class="side-card">
+          <p class="card-label">Current flow</p>
+          <ul class="compact-list">
+            <li>Fill the form</li>
+            <li>Save to Google Sheets</li>
+            <li>Public website reads the latest rows</li>
+          </ul>
+        </div>
+
+        <div class="side-card">
+          <p class="card-label">Saved in sheet</p>
+          <strong id="sheetName">Downloads</strong>
+        </div>
+
+        <div class="side-card">
+          <p class="card-label">Add brand</p>
+          <form id="brandForm" class="stack-form">
+            <label>
+              <span>Brand label *</span>
+              <input type="text" name="brandLabel" placeholder="Honor" required />
+            </label>
+            <label>
+              <span>Custom brand ID</span>
+              <input type="text" name="brandId" placeholder="honor" />
+              <small class="field-note">Leave empty to auto-generate the brand ID.</small>
+            </label>
+            <div class="actions">
+              <button type="submit" id="brandSaveButton">Add Brand</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="side-card">
+          <p class="card-label">Add category</p>
+          <form id="categoryForm" class="stack-form">
+            <input type="hidden" name="originalCategoryId" />
+            <label>
+              <span>Brand *</span>
+              <select name="brandId" id="categoryBrandId" required></select>
+            </label>
+            <label>
+              <span>Category label *</span>
+              <input type="text" name="categoryLabel" placeholder="Removed ID" required />
+            </label>
+            <label>
+              <span>Custom category ID</span>
+              <input type="text" name="categoryId" placeholder="honor-removed-id" />
+              <small class="field-note">Leave empty to auto-generate the folder ID.</small>
+            </label>
+            <div class="actions">
+              <button type="submit" id="categorySaveButton">Add Category</button>
+              <button type="button" id="cancelCategoryEditButton" class="ghost hidden">Cancel Edit</button>
+            </div>
+          </form>
+        </div>
+      </aside>
+
+      <main class="content">
+        <section class="hero-panel">
+          <div>
+            <p class="eyebrow">Admin panel</p>
+            <h2>Manage Download Files</h2>
+            <p class="muted">Create, edit, and organize the files shown on the public website.</p>
+          </div>
+          <div id="flash" class="flash hidden"></div>
+        </section>
+
+        <section class="grid">
+          <section class="panel">
+            <div class="panel-head">
+              <h3>New file</h3>
+              <p>Fields marked with * are required.</p>
+            </div>
+
+            <form id="fileForm" class="form-grid">
+              <input type="hidden" name="originalId" />
+
+              <label>
+                <span>Brand *</span>
+                <select name="brandId" id="brandId" required></select>
+              </label>
+
+              <label>
+                <span>Category *</span>
+                <select name="categoryId" id="categoryId" required></select>
+              </label>
+
+              <label>
+                <span>Size</span>
+                <input type="text" name="size" />
+              </label>
+
+              <label class="full">
+                <span>Title *</span>
+                <input type="text" name="title" required />
+              </label>
+
+              <label class="full">
+                <span>Subtitle</span>
+                <input type="text" name="subtitle" />
+              </label>
+
+              <label class="full">
+                <span>Summary</span>
+                <textarea name="summary" rows="4"></textarea>
+              </label>
+
+              <label>
+                <span>Date</span>
+                <input type="text" name="date" />
+              </label>
+
+              <label>
+                <span>Price</span>
+                <input type="text" name="price" />
+              </label>
+
+              <label>
+                <span>Visits</span>
+                <input type="number" name="visits" min="0" />
+              </label>
+
+              <label>
+                <span>Status</span>
+                <select name="status">
+                  <option value="published">Published</option>
+                  <option value="draft">Draft</option>
+                </select>
+              </label>
+
+              <label>
+                <span>Downloads</span>
+                <input type="number" name="downloads" min="0" />
+              </label>
+
+              <label class="full">
+                <span>Google Drive Link *</span>
+                <input type="url" name="driveUrl" required />
+                <small class="field-note">Paste the Drive link first. File name and size can be filled automatically.</small>
+              </label>
+
+              <div class="full autofill-row">
+                <button type="button" id="autofillButton" class="ghost">Auto Fill From Drive</button>
+                <span id="autofillNote" class="muted"></span>
+              </div>
+
+              <label class="switch-row full">
+                <input type="checkbox" name="featured" />
+                <span>Mark as featured</span>
+              </label>
+
+              <div class="full actions">
+                <button type="submit" id="saveButton">Save File</button>
+                <button type="button" id="cancelEditButton" class="ghost hidden">Cancel Edit</button>
+                <button type="reset" class="ghost">Clear</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h3>Latest rows</h3>
+              <p>Recent entries saved to the sheet.</p>
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Brand</th>
+                    <th>Category</th>
+                    <th>Title</th>
+                    <th>Date</th>
+                    <th>Size</th>
+                    <th>Price</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="recentRows"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h3>Solution folders</h3>
+            <p>Edit or remove brand folders before filling file data.</p>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Brand</th>
+                  <th>Category</th>
+                  <th>Category ID</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="categoryRows"></tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <?!= include('Script'); ?>
+  </body>
+</html>

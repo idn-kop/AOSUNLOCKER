@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">AOSUNLOCKER mark</title>
+  <desc id="desc">Rounded red device mark for AOSUNLOCKER branding.</desc>
+  <defs>
+    <linearGradient id="bg" x1="18" y1="12" x2="110" y2="118" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff8b78"/>
+      <stop offset="0.55" stop-color="#ff685c"/>
+      <stop offset="1" stop-color="#d94a4d"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="36" y1="24" x2="90" y2="86" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.36"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="12" flood-color="#cf4f4f" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#shadow)">
+    <rect x="20" y="20" width="88" height="88" rx="28" fill="url(#bg)"/>
+    <rect x="20" y="20" width="88" height="88" rx="28" fill="#0d1117" fill-opacity="0.08"/>
+    <path d="M33 33c8-12 23-18 41-16 10 1 19 5 26 12-10-3-20-4-30-2-16 3-28 11-37 24V33Z" fill="url(#shine)"/>
+
+    <g transform="translate(0 1)">
+      <rect x="49" y="30" width="30" height="58" rx="8.5" fill="#ffffff"/>
+      <rect x="53.5" y="36" width="21" height="39" rx="3.5" fill="#1b1f27" fill-opacity="0.18"/>
+      <rect x="58.5" y="33.5" width="11" height="2.5" rx="1.25" fill="#ffffff" fill-opacity="0.82"/>
+      <circle cx="64" cy="81.5" r="3.8" fill="#0d1117"/>
+      <circle cx="64" cy="81.5" r="2.1" fill="#ffffff" fill-opacity="0.16"/>
+    </g>
+  </g>
+</svg>

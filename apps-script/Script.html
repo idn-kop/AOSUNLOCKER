@@ -1,0 +1,474 @@
+<script>
+  const state = {
+    categories: [],
+    recentFiles: [],
+    editId: '',
+    brands: [],
+    categoryEditId: '',
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    google.script.run
+      .withSuccessHandler(bootstrap)
+      .withFailureHandler(showError)
+      .getBootstrapData();
+
+    document.getElementById('fileForm').addEventListener('submit', onSubmit);
+    document.getElementById('brandForm').addEventListener('submit', onBrandSubmit);
+    document.getElementById('categoryForm').addEventListener('submit', onCategorySubmit);
+    document.getElementById('autofillButton').addEventListener('click', onAutofill);
+    document.getElementById('cancelEditButton').addEventListener('click', resetFormState);
+    document.getElementById('cancelCategoryEditButton').addEventListener('click', resetCategoryFormState);
+    document.getElementById('brandId').addEventListener('change', renderCategories);
+  });
+
+  function bootstrap(data) {
+    state.categories = data.categories || [];
+    state.recentFiles = data.recentFiles || [];
+    state.brands = (data.brands || []).length ? data.brands || [] : syncBrands();
+
+    document.getElementById('sheetName').textContent = data.sheetName || 'Downloads';
+    renderBrands();
+    renderCategories();
+    renderRecentRows();
+    renderCategoryRows();
+  }
+
+  function syncBrands() {
+    return Array.from(
+      new Map(
+        state.categories.map((item) => [
+          item.brandId,
+          { id: item.brandId, label: item.brandLabel || capitalize(item.brandId) },
+        ]),
+      ).values(),
+    );
+  }
+
+  function renderBrands() {
+    const fileBrandSelect = document.getElementById('brandId');
+    const categoryBrandSelect = document.getElementById('categoryBrandId');
+    const currentFileValue = fileBrandSelect.value;
+    const currentCategoryValue = categoryBrandSelect.value;
+    const options = state.brands
+      .map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.label)}</option>`)
+      .join('');
+
+    fileBrandSelect.innerHTML = options;
+    categoryBrandSelect.innerHTML = options;
+
+    if (!state.brands.length) {
+      fileBrandSelect.innerHTML = '<option value="">No brands yet</option>';
+      categoryBrandSelect.innerHTML = '<option value="">No brands yet</option>';
+      return;
+    }
+
+    const nextFileValue = state.brands.some((item) => item.id === currentFileValue) ? currentFileValue : state.brands[0].id;
+    const nextCategoryValue = state.brands.some((item) => item.id === currentCategoryValue) ? currentCategoryValue : state.brands[0].id;
+
+    fileBrandSelect.value = nextFileValue;
+    categoryBrandSelect.value = nextCategoryValue;
+  }
+
+  function renderCategories() {
+    const brandId = document.getElementById('brandId').value;
+    const select = document.getElementById('categoryId');
+    const filtered = state.categories.filter((item) => item.brandId === brandId);
+
+    select.innerHTML = filtered.length
+      ? filtered
+        .map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.label)}</option>`)
+        .join('')
+      : '<option value="">No categories for this brand</option>';
+  }
+
+  function renderRecentRows() {
+    const tbody = document.getElementById('recentRows');
+
+    if (!state.recentFiles.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="muted">No entries yet.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = state.recentFiles
+      .map((item, index) => `
+        <tr>
+          <td>${escapeHtml(item.brandLabel || capitalize(item.brandId || ''))}</td>
+          <td>${escapeHtml(item.categoryLabel)}</td>
+          <td>
+            <strong>${escapeHtml(item.title)}</strong>
+          </td>
+          <td>${escapeHtml(item.date || '-')}</td>
+          <td>${escapeHtml(item.size || '-')}</td>
+          <td>${escapeHtml(item.price || 'Free')}</td>
+          <td><span class="status-pill ${escapeHtml(item.status)}">${escapeHtml(item.status)}</span></td>
+          <td>
+            <div class="row-actions">
+              <button type="button" class="row-action" data-edit-index="${index}">Edit</button>
+              <button type="button" class="row-action row-action-danger" data-delete-index="${index}">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `)
+      .join('');
+
+    tbody.querySelectorAll('[data-edit-index]').forEach((button) => {
+      button.addEventListener('click', () => startEdit(Number(button.getAttribute('data-edit-index'))));
+    });
+
+    tbody.querySelectorAll('[data-delete-index]').forEach((button) => {
+      button.addEventListener('click', () => onDeleteFile(Number(button.getAttribute('data-delete-index'))));
+    });
+  }
+
+  function renderCategoryRows() {
+    const tbody = document.getElementById('categoryRows');
+
+    if (!state.categories.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="muted">No categories yet.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = state.categories
+      .map((item, index) => `
+        <tr>
+          <td>${escapeHtml(item.brandLabel || capitalize(item.brandId || ''))}</td>
+          <td>${escapeHtml(item.label)}</td>
+          <td><code>${escapeHtml(item.id)}</code></td>
+          <td>
+            <div class="row-actions">
+              <button type="button" class="row-action" data-category-edit-index="${index}">Edit</button>
+              <button type="button" class="row-action row-action-danger" data-category-delete-index="${index}">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `)
+      .join('');
+
+    tbody.querySelectorAll('[data-category-edit-index]').forEach((button) => {
+      button.addEventListener('click', () => startCategoryEdit(Number(button.getAttribute('data-category-edit-index'))));
+    });
+
+    tbody.querySelectorAll('[data-category-delete-index]').forEach((button) => {
+      button.addEventListener('click', () => onDeleteCategory(Number(button.getAttribute('data-category-delete-index'))));
+    });
+  }
+
+  function onBrandSubmit(event) {
+    event.preventDefault();
+
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const brandLabel = String(formData.get('brandLabel') || '').trim();
+    const brandId = String(formData.get('brandId') || '').trim() || slugify(brandLabel);
+
+    hideFlash();
+
+    google.script.run
+      .withSuccessHandler((response) => {
+        state.brands = response.brands || state.brands;
+        state.categories = response.categories || state.categories;
+        renderBrands();
+        renderCategories();
+        renderCategoryRows();
+        resetFormState();
+        resetCategoryFormState();
+        form.reset();
+        showSuccess(response.message || 'Brand added.');
+      })
+      .withFailureHandler((error) => {
+        showError(error);
+      })
+      .addBrand({ brandId, brandLabel });
+  }
+
+  function onSubmit(event) {
+    event.preventDefault();
+
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const payload = {
+      categoryId: formData.get('categoryId'),
+      brandId: formData.get('brandId'),
+      title: formData.get('title'),
+      subtitle: formData.get('subtitle'),
+      summary: formData.get('summary'),
+      date: formData.get('date'),
+      size: formData.get('size'),
+      visits: formData.get('visits'),
+      downloads: formData.get('downloads'),
+      price: formData.get('price'),
+      driveUrl: formData.get('driveUrl'),
+      status: formData.get('status'),
+      featured: formData.get('featured') === 'on',
+      originalId: formData.get('originalId'),
+    };
+
+    setSaving(true);
+    hideFlash();
+
+    const runner = google.script.run
+      .withSuccessHandler((response) => {
+        setSaving(false);
+        showSuccess(response.message || 'Saved.');
+        state.recentFiles = response.recentFiles || [];
+        renderRecentRows();
+        resetFormState();
+      })
+      .withFailureHandler((error) => {
+        setSaving(false);
+        showError(error);
+      });
+
+    if (state.editId) {
+      runner.updateDownloadFile(payload);
+    } else {
+      runner.addDownloadFile(payload);
+    }
+  }
+
+  function onCategorySubmit(event) {
+    event.preventDefault();
+
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const payload = {
+      brandId: formData.get('brandId'),
+      categoryLabel: formData.get('categoryLabel'),
+      categoryId: formData.get('categoryId'),
+      originalCategoryId: formData.get('originalCategoryId'),
+    };
+
+    hideFlash();
+
+    const runner = google.script.run
+      .withSuccessHandler((response) => {
+        state.categories = response.categories || [];
+        state.brands = response.brands || state.brands;
+        renderBrands();
+        renderCategories();
+        renderCategoryRows();
+        form.reset();
+        document.getElementById('categoryBrandId').value = state.brands[0] ? state.brands[0].id : 'huawei';
+        resetCategoryFormState();
+        showSuccess(response.message || 'Category added.');
+      })
+      .withFailureHandler((error) => {
+        showError(error);
+      });
+
+    if (state.categoryEditId) {
+      runner.updateCategory(payload);
+    } else {
+      runner.addCategory(payload);
+    }
+  }
+
+  function onAutofill() {
+    const driveInput = document.querySelector('[name="driveUrl"]');
+    const note = document.getElementById('autofillNote');
+    const url = (driveInput.value || '').trim();
+
+    if (!url) {
+      note.textContent = 'Paste the Google Drive link first.';
+      return;
+    }
+
+    note.textContent = 'Reading file info from Google Drive...';
+
+    google.script.run
+      .withSuccessHandler((meta) => {
+        const subtitleInput = document.querySelector('[name="subtitle"]');
+        const summaryInput = document.querySelector('[name="summary"]');
+        const sizeInput = document.querySelector('[name="size"]');
+
+        if (!subtitleInput.value) {
+          subtitleInput.value = meta.name || '';
+        }
+
+        if (!summaryInput.value) {
+          summaryInput.value = meta.name || '';
+        }
+
+        if (!sizeInput.value) {
+          sizeInput.value = meta.size || '';
+        }
+
+        note.textContent = `Detected: ${meta.name || 'Unknown file'} ${meta.size ? '(' + meta.size + ')' : ''}`;
+      })
+      .withFailureHandler((error) => {
+        note.textContent = error && error.message ? error.message : 'Drive metadata could not be loaded.';
+      })
+      .getDriveFileMeta(url);
+  }
+
+  function setSaving(isSaving) {
+    const button = document.getElementById('saveButton');
+    button.disabled = isSaving;
+    button.textContent = isSaving ? 'Saving...' : state.editId ? 'Update File' : 'Save File';
+  }
+
+  function startEdit(index) {
+    const item = state.recentFiles[index];
+    if (!item) return;
+
+    state.editId = item.id;
+
+    document.querySelector('[name="originalId"]').value = item.id || '';
+    document.querySelector('[name="brandId"]').value = item.brandId || 'huawei';
+    renderCategories();
+    document.querySelector('[name="categoryId"]').value = item.categoryId || '';
+    document.querySelector('[name="title"]').value = item.title || '';
+    document.querySelector('[name="subtitle"]').value = item.subtitle || '';
+    document.querySelector('[name="summary"]').value = item.summary || '';
+    document.querySelector('[name="date"]').value = item.date || '';
+    document.querySelector('[name="size"]').value = item.size || '';
+    document.querySelector('[name="visits"]').value = item.visits || '';
+    document.querySelector('[name="downloads"]').value = item.downloads || '';
+    document.querySelector('[name="price"]').value = item.price || '';
+    document.querySelector('[name="driveUrl"]').value = item.driveUrl || '';
+    document.querySelector('[name="status"]').value = item.status || 'published';
+    document.querySelector('[name="featured"]').checked = item.featured === true;
+
+    document.getElementById('saveButton').textContent = 'Update File';
+    document.getElementById('cancelEditButton').classList.remove('hidden');
+    document.getElementById('autofillNote').textContent = 'Editing mode is active.';
+    hideFlash();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function resetFormState() {
+    state.editId = '';
+    const form = document.getElementById('fileForm');
+    form.reset();
+
+    if (state.categories.length) {
+      document.getElementById('brandId').value = state.brands[0] ? state.brands[0].id : 'huawei';
+      renderCategories();
+      const defaultCategory = state.categories.find((item) => item.brandId === document.getElementById('brandId').value);
+      document.getElementById('categoryId').value = defaultCategory ? defaultCategory.id : '';
+    }
+
+    document.querySelector('[name="originalId"]').value = '';
+    document.getElementById('saveButton').textContent = 'Save File';
+    document.getElementById('cancelEditButton').classList.add('hidden');
+    document.getElementById('autofillNote').textContent = '';
+    document.getElementById('categoryBrandId').value = state.brands[0] ? state.brands[0].id : 'huawei';
+    hideFlash();
+  }
+
+  function startCategoryEdit(index) {
+    const item = state.categories[index];
+    if (!item) return;
+
+    state.categoryEditId = item.id;
+    document.querySelector('#categoryForm [name="originalCategoryId"]').value = item.id || '';
+    document.querySelector('#categoryForm [name="brandId"]').value = item.brandId || 'huawei';
+    document.querySelector('#categoryForm [name="categoryLabel"]').value = item.label || '';
+    document.querySelector('#categoryForm [name="categoryId"]').value = item.id || '';
+    document.getElementById('categorySaveButton').textContent = 'Update Category';
+    document.getElementById('cancelCategoryEditButton').classList.remove('hidden');
+    hideFlash();
+  }
+
+  function resetCategoryFormState() {
+    state.categoryEditId = '';
+    const form = document.getElementById('categoryForm');
+    form.reset();
+    document.querySelector('#categoryForm [name="originalCategoryId"]').value = '';
+    document.getElementById('categorySaveButton').textContent = 'Add Category';
+    document.getElementById('cancelCategoryEditButton').classList.add('hidden');
+    document.getElementById('categoryBrandId').value = state.brands[0] ? state.brands[0].id : 'huawei';
+  }
+
+  function onDeleteCategory(index) {
+    const item = state.categories[index];
+    if (!item) return;
+
+    const confirmed = window.confirm(`Delete category "${item.label}" from ${item.brandLabel || capitalize(item.brandId || '')}?`);
+    if (!confirmed) return;
+
+    hideFlash();
+
+    google.script.run
+      .withSuccessHandler((response) => {
+        state.categories = response.categories || [];
+        state.brands = response.brands || state.brands;
+        renderBrands();
+        renderCategories();
+        renderCategoryRows();
+        resetCategoryFormState();
+        showSuccess(response.message || 'Category deleted.');
+      })
+      .withFailureHandler((error) => {
+        showError(error);
+      })
+      .deleteCategory(item.id);
+  }
+
+  function onDeleteFile(index) {
+    const item = state.recentFiles[index];
+    if (!item) return;
+
+    const confirmed = window.confirm(`Delete file "${item.title}"?`);
+    if (!confirmed) return;
+
+    hideFlash();
+
+    google.script.run
+      .withSuccessHandler((response) => {
+        state.recentFiles = response.recentFiles || [];
+        renderRecentRows();
+        resetFormState();
+        showSuccess(response.message || 'File deleted.');
+      })
+      .withFailureHandler((error) => {
+        showError(error);
+      })
+      .deleteDownloadFile(item.id);
+  }
+
+  function showSuccess(message) {
+    const flash = document.getElementById('flash');
+    flash.classList.remove('hidden');
+    flash.textContent = message;
+    flash.style.background = 'rgba(46, 160, 67, 0.14)';
+    flash.style.borderColor = 'rgba(46, 160, 67, 0.35)';
+    flash.style.color = '#7ee787';
+  }
+
+  function showError(error) {
+    const flash = document.getElementById('flash');
+    flash.classList.remove('hidden');
+    flash.textContent = error && error.message ? error.message : 'Something went wrong.';
+    flash.style.background = 'rgba(248, 81, 73, 0.12)';
+    flash.style.borderColor = 'rgba(248, 81, 73, 0.35)';
+    flash.style.color = '#ffb4ad';
+  }
+
+  function hideFlash() {
+    const flash = document.getElementById('flash');
+    flash.classList.add('hidden');
+  }
+
+  function escapeHtml(value) {
+    return String(value || '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  }
+
+  function capitalize(value) {
+    const text = String(value || '');
+    return text ? text.charAt(0).toUpperCase() + text.slice(1) : '';
+  }
+
+  function slugify(value) {
+    return String(value || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+</script>
