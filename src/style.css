@@ -464,6 +464,27 @@ a {
   color: var(--text-soft);
 }
 
+.mobile-menu-shell,
+.mobile-bottom-nav {
+  display: none;
+}
+
+.mobile-menu {
+  margin: 0;
+}
+
+.mobile-menu-summary {
+  list-style: none;
+}
+
+.mobile-menu-summary::-webkit-details-marker {
+  display: none;
+}
+
+.mobile-menu-summary::marker {
+  content: '';
+}
+
 .main-nav {
   position: sticky;
   top: 0;
@@ -2535,27 +2556,13 @@ h6 {
 }
 
 @media (max-width: 576px) {
-  .top-bar {
-    text-align: center;
-    padding: 4px 0;
+  body {
+    padding-bottom: 86px;
   }
 
-  .top-bar a {
-    margin: 0 6px;
-    font-size: 12px;
-  }
-
-  .top-bar .container > div:first-child {
-    display: none !important;
-  }
-
-  .top-bar .container {
-    justify-content: center !important;
-  }
-
-  .top-bar-actions {
-    justify-content: center;
-    width: 100%;
+  .top-bar,
+  .main-nav {
+    display: none;
   }
 
   .search-form {
@@ -2624,52 +2631,187 @@ h6 {
     top: calc(100% + 8px);
   }
 
-  .main-nav {
-    padding-top: 0.35rem;
-    padding-bottom: 0.45rem;
+  .mobile-menu-shell {
+    display: block;
+    padding: 0.72rem 0 0.3rem;
+    background: linear-gradient(180deg, rgba(22, 27, 34, 0.12), rgba(13, 17, 23, 0));
   }
 
-  .nav-grid {
+  .mobile-menu .container {
+    padding: 0;
+  }
+
+  .mobile-menu-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.9rem;
+    padding: 0.92rem 1rem;
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(13, 17, 23, 0.02)),
+      rgba(22, 27, 34, 0.9);
+    color: var(--text-strong);
+    box-shadow: 0 18px 34px rgba(1, 4, 9, 0.16);
+    cursor: pointer;
+  }
+
+  .mobile-menu-summary-copy {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.42rem 0.5rem;
+    gap: 0.18rem;
   }
 
-  .nav-link {
-    min-width: 0;
-    width: 100%;
-    min-height: 46px;
-    justify-content: flex-start;
-    padding: 0.72rem 0.8rem;
-    border-radius: 16px;
-    font-size: 0.96rem;
-    flex: none;
+  .mobile-menu-summary-label {
+    color: #7d8590;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
   }
 
-  .nav-link::after {
-    left: 12px;
-    right: 12px;
-    bottom: 6px;
+  .mobile-menu-summary strong {
+    font-size: 1rem;
+    line-height: 1.15;
   }
 
-  .nav-link-mini-badge {
-    margin-left: 0.28rem;
-    padding: 0.18rem 0.38rem;
-    font-size: 0.58rem;
+  .mobile-menu-summary-caret {
+    color: var(--text-soft);
+    transition: transform 0.2s ease, color 0.2s ease;
   }
 
-  .nav-contact-menu {
-    flex: none;
+  .mobile-menu[open] .mobile-menu-summary-caret {
+    transform: rotate(180deg);
+    color: var(--text-strong);
   }
 
-  .nav-contact-menu > .nav-link {
-    width: 100%;
+  .mobile-menu-panel {
+    display: grid;
+    gap: 0.58rem;
+    margin-top: 0.7rem;
+    padding: 0.86rem;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background:
+      radial-gradient(circle at top left, rgba(255, 123, 114, 0.08), transparent 26%),
+      linear-gradient(180deg, rgba(22, 27, 34, 0.96), rgba(13, 17, 23, 0.98));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.02),
+      0 22px 44px rgba(1, 4, 9, 0.2);
   }
 
-  .nav-contact-dropdown {
+  .mobile-menu-link {
+    display: flex;
+    align-items: center;
+    gap: 0.78rem;
+    min-height: 50px;
+    padding: 0.86rem 0.95rem;
+    border-radius: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    background: rgba(255, 255, 255, 0.018);
+    color: var(--text-main);
+    font-weight: 700;
+    transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+  }
+
+  .mobile-menu-link:hover,
+  .mobile-menu-link.active {
+    border-color: rgba(255, 123, 114, 0.16);
+    background: rgba(255, 123, 114, 0.08);
+    color: var(--text-strong);
+  }
+
+  .mobile-menu-link-support {
+    color: #dcfce7;
+    border-color: rgba(37, 211, 102, 0.14);
+    background: rgba(37, 211, 102, 0.08);
+  }
+
+  .mobile-menu-contact-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.7rem;
+    padding-top: 0.3rem;
+  }
+
+  .mobile-menu-contact-link {
+    width: 42px;
+    height: 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .mobile-menu-contact-link svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .mobile-menu-contact-link-whatsapp {
+    color: #25d366;
+  }
+
+  .mobile-menu-contact-link-facebook {
+    color: #1877f2;
+  }
+
+  .mobile-menu-contact-link-web {
+    color: #ff7b72;
+  }
+
+  .mobile-bottom-nav {
+    position: fixed;
     left: 0;
     right: 0;
-    min-width: 0;
+    bottom: 0;
+    z-index: 120;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0;
+    padding: 0.52rem 0.5rem calc(0.52rem + env(safe-area-inset-bottom));
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    background:
+      radial-gradient(circle at center top, rgba(201, 60, 69, 0.16), transparent 34%),
+      linear-gradient(180deg, rgba(17, 20, 27, 0.98), rgba(13, 17, 23, 0.99));
+    backdrop-filter: blur(18px);
+    box-shadow: 0 -20px 40px rgba(1, 4, 9, 0.3);
+  }
+
+  .mobile-bottom-nav-item {
+    border: 0;
+    background: transparent;
+    color: var(--text-soft);
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    min-height: 54px;
+    padding: 0.2rem 0.15rem;
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .mobile-bottom-nav-item i {
+    font-size: 1rem;
+  }
+
+  .mobile-bottom-nav-item.active {
+    color: var(--text-strong);
+  }
+
+  .mobile-bottom-nav-item-support {
+    color: #ffb3ad;
+  }
+
+  .mobile-bottom-nav-item-menu {
+    cursor: pointer;
   }
 
   .ticker-wrapper {

@@ -394,6 +394,57 @@ export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downlo
     </div>
   </header>
 
+  <section class="mobile-menu-shell">
+    <div class="container">
+      <details class="mobile-menu" id="mobileMenu">
+        <summary class="mobile-menu-summary">
+          <span class="mobile-menu-summary-copy">
+            <span class="mobile-menu-summary-label">Quick Access</span>
+            <strong>Main Menu</strong>
+          </span>
+          <i class="fas fa-chevron-down mobile-menu-summary-caret"></i>
+        </summary>
+        <div class="mobile-menu-panel">
+          <a class="mobile-menu-link ${activeKey === 'home' ? 'active' : ''}" href="/index.html">
+            <i class="fas fa-house"></i>
+            <span>Home</span>
+          </a>
+          <a class="mobile-menu-link ${downloadsActive ? 'active' : ''}" href="/downloads.html">
+            <i class="fas fa-folder-tree"></i>
+            <span>Downloads</span>
+          </a>
+          <a class="mobile-menu-link ${activeKey === 'huawei' ? 'active' : ''}" href="/solution-files.html?brand=huawei">
+            <i class="fas fa-mobile-screen"></i>
+            <span>Huawei</span>
+          </a>
+          <a class="mobile-menu-link ${activeKey === 'honor' ? 'active' : ''}" href="/solution-files.html?brand=honor">
+            <i class="fas fa-shield-halved"></i>
+            <span>Honor</span>
+          </a>
+          <a class="mobile-menu-link ${activeKey === 'remote' ? 'active' : ''}" href="/remote-service.html">
+            <i class="fas fa-laptop-medical"></i>
+            <span>Remote Service</span>
+          </a>
+          <a class="mobile-menu-link mobile-menu-link-support" href="https://wa.me/6282234370999" target="_blank" rel="noreferrer">
+            <i class="fas fa-headset"></i>
+            <span>WhatsApp Support</span>
+          </a>
+          <div class="mobile-menu-contact-row">
+            <a class="mobile-menu-contact-link mobile-menu-contact-link-whatsapp" href="https://wa.me/6282234370999" target="_blank" rel="noreferrer" aria-label="WhatsApp">
+              ${whatsappSvg}
+            </a>
+            <a class="mobile-menu-contact-link mobile-menu-contact-link-facebook" href="https://www.facebook.com/anggaaosunlocker" target="_blank" rel="noreferrer" aria-label="Facebook">
+              ${facebookSvg}
+            </a>
+            <a class="mobile-menu-contact-link mobile-menu-contact-link-web" href="https://aosunlock.my.id" target="_blank" rel="noreferrer" aria-label="Website">
+              ${globeSvg}
+            </a>
+          </div>
+        </div>
+      </details>
+    </div>
+  </section>
+
   <nav class="main-nav py-2">
     <div class="container nav-grid">
       ${navItems
@@ -469,6 +520,29 @@ export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downlo
     </div>
   </footer>
 
+  <nav class="mobile-bottom-nav" aria-label="Mobile quick navigation">
+    <a class="mobile-bottom-nav-item ${activeKey === 'home' ? 'active' : ''}" href="/index.html">
+      <i class="fas fa-house"></i>
+      <span>Home</span>
+    </a>
+    <a class="mobile-bottom-nav-item ${downloadsActive ? 'active' : ''}" href="/downloads.html">
+      <i class="fas fa-folder-tree"></i>
+      <span>Downloads</span>
+    </a>
+    <a class="mobile-bottom-nav-item mobile-bottom-nav-item-support" href="https://wa.me/6282234370999" target="_blank" rel="noreferrer">
+      <i class="fas fa-headset"></i>
+      <span>Support</span>
+    </a>
+    <a class="mobile-bottom-nav-item ${activeKey === 'remote' ? 'active' : ''}" href="/remote-service.html">
+      <i class="fas fa-laptop-medical"></i>
+      <span>Services</span>
+    </a>
+    <button class="mobile-bottom-nav-item mobile-bottom-nav-item-menu" type="button" data-mobile-menu-toggle>
+      <i class="fas fa-bars"></i>
+      <span>Menu</span>
+    </button>
+  </nav>
+
   <button id="scrollTopBtn" class="btn btn-primary rounded-circle shadow scroll-top" aria-label="Scroll to top">
     <i class="fas fa-arrow-up"></i>
   </button>
@@ -520,6 +594,8 @@ export const setupSearchAndScroll = () => {
   const searchDropdown = document.querySelector<HTMLDivElement>('#searchDropdown')
   const contactMenu = document.querySelector<HTMLDetailsElement>('.nav-contact-menu')
   const contactToggle = contactMenu?.querySelector<HTMLElement>('.nav-link-contact-toggle')
+  const mobileMenu = document.querySelector<HTMLDetailsElement>('#mobileMenu')
+  const mobileMenuToggleButtons = Array.from(document.querySelectorAll<HTMLElement>('[data-mobile-menu-toggle]'))
   const cards = Array.from(document.querySelectorAll<HTMLElement>('.searchable'))
   const warmedHrefs = new Set<string>()
   const canHover = window.matchMedia('(hover: hover)').matches
@@ -636,11 +712,31 @@ export const setupSearchAndScroll = () => {
     if (contactMenu?.open && !contactMenu.contains(target)) {
       contactMenu.open = false
     }
+
+    if (mobileMenu?.open && !mobileMenu.contains(target)) {
+      mobileMenu.open = false
+    }
   })
 
   contactMenu?.querySelectorAll<HTMLAnchorElement>('.nav-contact-item').forEach((link) => {
     link.addEventListener('click', () => {
       contactMenu.open = false
+    })
+  })
+
+  mobileMenuToggleButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      if (!mobileMenu) return
+      mobileMenu.open = !mobileMenu.open
+      if (mobileMenu.open) {
+        mobileMenu.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    })
+  })
+
+  mobileMenu?.querySelectorAll<HTMLAnchorElement>('.mobile-menu-link, .mobile-menu-contact-link').forEach((link) => {
+    link.addEventListener('click', () => {
+      mobileMenu.open = false
     })
   })
 
@@ -680,6 +776,9 @@ export const setupSearchAndScroll = () => {
       closeDropdown()
       if (contactMenu?.open) {
         contactMenu.open = false
+      }
+      if (mobileMenu?.open) {
+        mobileMenu.open = false
       }
     }
   })
