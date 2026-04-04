@@ -154,16 +154,16 @@ export const renderPage = async (pageKey: SitePageKey) => {
   app.innerHTML = renderSiteChrome(
     `
       <main id="overview">
-      <section class="hero-section">
+      <section class="hero-section ${page.key === 'home' ? 'hero-section-home' : ''}">
         <div class="container py-5">
-          <div class="hero-panel hero-panel-clean">
-            <div class="hero-center">
+          <div class="hero-panel hero-panel-clean ${page.key === 'home' ? 'hero-panel-home' : ''}">
+            <div class="hero-center ${page.key === 'home' ? 'hero-center-home' : ''}">
               <p class="eyebrow">${page.eyebrow}</p>
               <h2><i class="fas fa-mobile-alt me-2 text-primary"></i>${page.heroTitle}</h2>
               <p class="lead-copy">${page.heroCopy}</p>
             </div>
-            <div class="stats-strip">
-              <div class="stats-row">
+            <div class="stats-strip ${page.key === 'home' ? 'stats-strip-home' : ''}">
+              <div class="stats-row ${page.key === 'home' ? 'stats-row-home' : ''}">
                 ${stats
                   .map(
                     (item) => `
@@ -183,7 +183,7 @@ export const renderPage = async (pageKey: SitePageKey) => {
         </div>
       </section>
 
-      <section class="py-4 section-soft">
+      <section class="py-4 section-soft ${page.key === 'home' ? 'section-soft-home' : ''}">
         <div class="container">
           ${
             page.key === 'home'
