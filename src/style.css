@@ -2820,10 +2820,15 @@ h6 {
 
   .ticker-wrapper {
     margin-top: 0;
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr);
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.3rem 0.8rem;
   }
 
   .ticker-label {
-    margin: 0 0 0.35rem 0.8rem;
+    margin: 0;
     width: 38px;
     height: 38px;
     padding: 0;
@@ -2839,9 +2844,16 @@ h6 {
     font-size: 0.9rem;
   }
 
+  .ticker-content {
+    min-width: 0;
+    padding-right: 0;
+    mask-image: linear-gradient(90deg, transparent 0, rgba(0, 0, 0, 0.98) 4%, rgba(0, 0, 0, 0.98) 95%, transparent 100%);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, rgba(0, 0, 0, 0.98) 4%, rgba(0, 0, 0, 0.98) 95%, transparent 100%);
+  }
+
   .ticker-items {
     gap: 12px;
-    padding: 6px 0;
+    padding: 4px 0;
   }
 
   .ticker-item {
