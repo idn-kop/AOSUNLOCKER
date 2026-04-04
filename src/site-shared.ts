@@ -10,6 +10,7 @@ import type {
   TickerItem,
 } from './data-types'
 import { loadHomepageTickers, warmRouteDataFromHref } from './live-data'
+import { latestUploads as fallbackLatestUploads, topFiles as fallbackTopFiles } from './portal-data'
 
 const repeatForTicker = <T>(items: T[], minimum = 12) => {
   if (!items.length) return []
@@ -148,30 +149,6 @@ const renderSiteTickerSections = (latestHtml: string, topHtml: string) => `
   ${topHtml}
 `
 
-const renderSiteTickerLoading = () =>
-  renderSiteTickerSections(
-    `
-      <section class="ticker-wrapper ticker-latest ticker-static">
-        <span class="ticker-label"><i class="fas fa-clock me-2"></i>Recent Uploads</span>
-        <div class="ticker-content">
-          <div class="ticker-items ticker-items-static">
-            <span class="ticker-item ticker-item-placeholder">Loading recent files...</span>
-          </div>
-        </div>
-      </section>
-    `,
-    `
-      <section class="ticker-wrapper ticker-top ticker-static">
-        <span class="ticker-label"><i class="fas fa-fire me-2"></i>Top Files</span>
-        <div class="ticker-content">
-          <div class="ticker-items ticker-items-static">
-            <span class="ticker-item ticker-item-placeholder">Loading top files...</span>
-          </div>
-        </div>
-      </section>
-    `,
-  )
-
 const renderSiteTickerResult = (latest: string, top: string) =>
   renderSiteTickerSections(
     latest
@@ -192,21 +169,53 @@ const renderSiteTickerResult = (latest: string, top: string) =>
       : '',
   )
 
+const renderSiteTickerFallback = () => {
+  const latest = fallbackLatestUploads.length ? renderTicker(fallbackLatestUploads) : ''
+  const top = fallbackTopFiles.length ? renderTicker(fallbackTopFiles) : ''
+
+  if (!latest && !top) {
+    return renderSiteTickerSections(
+      `
+        <section class="ticker-wrapper ticker-latest ticker-static">
+          <span class="ticker-label"><i class="fas fa-clock me-2"></i>Recent Uploads</span>
+          <div class="ticker-content">
+            <div class="ticker-items ticker-items-static">
+              <span class="ticker-item ticker-item-placeholder">Loading recent files...</span>
+            </div>
+          </div>
+        </section>
+      `,
+      `
+        <section class="ticker-wrapper ticker-top ticker-static">
+          <span class="ticker-label"><i class="fas fa-fire me-2"></i>Top Files</span>
+          <div class="ticker-content">
+            <div class="ticker-items ticker-items-static">
+              <span class="ticker-item ticker-item-placeholder">Loading top files...</span>
+            </div>
+          </div>
+        </section>
+      `,
+    )
+  }
+
+  return renderSiteTickerResult(latest, top)
+}
+
 let siteTickerRequest: Promise<{ latest: TickerItem[]; top: TickerItem[] }> | null = null
 
 const hydrateSiteTicker = () => {
   const tickerMount = document.querySelector<HTMLDivElement>('#siteTickerMount')
   if (!tickerMount) return
 
-  tickerMount.innerHTML = renderSiteTickerLoading()
+  tickerMount.innerHTML = renderSiteTickerFallback()
 
   siteTickerRequest ??= loadHomepageTickers()
 
   void siteTickerRequest.then((tickerResult) => {
     if (!tickerMount.isConnected) return
 
-    const latest = tickerResult.latest.length ? renderTicker(tickerResult.latest) : ''
-    const top = tickerResult.top.length ? renderTicker(tickerResult.top) : ''
+    const latest = tickerResult.latest.length ? renderTicker(tickerResult.latest) : renderTicker(fallbackLatestUploads)
+    const top = tickerResult.top.length ? renderTicker(tickerResult.top) : renderTicker(fallbackTopFiles)
     tickerMount.innerHTML = renderSiteTickerResult(latest, top)
   })
 }
@@ -290,6 +299,22 @@ const renderBackBlock = (title: string, href: string) => `
       <small>Go Back</small>
     </span>
   </a>
+`
+
+const renderLogoWordmark = () => `
+  <picture class="logo-wordmark-picture">
+    <source srcset="/aosunlocker.webp" type="image/webp" />
+    ${renderAssetImage({
+      src: '/aosunlocker%20(1).png',
+      alt: 'AOSUNLOCKER',
+      className: 'logo-wordmark',
+      loading: 'eager',
+      decoding: 'async',
+      fetchPriority: 'high',
+      width: 960,
+      height: 540,
+    })}
+  </picture>
 `
 
 export const renderDownloadHomeCard = (item: DownloadCategoryCard) => `
@@ -525,16 +550,7 @@ export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downlo
     <div class="container">
       <div class="logo-block">
         <div class="logo-wordmark-wrap">
-          ${renderAssetImage({
-            src: '/aosunlocker%20(1).png',
-            alt: 'AOSUNLOCKER',
-            className: 'logo-wordmark',
-            loading: 'eager',
-            decoding: 'async',
-            fetchPriority: 'high',
-            width: 960,
-            height: 540,
-          })}
+          ${renderLogoWordmark()}
           <div class="logo-note"><i class="fas fa-circle-check"></i>Huawei, Honor, Kirin, HarmonyOS, and Qualcomm support</div>
         </div>
       </div>

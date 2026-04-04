@@ -164,6 +164,12 @@ a {
   filter: none;
 }
 
+.logo-wordmark-picture {
+  display: block;
+  width: min(290px, 100%);
+  max-width: 100%;
+}
+
 .eyebrow {
   margin: 0 0 8px;
   color: #7d8590;
@@ -2557,6 +2563,7 @@ h6 {
 
 .section-soft,
 .cta-band,
+.deferred-section,
 .remote-service-section,
 .download-home-shell,
 .download-list-wrap,
@@ -2724,6 +2731,11 @@ h6 {
   .logo-wordmark {
     width: min(190px, 72vw);
     max-height: 84px;
+    margin-inline: auto;
+  }
+
+  .logo-wordmark-picture {
+    width: min(190px, 72vw);
     margin-inline: auto;
   }
 

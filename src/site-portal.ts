@@ -206,7 +206,7 @@ export const renderPage = async (pageKey: SitePageKey) => {
         </div>
       </section>
 
-      <section id="focus" class="py-5">
+      <section id="focus" class="py-5 deferred-section">
         <div class="container">
           <div class="section-head">
             <div>
@@ -218,7 +218,7 @@ export const renderPage = async (pageKey: SitePageKey) => {
         </div>
       </section>
 
-      <section id="features" class="py-5">
+      <section id="features" class="py-5 deferred-section">
         <div class="container">
           <div class="text-center mb-4">
             <p class="eyebrow">${page.featureEyebrow}</p>
