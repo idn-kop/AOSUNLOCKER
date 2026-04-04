@@ -117,6 +117,8 @@ const globeSvg = `
   </svg>
 `
 
+const primarySiteUrl = 'https://aosunlocker.com'
+
 const renderMiniSocialLinks = (extraClass = '') => `
   <div class="mini-social-links ${extraClass}".trim() aria-label="AOSUNLOCKER social links">
     <a class="mini-social-link mini-social-link-whatsapp" href="https://wa.me/6282234370999" target="_blank" rel="noreferrer" aria-label="WhatsApp admin" title="WhatsApp admin">
@@ -125,7 +127,7 @@ const renderMiniSocialLinks = (extraClass = '') => `
     <a class="mini-social-link mini-social-link-facebook" href="https://www.facebook.com/anggaaosunlocker" target="_blank" rel="noreferrer" aria-label="Facebook" title="Facebook">
       ${facebookSvg}
     </a>
-    <a class="mini-social-link mini-social-link-web" href="https://aosunlock.my.id" target="_blank" rel="noreferrer" aria-label="Website" title="Website">
+    <a class="mini-social-link mini-social-link-web" href="${primarySiteUrl}" target="_blank" rel="noreferrer" aria-label="Website" title="Website">
       ${globeSvg}
     </a>
   </div>
@@ -321,6 +323,18 @@ const renderLogoWordmark = () => `
   </picture>
 `
 
+const getDownloadHomeKicker = (item: DownloadCategoryCard) => {
+  if (item.kind === 'brand') {
+    return item.brandId === 'honor' ? 'Honor Portal' : item.brandId === 'huawei' ? 'Huawei Portal' : 'Service Folder'
+  }
+
+  if (item.kind === 'android') {
+    return 'Android Access'
+  }
+
+  return 'Folder Access'
+}
+
 export const renderDownloadHomeCard = (item: DownloadCategoryCard) => `
   <a class="download-home-card" href="${item.href}">
     <div class="download-home-icon ${item.kind === 'android' ? 'download-home-icon-android' : ''} ${item.kind === 'brand' ? `download-home-icon-brand download-home-icon-brand-${item.brandId}` : ''}">
@@ -349,10 +363,12 @@ export const renderDownloadHomeCard = (item: DownloadCategoryCard) => `
               })
       }
     </div>
-    <div>
+    <div class="download-home-copy">
+      <span class="download-home-kicker">${getDownloadHomeKicker(item)}</span>
       <h3>${item.title}</h3>
       <p>${item.description}</p>
     </div>
+    <span class="download-home-arrow" aria-hidden="true"><i class="fas fa-arrow-up-right"></i></span>
   </a>
 `
 
@@ -366,9 +382,11 @@ export const renderBrandDownloadCard = (item: DownloadBrandCard) => `
       }
     </div>
     <div class="brand-download-copy">
+      <span class="brand-download-kicker">${item.kind === 'tool' ? 'Tool Access' : item.badge ? 'Premium Folder' : 'Service Folder'}</span>
       <h3>${item.title}</h3>
       <p>${item.subtitle}</p>
     </div>
+    <span class="brand-download-arrow" aria-hidden="true"><i class="fas fa-arrow-up-right"></i></span>
   </a>
 `
 
@@ -386,9 +404,11 @@ export const renderModelFolderCard = (item: DownloadModelFolder) => `
       })}
     </div>
     <div class="model-folder-copy">
+      <span class="model-folder-kicker">Model Folder</span>
       <h3>${item.title}</h3>
       <p>${item.subtitle}</p>
     </div>
+    <span class="model-folder-arrow" aria-hidden="true"><i class="fas fa-arrow-up-right"></i></span>
   </a>
 `
 
@@ -579,8 +599,12 @@ export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downlo
           <span class="mobile-menu-summary-copy">
             <span class="mobile-menu-summary-label">Quick Access</span>
             <strong>Main Menu</strong>
+            <span class="mobile-menu-summary-meta">Direct folders, support, and fast download access.</span>
           </span>
-          <i class="fas fa-chevron-down mobile-menu-summary-caret"></i>
+          <span class="mobile-menu-summary-side">
+            <span class="mobile-menu-summary-status"><i class="fas fa-signal"></i>Live</span>
+            <i class="fas fa-chevron-down mobile-menu-summary-caret"></i>
+          </span>
         </summary>
         <div class="mobile-menu-panel">
           <a class="mobile-menu-link ${activeKey === 'home' ? 'active' : ''}" href="/index.html">
@@ -614,7 +638,7 @@ export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downlo
             <a class="mobile-menu-contact-link mobile-menu-contact-link-facebook" href="https://www.facebook.com/anggaaosunlocker" target="_blank" rel="noreferrer" aria-label="Facebook">
               ${facebookSvg}
             </a>
-            <a class="mobile-menu-contact-link mobile-menu-contact-link-web" href="https://aosunlock.my.id" target="_blank" rel="noreferrer" aria-label="Website">
+            <a class="mobile-menu-contact-link mobile-menu-contact-link-web" href="${primarySiteUrl}" target="_blank" rel="noreferrer" aria-label="Website">
               ${globeSvg}
             </a>
           </div>
@@ -650,7 +674,7 @@ export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downlo
             <span class="nav-contact-item-icon">${facebookSvg}</span>
             <span>Facebook</span>
           </a>
-          <a class="nav-contact-item nav-contact-item-web" href="https://aosunlock.my.id" target="_blank" rel="noreferrer">
+          <a class="nav-contact-item nav-contact-item-web" href="${primarySiteUrl}" target="_blank" rel="noreferrer">
             <span class="nav-contact-item-icon">${globeSvg}</span>
             <span>Website</span>
           </a>
@@ -750,11 +774,11 @@ export const renderContactAdminPanel = () => `
           <span>anggaaosunlocker</span>
         </span>
       </a>
-      <a class="contact-card contact-card-web" href="https://aosunlock.my.id" target="_blank" rel="noreferrer">
+      <a class="contact-card contact-card-web" href="${primarySiteUrl}" target="_blank" rel="noreferrer">
         <span class="contact-card-icon">${globeSvg}</span>
         <span class="contact-card-copy">
           <strong>Website</strong>
-          <span>aosunlock.my.id</span>
+          <span>aosunlocker.com</span>
         </span>
       </a>
     </div>

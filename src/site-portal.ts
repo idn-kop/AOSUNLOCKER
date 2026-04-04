@@ -46,7 +46,7 @@ const renderRemoteServiceSection = () => {
             <div class="remote-service-contact-row">
               <a class="remote-service-contact remote-service-contact-whatsapp" href="https://wa.me/6282234370999" target="_blank" rel="noreferrer"><i class="fab fa-whatsapp"></i><span>WhatsApp</span></a>
               <a class="remote-service-contact remote-service-contact-facebook" href="https://www.facebook.com/anggaaosunlocker" target="_blank" rel="noreferrer"><i class="fab fa-facebook-f"></i><span>Facebook</span></a>
-              <a class="remote-service-contact remote-service-contact-web" href="https://aosunlock.my.id" target="_blank" rel="noreferrer"><i class="fas fa-globe"></i><span>Website</span></a>
+              <a class="remote-service-contact remote-service-contact-web" href="https://aosunlocker.com" target="_blank" rel="noreferrer"><i class="fas fa-globe"></i><span>Website</span></a>
             </div>
           </div>
           <div class="remote-service-highlight-row">
@@ -105,7 +105,7 @@ export const renderRemoteServicePage = () => {
                 <div class="remote-service-hero-cta">
                   <a class="hero-cta-button hero-cta-button-amber" href="https://wa.me/6282234370999" target="_blank" rel="noreferrer">Start WhatsApp Order</a>
                   <a class="hero-cta-button hero-cta-button-light" href="https://www.facebook.com/anggaaosunlocker" target="_blank" rel="noreferrer">Open Facebook</a>
-                  <a class="hero-cta-button hero-cta-button-ghost" href="https://aosunlock.my.id" target="_blank" rel="noreferrer">Visit Website</a>
+                  <a class="hero-cta-button hero-cta-button-ghost" href="https://aosunlocker.com" target="_blank" rel="noreferrer">Visit Website</a>
                 </div>
               </div>
               <div class="remote-service-hero-side">

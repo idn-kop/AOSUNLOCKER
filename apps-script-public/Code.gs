@@ -2,6 +2,15 @@ const SPREADSHEET_NAME = 'AOSUNLOCKER DATA';
 const DOWNLOADS_SHEET_NAME = 'Downloads';
 const SETTINGS_SHEET_NAME = 'Settings';
 const BRANDS_SHEET_NAME = 'Brands';
+const CACHE_TTL_SECONDS = 180;
+const MAX_CACHE_VALUE_LENGTH = 95000;
+const CACHE_VERSION_PROPERTY = 'AOSUNLOCKER_PUBLIC_CACHE_VERSION';
+const SPREADSHEET_ID_PROPERTY = 'AOSUNLOCKER_PUBLIC_SPREADSHEET_ID';
+
+var spreadsheetMemo_ = null;
+var sheetValuesMemo_ = {};
+var cacheVersionMemo_ = '';
+var allPublishedFilesMemo_ = null;
 
 function doGet(e) {
   const view = String((e && e.parameter && e.parameter.view) || 'catalog');
@@ -48,13 +57,32 @@ function doGet(e) {
   return jsonOutput_({
     ok: true,
     categories: getCategories_(''),
-    files: getPublishedFiles_(''),
+    files: getPublishedFiles_('', ''),
   });
 }
 
 function getSpreadsheet_() {
+  if (spreadsheetMemo_) {
+    return spreadsheetMemo_;
+  }
+
+  spreadsheetMemo_ = resolveSpreadsheet_();
+  return spreadsheetMemo_;
+}
+
+function resolveSpreadsheet_() {
   if (!SPREADSHEET_NAME || SPREADSHEET_NAME === 'PASTE_YOUR_SPREADSHEET_NAME_HERE') {
     throw new Error('Spreadsheet name has not been configured.');
+  }
+
+  const properties = PropertiesService.getScriptProperties();
+  const cachedId = String(properties.getProperty(SPREADSHEET_ID_PROPERTY) || '').trim();
+  if (cachedId) {
+    try {
+      return SpreadsheetApp.openById(cachedId);
+    } catch (error) {
+      properties.deleteProperty(SPREADSHEET_ID_PROPERTY);
+    }
   }
 
   const files = DriveApp.getFilesByName(SPREADSHEET_NAME);
@@ -62,159 +90,345 @@ function getSpreadsheet_() {
     throw new Error('Spreadsheet not found. Make sure the name matches exactly.');
   }
 
-  return SpreadsheetApp.openById(files.next().getId());
+  const spreadsheetId = files.next().getId();
+  properties.setProperty(SPREADSHEET_ID_PROPERTY, spreadsheetId);
+  return SpreadsheetApp.openById(spreadsheetId);
 }
 
 function getCategories_(brandId) {
-  const sheet = getSpreadsheet_().getSheetByName(SETTINGS_SHEET_NAME);
-  if (!sheet) {
-    return [];
-  }
+  const normalizedBrandId = normalizeId_(brandId);
 
-  const values = sheet.getDataRange().getValues();
-  const headers = values[0] || [];
-  const hasBrandColumns = headers.indexOf('brand_id') >= 0;
+  return withJsonCache_('categories', [normalizedBrandId], function() {
+    const values = getSheetValues_(SETTINGS_SHEET_NAME);
+    if (!values.length) {
+      return [];
+    }
 
-  return dedupeCategories_(values
-    .slice(1)
-    .map(function(row) {
-      if (hasBrandColumns && row[0] && row[2] && row[3]) {
-        return {
-          brandId: String(row[0] || '').trim(),
-          brandLabel: String(row[1] || '').trim(),
-          id: String(row[2] || '').trim(),
-          label: String(row[3] || '').trim(),
-        };
-      }
+    const headers = values[0] || [];
+    const headerLookup = createHeaderLookup_(headers);
+    const hasBrandColumns = hasHeader_(headerLookup, 'brand_id');
 
-      if (row[0] && row[1]) {
-        return {
-          brandId: 'huawei',
-          brandLabel: 'Huawei',
-          id: String(row[0] || '').trim(),
-          label: String(row[1] || '').trim(),
-        };
-      }
+    return dedupeCategories_(values
+      .slice(1)
+      .map(function(row) {
+        if (hasBrandColumns && row[0] && row[2] && row[3]) {
+          return {
+            brandId: String(row[0] || '').trim(),
+            brandLabel: String(row[1] || '').trim(),
+            id: String(row[2] || '').trim(),
+            label: String(row[3] || '').trim(),
+          };
+        }
 
-      return null;
-    })
-    .filter(function(item) {
-      if (!item || !item.id || !item.label) return false;
-      return !brandId || item.brandId === brandId;
-    }));
+        if (row[0] && row[1]) {
+          return {
+            brandId: 'huawei',
+            brandLabel: 'Huawei',
+            id: String(row[0] || '').trim(),
+            label: String(row[1] || '').trim(),
+          };
+        }
+
+        return null;
+      })
+      .filter(function(item) {
+        if (!item || !item.id || !item.label) return false;
+        return !normalizedBrandId || normalizeId_(item.brandId) === normalizedBrandId;
+      }));
+  });
 }
 
 function getBrands_() {
-  const sheet = getSpreadsheet_().getSheetByName(BRANDS_SHEET_NAME);
+  return withJsonCache_('brands', [], function() {
+    const values = getSheetValues_(BRANDS_SHEET_NAME);
 
-  if (sheet) {
-    return dedupeBrands_(sheet
-      .getDataRange()
-      .getValues()
-      .slice(1)
-      .map(function(row) {
-        return {
-          id: String(row[0] || '').trim(),
-          label: String(row[1] || '').trim(),
-        };
-      })
-      .filter(function(item) {
-        return item.id && item.label;
-      }));
-  }
+    if (values.length) {
+      return dedupeBrands_(values
+        .slice(1)
+        .map(function(row) {
+          return {
+            id: String(row[0] || '').trim(),
+            label: String(row[1] || '').trim(),
+          };
+        })
+        .filter(function(item) {
+          return item.id && item.label;
+        }));
+    }
 
-  const categories = getCategories_('');
-  const brandMap = {};
-  categories.forEach(function(item) {
-    if (!item.brandId) return;
-    brandMap[item.brandId] = item.brandLabel || item.brandId;
+    const categories = getCategories_('');
+    const brandMap = {};
+    categories.forEach(function(item) {
+      if (!item.brandId) return;
+      brandMap[item.brandId] = item.brandLabel || item.brandId;
+    });
+
+    return dedupeBrands_(Object.keys(brandMap).map(function(id) {
+      return {
+        id: id,
+        label: String(brandMap[id] || id),
+      };
+    }));
   });
-
-  return dedupeBrands_(Object.keys(brandMap).map(function(id) {
-    return {
-      id: id,
-      label: String(brandMap[id] || id),
-    };
-  }));
 }
 
 function getPublishedFiles_(categoryId, brandId) {
-  const sheet = getSpreadsheet_().getSheetByName(DOWNLOADS_SHEET_NAME);
-  if (!sheet) {
-    return [];
-  }
+  const normalizedCategoryId = normalizeId_(categoryId);
+  const normalizedBrandId = normalizeId_(brandId);
 
-  const values = sheet.getDataRange().getValues();
-  const headers = values[0] || [];
-
-  return dedupeFiles_(values
-    .slice(1)
-    .filter(function(row) {
-      return row[0];
-    })
-    .map(function(row) {
-      return toFileRecord_(row, headers);
-    })
-    .filter(function(file) {
-      const isPublished = String(file.status || '').toLowerCase() === 'published';
-      const matchesCategory = !categoryId || file.categoryId === categoryId;
-      const matchesBrand = !brandId || file.brandId === brandId;
-      return isPublished && matchesCategory && matchesBrand;
-    }));
+  return withJsonCache_('files', [normalizedBrandId, normalizedCategoryId], function() {
+    return getAllPublishedFiles_().filter(function(file) {
+      const matchesCategory = !normalizedCategoryId || normalizeId_(file.categoryId) === normalizedCategoryId;
+      const matchesBrand = !normalizedBrandId || normalizeId_(file.brandId) === normalizedBrandId;
+      return matchesCategory && matchesBrand;
+    });
+  });
 }
 
 function getPublishedFileById_(fileId) {
-  if (!fileId) return null;
+  const normalizedFileId = String(fileId || '').trim();
+  if (!normalizedFileId) return null;
 
-  const files = getPublishedFiles_('');
-  return files.find(function(file) {
-    return file.id === fileId;
-  }) || null;
+  return withJsonCache_('file', [normalizedFileId], function() {
+    const files = getAllPublishedFiles_();
+    for (var i = 0; i < files.length; i++) {
+      if (files[i].id === normalizedFileId) {
+        return files[i];
+      }
+    }
+    return null;
+  });
+}
+
+function getAllPublishedFiles_() {
+  if (allPublishedFilesMemo_) {
+    return allPublishedFilesMemo_;
+  }
+
+  allPublishedFilesMemo_ = withJsonCache_('files-all', [], function() {
+    const values = getSheetValues_(DOWNLOADS_SHEET_NAME);
+    if (!values.length) {
+      return [];
+    }
+
+    const headers = values[0] || [];
+    const headerLookup = createHeaderLookup_(headers);
+
+    return dedupeFiles_(values
+      .slice(1)
+      .filter(function(row) {
+        return row[0];
+      })
+      .map(function(row) {
+        return toFileRecord_(row, headerLookup);
+      })
+      .filter(function(file) {
+        return normalizeId_(file.status) === 'published';
+      }));
+  });
+
+  return allPublishedFilesMemo_;
 }
 
 function incrementDownloadCount_(fileId) {
-  if (!fileId) {
+  const normalizedFileId = String(fileId || '').trim();
+  if (!normalizedFileId) {
     return { ok: false, message: 'Missing file id.' };
   }
 
-  const sheet = getSpreadsheet_().getSheetByName(DOWNLOADS_SHEET_NAME);
-  if (!sheet) {
-    return { ok: false, message: 'Downloads sheet not found.' };
-  }
+  const lock = LockService.getScriptLock();
+  lock.waitLock(5000);
 
-  const values = sheet.getDataRange().getValues();
-  const headers = values[0] || [];
-  const idIndex = headers.indexOf('id') >= 0 ? headers.indexOf('id') : 0;
-  const downloadsIndex = headers.indexOf('downloads') >= 0 ? headers.indexOf('downloads') : 9;
-  const updatedAtIndex = headers.indexOf('updated_at') >= 0 ? headers.indexOf('updated_at') : 15;
+  try {
+    const sheet = getSpreadsheet_().getSheetByName(DOWNLOADS_SHEET_NAME);
+    if (!sheet) {
+      return { ok: false, message: 'Downloads sheet not found.' };
+    }
 
-  for (var i = 1; i < values.length; i++) {
-    var row = values[i];
-    if (String(row[idIndex] || '').trim() !== fileId) continue;
+    const lastRow = sheet.getLastRow();
+    const lastColumn = sheet.getLastColumn();
+    if (lastRow < 2 || lastColumn < 1) {
+      return { ok: false, message: 'Downloads sheet is empty.' };
+    }
 
-    var currentValue = Number(row[downloadsIndex] || 0);
-    var nextValue = Number.isFinite(currentValue) ? currentValue + 1 : 1;
+    const headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0] || [];
+    const headerLookup = createHeaderLookup_(headers);
+    const idIndex = getHeaderIndex_(headerLookup, 'id', 0);
+    const downloadsIndex = getHeaderIndex_(headerLookup, 'downloads', 9);
+    const updatedAtIndex = getHeaderIndex_(headerLookup, 'updated_at', 15);
 
-    sheet.getRange(i + 1, downloadsIndex + 1).setValue(nextValue);
+    const idRange = sheet.getRange(2, idIndex + 1, lastRow - 1, 1);
+    const match = idRange
+      .createTextFinder(normalizedFileId)
+      .matchEntireCell(true)
+      .useRegularExpression(false)
+      .findNext();
+
+    if (!match) {
+      return { ok: false, message: 'File id not found.' };
+    }
+
+    const rowNumber = match.getRow();
+    const currentValue = Number(sheet.getRange(rowNumber, downloadsIndex + 1).getValue() || 0);
+    const nextValue = Number.isFinite(currentValue) ? currentValue + 1 : 1;
+
+    sheet.getRange(rowNumber, downloadsIndex + 1).setValue(nextValue);
 
     if (updatedAtIndex >= 0) {
-      sheet.getRange(i + 1, updatedAtIndex + 1).setValue(new Date().toISOString());
+      sheet.getRange(rowNumber, updatedAtIndex + 1).setValue(new Date().toISOString());
     }
+
+    allPublishedFilesMemo_ = null;
+    delete sheetValuesMemo_[DOWNLOADS_SHEET_NAME];
+    bumpCacheVersion_();
 
     return {
       ok: true,
-      id: fileId,
+      id: normalizedFileId,
       downloads: String(nextValue),
     };
+  } finally {
+    lock.releaseLock();
   }
-
-  return { ok: false, message: 'File id not found.' };
 }
 
-function toFileRecord_(row, headers) {
+function getSheetValues_(sheetName) {
+  if (hasOwnProperty_.call(sheetValuesMemo_, sheetName)) {
+    return sheetValuesMemo_[sheetName];
+  }
+
+  const sheet = getSpreadsheet_().getSheetByName(sheetName);
+  if (!sheet) {
+    sheetValuesMemo_[sheetName] = [];
+    return sheetValuesMemo_[sheetName];
+  }
+
+  const lastRow = sheet.getLastRow();
+  const lastColumn = sheet.getLastColumn();
+  if (!lastRow || !lastColumn) {
+    sheetValuesMemo_[sheetName] = [];
+    return sheetValuesMemo_[sheetName];
+  }
+
+  sheetValuesMemo_[sheetName] = sheet.getRange(1, 1, lastRow, lastColumn).getValues();
+  return sheetValuesMemo_[sheetName];
+}
+
+function withJsonCache_(scope, keyParts, producer) {
+  const cacheKey = getCacheKey_(scope, keyParts);
+  const cachedValue = readCachedJson_(cacheKey);
+  if (cachedValue !== null) {
+    return cachedValue;
+  }
+
+  const value = producer();
+  writeCachedJson_(cacheKey, value);
+  return value;
+}
+
+function getCacheKey_(scope, keyParts) {
+  const parts = (keyParts || []).map(function(part) {
+    return normalizeId_(part) || 'all';
+  });
+
+  return [
+    'aosunlocker',
+    'public',
+    getCacheVersion_(),
+    String(scope || '').trim() || 'default',
+    parts.join(':') || 'all',
+  ].join(':');
+}
+
+function readCachedJson_(cacheKey) {
+  const cached = CacheService.getScriptCache().get(cacheKey);
+  if (!cached) {
+    return null;
+  }
+
+  try {
+    if (cached.indexOf('gz:') === 0) {
+      const compressedBytes = Utilities.base64Decode(cached.slice(3));
+      const text = Utilities.ungzip(Utilities.newBlob(compressedBytes)).getDataAsString();
+      return JSON.parse(text);
+    }
+
+    return JSON.parse(cached);
+  } catch (error) {
+    return null;
+  }
+}
+
+function writeCachedJson_(cacheKey, value) {
+  const cache = CacheService.getScriptCache();
+  const json = JSON.stringify(value);
+
+  if (json.length <= MAX_CACHE_VALUE_LENGTH) {
+    cache.put(cacheKey, json, CACHE_TTL_SECONDS);
+    return;
+  }
+
+  try {
+    const compressed = 'gz:' + Utilities.base64Encode(
+      Utilities.gzip(Utilities.newBlob(json, 'application/json')).getBytes(),
+    );
+
+    if (compressed.length <= MAX_CACHE_VALUE_LENGTH) {
+      cache.put(cacheKey, compressed, CACHE_TTL_SECONDS);
+    }
+  } catch (error) {
+  }
+}
+
+function getCacheVersion_() {
+  if (cacheVersionMemo_) {
+    return cacheVersionMemo_;
+  }
+
+  const properties = PropertiesService.getScriptProperties();
+  var version = String(properties.getProperty(CACHE_VERSION_PROPERTY) || '').trim();
+  if (!version) {
+    version = String(Date.now());
+    properties.setProperty(CACHE_VERSION_PROPERTY, version);
+  }
+
+  cacheVersionMemo_ = version;
+  return cacheVersionMemo_;
+}
+
+function bumpCacheVersion_() {
+  cacheVersionMemo_ = String(Date.now());
+  PropertiesService.getScriptProperties().setProperty(CACHE_VERSION_PROPERTY, cacheVersionMemo_);
+  return cacheVersionMemo_;
+}
+
+function createHeaderLookup_(headers) {
+  const lookup = {};
+
+  (headers || []).forEach(function(header, index) {
+    const key = String(header || '').trim();
+    if (!key || hasOwnProperty_.call(lookup, key)) return;
+    lookup[key] = index;
+  });
+
+  return lookup;
+}
+
+function hasHeader_(lookup, headerName) {
+  return hasOwnProperty_.call(lookup || {}, String(headerName || '').trim());
+}
+
+function getHeaderIndex_(lookup, headerName, fallbackIndex) {
+  return hasHeader_(lookup, headerName) ? lookup[headerName] : fallbackIndex;
+}
+
+function normalizeId_(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function toFileRecord_(row, headerLookup) {
   const getValue = function(name, fallbackIndex) {
-    const headerIndex = headers.indexOf(name);
-    const index = headerIndex >= 0 ? headerIndex : fallbackIndex;
+    const index = getHeaderIndex_(headerLookup, name, fallbackIndex);
     return index >= 0 ? row[index] : '';
   };
 
@@ -309,3 +523,5 @@ function dedupeFiles_(items) {
     return true;
   });
 }
+
+const hasOwnProperty_ = Object.prototype.hasOwnProperty;
