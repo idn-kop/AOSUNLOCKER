@@ -1,3 +1,3 @@
 window.AOSUNLOCKER_CONFIG = {
-  appsScriptUrl: 'https://script.google.com/macros/s/AKfycbx5m5xqaVFW1yFflqowC9T5LvUIWTwDHqfcP3-je-GubnIwBwdTnSl7I_BIu_gQvkEl/exec',
+  appsScriptUrl: 'https://script.google.com/macros/s/AKfycbwpR-eVwPxh2RHvrUeOxe38OyzytGzJooR6I2xkOSTT0kXk9Z9v7LRnRpSpnl7HmTVl/exec',
 };
