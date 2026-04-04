@@ -2574,12 +2574,20 @@ h6 {
   }
 
   .middle-header .container {
+    flex-direction: column;
+    align-items: center;
     gap: 0.85rem;
     padding-top: 12px;
     padding-bottom: 12px;
   }
 
+  .logo-block {
+    width: 100%;
+    justify-content: center;
+  }
+
   .logo-wordmark-wrap {
+    width: 100%;
     align-items: center;
     gap: 0.5rem;
   }
@@ -2587,6 +2595,7 @@ h6 {
   .logo-wordmark {
     width: min(190px, 72vw);
     max-height: 84px;
+    margin-inline: auto;
   }
 
   .search-shell {
@@ -2633,6 +2642,15 @@ h6 {
     padding: 0.55rem;
     border-radius: 16px;
     top: calc(100% + 8px);
+  }
+
+  .mobile-menu-shell .container,
+  .download-flow-page .container,
+  .hero-section .container,
+  .section-soft .container,
+  .cta-band .container {
+    padding-left: 14px;
+    padding-right: 14px;
   }
 
   .mobile-menu-shell {
@@ -2811,7 +2829,29 @@ h6 {
   }
 
   .mobile-bottom-nav-item-support {
-    color: #ffb3ad;
+    position: relative;
+    transform: translateY(-10px);
+    min-height: 64px;
+    color: #ffe1dd;
+  }
+
+  .mobile-bottom-nav-item-support::before {
+    content: '';
+    position: absolute;
+    inset: 2px 6px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 123, 114, 0.18);
+    background:
+      radial-gradient(circle at top center, rgba(255, 255, 255, 0.08), transparent 42%),
+      linear-gradient(180deg, rgba(201, 60, 69, 0.22), rgba(22, 27, 34, 0.78));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 14px 26px rgba(201, 60, 69, 0.16);
+    z-index: -1;
+  }
+
+  .mobile-bottom-nav-item-support i {
+    font-size: 1.08rem;
   }
 
   .mobile-bottom-nav-item-menu {
