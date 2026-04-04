@@ -40,7 +40,7 @@ i.site-icon {
   height: 1em;
   font-style: normal;
   line-height: 1;
-  vertical-align: -0.125em;
+  vertical-align: -0.14em;
   flex-shrink: 0;
 }
 
@@ -48,6 +48,48 @@ i.site-icon {
   width: 100%;
   height: 100%;
   display: block;
+  overflow: visible;
+}
+
+.top-bar i.site-icon,
+.nav-link i.site-icon,
+.mobile-menu-link i.site-icon,
+.mobile-bottom-nav-item i.site-icon,
+.download-home-button i.site-icon,
+.download-small-button i.site-icon,
+.download-big-button i.site-icon,
+.search-result-icon i.site-icon,
+.ticker-label i.site-icon,
+.ticker-item i.site-icon {
+  font-size: 1.02em;
+}
+
+.search-shell-icon.site-icon,
+.search-form button i.site-icon {
+  font-size: 1.08em;
+}
+
+.section-title i.site-icon,
+.hero-center h2 i.site-icon,
+.remote-service-head i.site-icon,
+.download-page-head i.site-icon,
+.download-cta-pill i.site-icon {
+  font-size: 1.08em;
+}
+
+.icon-shell i.site-icon,
+.feature-icon-circle i.site-icon,
+.download-empty-icon i.site-icon {
+  font-size: 1.12em;
+  filter: drop-shadow(0 10px 22px rgba(1, 4, 9, 0.18));
+}
+
+.search-shell-icon.site-icon svg,
+.nav-link i.site-icon svg,
+.section-title i.site-icon svg,
+.feature-icon-circle i.site-icon svg,
+.icon-shell i.site-icon svg {
+  shape-rendering: geometricPrecision;
 }
 
 html {
