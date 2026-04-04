@@ -575,6 +575,11 @@ export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downlo
         <div class="logo-block">
           <div class="logo-wordmark-wrap">
             ${renderLogoWordmark()}
+            <div class="logo-capability-row" aria-label="Portal capabilities">
+              <span class="logo-capability-chip"><i class="fas fa-folder-tree"></i>Curated folders</span>
+              <span class="logo-capability-chip"><i class="fas fa-signal"></i>Live sheet sync</span>
+              <span class="logo-capability-chip"><i class="fas fa-headset"></i>Direct support</span>
+            </div>
             <div class="logo-note"><i class="fas fa-circle-check"></i>Huawei, Honor, Kirin, HarmonyOS, and Qualcomm support</div>
           </div>
         </div>
