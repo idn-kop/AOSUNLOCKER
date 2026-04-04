@@ -2537,55 +2537,175 @@ h6 {
 @media (max-width: 576px) {
   .top-bar {
     text-align: center;
+    padding: 4px 0;
   }
 
   .top-bar a {
-    margin: 0 8px;
-    font-size: 13px;
+    margin: 0 6px;
+    font-size: 12px;
+  }
+
+  .top-bar .container > div:first-child {
+    display: none !important;
+  }
+
+  .top-bar .container {
+    justify-content: center !important;
+  }
+
+  .top-bar-actions {
+    justify-content: center;
+    width: 100%;
   }
 
   .search-form {
     width: 100%;
   }
 
+  .middle-header .container {
+    gap: 0.85rem;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
   .logo-wordmark-wrap {
     align-items: center;
+    gap: 0.5rem;
   }
 
   .logo-wordmark {
-    width: min(230px, 100%);
-    max-height: 104px;
+    width: min(190px, 72vw);
+    max-height: 84px;
   }
 
   .search-shell {
-    min-height: 64px;
-    gap: 0.7rem;
-    padding-left: 0.9rem;
+    min-height: 56px;
+    gap: 0.55rem;
+    padding: 0.55rem 0.55rem 0.55rem 0.75rem;
+    border-radius: 20px;
+  }
+
+  .search-shell::after {
+    border-radius: 19px;
+  }
+
+  .search-shell-icon {
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    border-radius: 12px;
+    font-size: 0.92rem;
   }
 
   .search-shell-label {
-    font-size: 0.68rem;
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+  }
+
+  .search-copy {
+    gap: 0.14rem;
+  }
+
+  .search-form input {
+    font-size: 0.96rem;
   }
 
   .search-form button {
-    width: 50px;
-    height: 50px;
-    border-radius: 16px;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    border-radius: 14px;
+    font-size: 0.96rem;
   }
 
   .search-dropdown {
-    padding: 0.6rem;
-    border-radius: 18px;
+    padding: 0.55rem;
+    border-radius: 16px;
+    top: calc(100% + 8px);
+  }
+
+  .main-nav {
+    padding-top: 0.35rem;
+    padding-bottom: 0.45rem;
+  }
+
+  .nav-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.42rem 0.5rem;
+  }
+
+  .nav-link {
+    min-width: 0;
+    width: 100%;
+    min-height: 46px;
+    justify-content: flex-start;
+    padding: 0.72rem 0.8rem;
+    border-radius: 16px;
+    font-size: 0.96rem;
+    flex: none;
+  }
+
+  .nav-link::after {
+    left: 12px;
+    right: 12px;
+    bottom: 6px;
+  }
+
+  .nav-link-mini-badge {
+    margin-left: 0.28rem;
+    padding: 0.18rem 0.38rem;
+    font-size: 0.58rem;
+  }
+
+  .nav-contact-menu {
+    flex: none;
+  }
+
+  .nav-contact-menu > .nav-link {
+    width: 100%;
+  }
+
+  .nav-contact-dropdown {
+    left: 0;
+    right: 0;
+    min-width: 0;
+  }
+
+  .ticker-wrapper {
+    margin-top: 0;
+  }
+
+  .ticker-label {
+    margin: 0 0 0.55rem 0.8rem;
+    padding: 0.42rem 0.74rem;
+    font-size: 0.72rem;
+  }
+
+  .ticker-items {
+    gap: 12px;
+    padding: 6px 0;
+  }
+
+  .ticker-item {
+    padding: 3px 10px;
+  }
+
+  .ticker-text {
+    max-width: 180px;
   }
 
   .hero-cta {
     width: 100%;
     justify-content: flex-start;
+    gap: 0.38rem;
   }
 
   .hero-cta-button {
     flex: 1 1 calc(50% - 0.22rem);
     min-width: 0;
+    padding: 0.72rem 0.82rem;
+    font-size: 0.92rem;
   }
 
   .footer-grid,
@@ -2598,23 +2718,17 @@ h6 {
     grid-template-columns: 1fr;
   }
 
-  .nav-link {
-    min-width: 0;
-    flex: 1 1 calc(50% - 0.5rem);
+  .hero-title,
+  .page-hero h1,
+  .download-page-head h1 {
+    font-size: clamp(2.1rem, 10vw, 3rem);
+    line-height: 1.04;
   }
 
-  .nav-contact-menu {
-    flex: 1 1 calc(50% - 0.5rem);
-  }
-
-  .nav-contact-menu > .nav-link {
-    width: 100%;
-  }
-
-  .nav-contact-dropdown {
-    left: 0;
-    right: 0;
-    min-width: 0;
+  .hero-copy,
+  .page-hero p {
+    font-size: 0.98rem;
+    line-height: 1.55;
   }
 
   .download-detail-table div {
