@@ -1,5 +1,8 @@
 import './bootstrap-lite.css'
 import './style.css'
+import { startIconHydration } from './icons'
+
+startIconHydration()
 
 export { renderPage } from './site-portal'
 export { renderRemoteServicePage } from './site-portal'
