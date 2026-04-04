@@ -308,8 +308,7 @@ const renderBackBlock = (title: string, href: string) => `
 `
 
 const renderLogoWordmark = () => `
-  <picture class="logo-wordmark-picture">
-    <source srcset="/aosunlocker.webp" type="image/webp" />
+  <span class="logo-wordmark-picture">
     ${renderAssetImage({
       src: '/aosunlocker%20(1).png',
       alt: 'AOSUNLOCKER',
@@ -320,7 +319,7 @@ const renderLogoWordmark = () => `
       width: 960,
       height: 540,
     })}
-  </picture>
+  </span>
 `
 
 const getDownloadHomeKicker = (item: DownloadCategoryCard) => {
@@ -572,23 +571,25 @@ export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downlo
 
   <header class="middle-header">
     <div class="container">
-      <div class="logo-block">
-        <div class="logo-wordmark-wrap">
-          ${renderLogoWordmark()}
-          <div class="logo-note"><i class="fas fa-circle-check"></i>Huawei, Honor, Kirin, HarmonyOS, and Qualcomm support</div>
-        </div>
-      </div>
-      <form class="search-form" id="searchForm">
-        <div class="search-shell">
-          <i class="fas fa-magnifying-glass search-shell-icon"></i>
-          <div class="search-copy">
-            <span class="search-shell-label">Smart Search</span>
-            <input type="text" id="searchInput" aria-label="Search downloads" placeholder="Search models, fixes, firmware, or solution files..." />
+      <div class="middle-header-panel">
+        <div class="logo-block">
+          <div class="logo-wordmark-wrap">
+            ${renderLogoWordmark()}
+            <div class="logo-note"><i class="fas fa-circle-check"></i>Huawei, Honor, Kirin, HarmonyOS, and Qualcomm support</div>
           </div>
-          <button type="submit" aria-label="Search"><i class="fas fa-arrow-up-right-from-square"></i></button>
         </div>
-        <div class="search-dropdown" id="searchDropdown" hidden></div>
-      </form>
+        <form class="search-form" id="searchForm">
+          <div class="search-shell">
+            <i class="fas fa-magnifying-glass search-shell-icon"></i>
+            <div class="search-copy">
+              <span class="search-shell-label">Smart Search</span>
+              <input type="text" id="searchInput" aria-label="Search downloads" placeholder="Search models, fixes, firmware, or solution files..." />
+            </div>
+            <button type="submit" aria-label="Search"><i class="fas fa-arrow-up-right-from-square"></i></button>
+          </div>
+          <div class="search-dropdown" id="searchDropdown" hidden></div>
+        </form>
+      </div>
     </div>
   </header>
 
