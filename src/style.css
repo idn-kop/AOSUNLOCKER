@@ -2495,6 +2495,39 @@ h6 {
   font-size: 1.65rem;
 }
 
+.download-loading-state {
+  display: grid;
+  gap: 0.8rem;
+  justify-items: center;
+  text-align: center;
+  padding: 2.1rem 1.25rem;
+  border-radius: 1.15rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(13, 17, 23, 0.04)),
+    rgba(22, 27, 34, 0.72);
+}
+
+.download-loading-state h3 {
+  margin: 0;
+  color: var(--text-strong);
+}
+
+.download-loading-state p {
+  margin: 0;
+  max-width: 52ch;
+  color: var(--text-soft);
+}
+
+.download-loading-spinner {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  border-top-color: var(--huawei-red-soft);
+  animation: download-loading-spin 0.9s linear infinite;
+}
+
 @keyframes ticker-scroll {
   from {
     transform: translateX(0);
@@ -2510,6 +2543,15 @@ h6 {
   }
   to {
     transform: translateX(0);
+  }
+}
+
+@keyframes download-loading-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }
 
@@ -2537,6 +2579,10 @@ h6 {
     animation: none;
   }
 
+  .download-loading-spinner {
+    animation: none;
+  }
+
   .support-link,
   .mini-social-link,
   .search-shell,
@@ -2558,27 +2604,27 @@ h6 {
   }
 
   .ticker-content {
-    overflow-x: auto;
+    overflow: hidden;
     overflow-y: hidden;
     mask-image: none;
     -webkit-mask-image: none;
-    scrollbar-width: none;
-    scroll-snap-type: x proximity;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .ticker-content::-webkit-scrollbar {
-    display: none;
   }
 
   .ticker-items,
   .ticker-reverse {
     min-width: max-content;
-    animation: none;
+  }
+
+  .ticker-items {
+    animation: ticker-scroll 40s linear infinite;
+  }
+
+  .ticker-reverse {
+    animation: ticker-scroll-reverse 48s linear infinite;
   }
 
   .ticker-item {
-    scroll-snap-align: start;
+    scroll-snap-align: none;
   }
 }
 

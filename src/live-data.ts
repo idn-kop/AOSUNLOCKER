@@ -181,6 +181,10 @@ const normalizeCategory = (category: PublicCategoryRecord, brandId: BrandId): So
   description: `${String(category.brandLabel || brandLabelMap[brandId])} solution folder.`,
 })
 
+const getLocalCategoriesByBrand = (brandId: BrandId) => solutionCategories.filter((item) => item.brandId === brandId)
+
+const getLocalFilesByCategory = (categoryId: string) => solutionFilesByCategory[categoryId] ?? []
+
 const normalizeFile = (file: PublicFileRecord): DownloadListFile => ({
   id: String(file.id || ''),
   brandId: (file.brandId as BrandId | undefined) || undefined,
@@ -247,11 +251,22 @@ export const peekBrandFolders = () => {
 
 export const peekCategoriesByBrand = (brandId: BrandId) => {
   const cached = readCache<PublicCategoriesResponse>(`categories:${brandId}`)
-  if (!cached) return null
+  if (!cached) {
+    const localCategories = getLocalCategoriesByBrand(brandId)
+    return localCategories.length
+      ? {
+          source: 'local-cache-miss' as const,
+          categories: localCategories,
+        }
+      : null
+  }
+
+  const categories = (cached.categories ?? []).map((item) => normalizeCategory(item, brandId))
+  const localCategories = getLocalCategoriesByBrand(brandId)
 
   return {
     source: 'cache' as const,
-    categories: (cached.categories ?? []).map((item) => normalizeCategory(item, brandId)),
+    categories: categories.length ? categories : localCategories,
   }
 }
 
@@ -259,9 +274,19 @@ export const peekFilesByCategory = (categoryId: string, brandId?: BrandId) => {
   const fallbackCategory = solutionCategories.find((item) => item.id === categoryId) ?? buildFallbackCategory(categoryId, brandId ?? 'huawei')
   const requestBrandId = brandId ?? fallbackCategory.brandId
   const cached = readCache<PublicFilesResponse>(`files:${requestBrandId}:${categoryId}`)
-  if (!cached) return null
+  if (!cached) {
+    const localFiles = getLocalFilesByCategory(categoryId)
+    return localFiles.length
+      ? {
+          source: 'local-cache-miss' as const,
+          category: fallbackCategory,
+          files: localFiles,
+        }
+      : null
+  }
 
   const liveFiles = (cached.files ?? []).map(normalizeFile)
+  const localFiles = getLocalFilesByCategory(categoryId)
   const category =
     liveFiles[0]
       ? {
@@ -276,7 +301,7 @@ export const peekFilesByCategory = (categoryId: string, brandId?: BrandId) => {
   return {
     source: 'cache' as const,
     category,
-    files: liveFiles,
+    files: liveFiles.length ? liveFiles : localFiles,
   }
 }
 
@@ -294,16 +319,18 @@ export const loadCategoriesByBrand = async (brandId: BrandId) => {
   try {
     const data = await fetchJsonCached<PublicCategoriesResponse>(cacheKey, url)
     const liveCategories = (data.categories ?? []).map((item) => normalizeCategory(item, brandId))
+    const localCategories = getLocalCategoriesByBrand(brandId)
 
     return {
       source: 'live' as const,
-      categories: liveCategories,
+      categories: liveCategories.length ? liveCategories : localCategories,
     }
   } catch (error) {
     console.warn('Categories could not be loaded.', error)
+    const localCategories = getLocalCategoriesByBrand(brandId)
     return {
       source: 'live-error' as const,
-      categories: [],
+      categories: localCategories,
     }
   }
 }
@@ -400,6 +427,7 @@ export const loadFilesByCategory = async (categoryId: string, brandId?: BrandId)
   try {
     const data = await fetchJsonCached<PublicFilesResponse>(cacheKey, url)
     const liveFiles = (data.files ?? []).map(normalizeFile)
+    const localFiles = getLocalFilesByCategory(categoryId)
     const liveCategory =
       liveFiles[0]
         ? {
@@ -414,14 +442,15 @@ export const loadFilesByCategory = async (categoryId: string, brandId?: BrandId)
     return {
       source: 'live' as const,
       category: liveCategory,
-      files: liveFiles,
+      files: liveFiles.length ? liveFiles : localFiles,
     }
   } catch (error) {
     console.warn('Category files could not be loaded.', error)
+    const localFiles = getLocalFilesByCategory(categoryId)
     return {
       source: 'live-error' as const,
       category: fallbackCategory,
-      files: [],
+      files: localFiles,
     }
   }
 }

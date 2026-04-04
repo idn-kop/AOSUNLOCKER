@@ -13,9 +13,8 @@ import {
   renderDownloadEmptyState,
   renderDownloadGridCard,
   renderDownloadHeaderBar,
+  renderDownloadLoadingState,
   renderDownloadListRow,
-  renderDownloadResultsSkeleton,
-  renderDownloadHomeSkeleton,
   renderFirmware,
   renderModelFolderCard,
   renderSiteChrome,
@@ -336,7 +335,16 @@ export const renderDownloadsHubPage = async () => {
       true,
     )
   } else {
-    app.innerHTML = renderSiteChrome(renderDownloadsHubStage(renderDownloadHomeSkeleton(3)), undefined, true)
+    app.innerHTML = renderSiteChrome(
+      renderDownloadsHubStage(
+        renderDownloadLoadingState(
+          'Loading brands',
+          'Preparing available brand folders for this session.',
+        ),
+      ),
+      undefined,
+      true,
+    )
   }
 
   const brandResult = await loadBrandFolders()
@@ -401,7 +409,18 @@ export const renderSolutionFilesPage = async () => {
         true,
       )
     } else {
-      app.innerHTML = renderSiteChrome(renderSolutionBrandStage(brand.label, brand.description, renderDownloadHomeSkeleton(6)), undefined, true)
+      app.innerHTML = renderSiteChrome(
+        renderSolutionBrandStage(
+          brand.label,
+          brand.description,
+          renderDownloadLoadingState(
+            `Loading ${brand.label} folders`,
+            `Preparing ${brand.label} solution folders and categories.`,
+          ),
+        ),
+        undefined,
+        true,
+      )
     }
   } else {
     if (cachedFileResult) {
@@ -433,7 +452,10 @@ export const renderSolutionFilesPage = async () => {
               <h1>Loading folder</h1>
               <p>Preparing files for ${brand.label}.</p>
             </div>
-            ${renderDownloadResultsSkeleton(3)}
+            ${renderDownloadLoadingState(
+              'Loading folder',
+              `Preparing files for ${brand.label}.`,
+            )}
           `,
         ),
         undefined,

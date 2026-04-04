@@ -436,6 +436,14 @@ export const renderDownloadEmptyState = (title: string, copy: string) => `
   </div>
 `
 
+export const renderDownloadLoadingState = (title: string, copy: string) => `
+  <div class="download-loading-state" aria-live="polite">
+    <div class="download-loading-spinner" aria-hidden="true"></div>
+    <h3>${title}</h3>
+    <p>${copy}</p>
+  </div>
+`
+
 export const renderDownloadHomeSkeleton = (count = 3) => `
   <div class="download-home-grid download-home-grid-skeleton">
     ${Array.from({ length: count })
