@@ -1,5 +1,5 @@
 import { downloadHomeCategories } from './download-data'
-import { loadBrandFolders, loadHomepageTickers } from './live-data'
+import { loadBrandFolders } from './live-data'
 import { pageLinks, pages, remoteServiceQualcommEntries, stats } from './portal-data'
 import {
   renderDownloadHomeCard,
@@ -10,7 +10,6 @@ import {
   renderContactAdminPanel,
   renderSimpleCard,
   renderSiteChrome,
-  renderTicker,
   setupSearchAndScroll,
 } from './site-shared'
 import type { RemoteServiceEntry, SitePageKey } from './data-types'
@@ -147,8 +146,6 @@ export const renderPage = async (pageKey: SitePageKey) => {
 
   app.innerHTML = renderSiteChrome(
     `
-      ${page.key === 'home' ? '<div id="homeTickerMount"></div>' : ''}
-
       <main id="overview">
       <section class="hero-section">
         <div class="container py-5">
@@ -256,47 +253,25 @@ export const renderPage = async (pageKey: SitePageKey) => {
 
   if (page.key !== 'home') return
 
-  const tickerMount = document.querySelector<HTMLDivElement>('#homeTickerMount')
   const brandMount = document.querySelector<HTMLDivElement>('#homeBrandMount')
 
   if (brandMount) {
     brandMount.innerHTML = renderDownloadHomeSkeleton(3)
   }
 
-  const [brandResult, tickerResult] = await Promise.all([loadBrandFolders(), loadHomepageTickers()])
-  const brandCards = brandResult.brands.length ? brandResult.brands : downloadHomeCategories
+  const brandPromise = loadBrandFolders()
 
-  if (tickerMount) {
-    tickerMount.innerHTML = `
-      ${
-        tickerResult.latest.length
-          ? `
-            <section class="ticker-wrapper ticker-latest">
-              <span class="ticker-label"><i class="fas fa-clock me-2"></i>Recent Uploads</span>
-              <div class="ticker-content"><div class="ticker-items">${renderTicker(tickerResult.latest)}</div></div>
-            </section>
-          `
-          : ''
-      }
-      ${
-        tickerResult.top.length
-          ? `
-            <section class="ticker-wrapper ticker-top">
-              <span class="ticker-label"><i class="fas fa-fire me-2"></i>Top Files</span>
-              <div class="ticker-content"><div class="ticker-items ticker-reverse">${renderTicker(tickerResult.top)}</div></div>
-            </section>
-          `
-          : ''
-      }
-    `
-  }
+  void brandPromise.then((brandResult) => {
+    if (!brandMount?.isConnected) return
 
-  if (brandMount) {
+    const brandCards = brandResult.brands.length ? brandResult.brands : downloadHomeCategories
     brandMount.innerHTML = brandCards.length
       ? `<div class="download-home-grid">${brandCards.map((item) => renderDownloadHomeCard(item)).join('')}</div>`
       : renderDownloadEmptyState(
           'No brand folders available yet',
           'Published brand folders will appear here automatically as soon as they are available.',
         )
-  }
+  })
+
+  await brandPromise
 }

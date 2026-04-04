@@ -22,7 +22,17 @@ import {
   renderStars,
   setupSearchAndScroll,
 } from './site-shared'
-import { hasLiveApi, incrementDownloadCount, loadBrandFolders, loadCategoriesByBrand, loadFileById, loadFilesByCategory } from './live-data'
+import {
+  hasLiveApi,
+  incrementDownloadCount,
+  loadBrandFolders,
+  loadCategoriesByBrand,
+  loadFileById,
+  loadFilesByCategory,
+  peekBrandFolders,
+  peekCategoriesByBrand,
+  peekFilesByCategory,
+} from './live-data'
 import type { BrandId } from './data-types'
 
 type ToolbarSortField = 'date' | 'title'
@@ -146,6 +156,58 @@ const renderSolutionFileResults = (files: typeof anaAn00Files, view: ToolbarView
   return `<div class="download-list-wrap">${files.map((item) => renderDownloadListRow(item)).join('')}</div>`
 }
 
+const renderDownloadsHubStage = (content: string) => `
+  <main class="download-flow-page">
+    <div class="container py-4">
+      ${renderDownloadBreadcrumbs([{ label: 'Home', href: '/index.html' }, { label: 'Downloads' }])}
+      <section class="download-stage-card">
+        <div class="download-stage-head">
+          <h1>Choose a Brand</h1>
+          <p>Select the brand first, then open the right solution folder for that device family.</p>
+        </div>
+        ${content}
+      </section>
+    </div>
+  </main>
+`
+
+const renderSolutionBrandStage = (brandLabel: string, brandDescription: string, content: string) => `
+  <main class="download-flow-page">
+    <div class="container py-4">
+      ${renderDownloadBreadcrumbs([
+        { label: 'Home', href: '/index.html' },
+        { label: 'Downloads', href: '/downloads.html' },
+        { label: brandLabel },
+      ])}
+      <section class="download-stage-card">
+        ${renderDownloadHeaderBar('Downloads', '/downloads.html')}
+        <div class="download-stage-head">
+          <h1>${brandLabel}</h1>
+          <p>${brandDescription}</p>
+        </div>
+        ${content}
+      </section>
+    </div>
+  </main>
+`
+
+const renderSolutionCategoryStage = (brandId: BrandId, brandLabel: string, categoryTitle: string, body: string) => `
+  <main class="download-flow-page">
+    <div class="container py-4">
+      ${renderDownloadBreadcrumbs([
+        { label: 'Home', href: '/index.html' },
+        { label: 'Downloads', href: '/downloads.html' },
+        { label: brandLabel, href: `/solution-files.html?brand=${brandId}` },
+        { label: categoryTitle },
+      ])}
+      <section class="download-stage-card">
+        ${renderDownloadHeaderBar(brandLabel, `/solution-files.html?brand=${brandId}`)}
+        ${body}
+      </section>
+    </div>
+  </main>
+`
+
 export const renderDownloadPage = () => {
   const app = document.querySelector<HTMLDivElement>('#app')
   if (!app) return
@@ -257,50 +319,38 @@ export const renderDownloadsHubPage = async () => {
 
   document.title = 'Downloads | AOSUNLOCKER Huawei Lab'
 
-  app.innerHTML = renderSiteChrome(
-    `
-    <main class="download-flow-page">
-      <div class="container py-4">
-        ${renderDownloadBreadcrumbs([{ label: 'Home', href: '/index.html' }, { label: 'Downloads' }])}
-        <section class="download-stage-card">
-          <div class="download-stage-head">
-            <h1>Choose a Brand</h1>
-            <p>Select the brand first, then open the right solution folder for that device family.</p>
-          </div>
-          ${renderDownloadHomeSkeleton(3)}
-        </section>
-      </div>
-    </main>
-  `,
-    undefined,
-    true,
-  )
+  const cachedBrandResult = peekBrandFolders()
+
+  if (cachedBrandResult) {
+    const brandCards = cachedBrandResult.brands
+    app.innerHTML = renderSiteChrome(
+      renderDownloadsHubStage(
+        brandCards.length
+          ? `<div class="download-home-grid">${brandCards.map((item) => renderDownloadHomeCard(item)).join('')}</div>`
+          : renderDownloadEmptyState(
+              'No brand folders available yet',
+              'Published brand folders will appear here automatically as soon as they are available.',
+            ),
+      ),
+      undefined,
+      true,
+    )
+  } else {
+    app.innerHTML = renderSiteChrome(renderDownloadsHubStage(renderDownloadHomeSkeleton(3)), undefined, true)
+  }
 
   const brandResult = await loadBrandFolders()
   const brandCards = brandResult.brands
 
   app.innerHTML = renderSiteChrome(
-    `
-    <main class="download-flow-page">
-      <div class="container py-4">
-        ${renderDownloadBreadcrumbs([{ label: 'Home', href: '/index.html' }, { label: 'Downloads' }])}
-        <section class="download-stage-card">
-          <div class="download-stage-head">
-            <h1>Choose a Brand</h1>
-            <p>Select the brand first, then open the right solution folder for that device family.</p>
-          </div>
-          ${
-            brandCards.length
-              ? `<div class="download-home-grid">${brandCards.map((item) => renderDownloadHomeCard(item)).join('')}</div>`
-              : renderDownloadEmptyState(
-                  'No brand folders available yet',
-                  'Published brand folders will appear here automatically as soon as they are available.',
-                )
-          }
-        </section>
-      </div>
-    </main>
-  `,
+    renderDownloadsHubStage(
+      brandCards.length
+        ? `<div class="download-home-grid">${brandCards.map((item) => renderDownloadHomeCard(item)).join('')}</div>`
+        : renderDownloadEmptyState(
+            'No brand folders available yet',
+            'Published brand folders will appear here automatically as soon as they are available.',
+          ),
+    ),
     undefined,
     true,
   )
@@ -318,58 +368,78 @@ export const renderSolutionFilesPage = async () => {
   const initialSortOrder = normalizeSortOrder(params.get('order'))
   const initialView = normalizeViewMode(params.get('view'))
   const brand = getBrandMeta(brandId)
+  const cachedCategoryResult = !categoryId ? peekCategoriesByBrand(brandId) : null
+  const cachedFileResult = categoryId ? peekFilesByCategory(categoryId, brandId) : null
 
   document.title = `${brand.label} Solution Files | Huawei - Honor Downloads`
 
   if (!categoryId) {
-    app.innerHTML = renderSiteChrome(
-      `
-      <main class="download-flow-page">
-        <div class="container py-4">
-          ${renderDownloadBreadcrumbs([
-            { label: 'Home', href: '/index.html' },
-            { label: 'Downloads', href: '/downloads.html' },
-            { label: brand.label },
-          ])}
-          <section class="download-stage-card">
-            ${renderDownloadHeaderBar('Downloads', '/downloads.html')}
-            <div class="download-stage-head">
-              <h1>${brand.label}</h1>
-              <p>${brand.description}</p>
-            </div>
-            ${renderDownloadHomeSkeleton(6)}
-          </section>
-        </div>
-      </main>
-    `,
-      undefined,
-      true,
-    )
+    if (cachedCategoryResult) {
+      const categories = cachedCategoryResult.categories
+      app.innerHTML = renderSiteChrome(
+        renderSolutionBrandStage(
+          brand.label,
+          brand.description,
+          categories.length
+            ? `<div class="download-home-grid">${categories
+                .map(
+                  (item) =>
+                    renderDownloadHomeCard({
+                      title: item.title,
+                      description: item.description,
+                      href: `/solution-files.html?brand=${brandId}&category=${item.id}`,
+                      kind: 'folder',
+                    }),
+                )
+                .join('')}</div>`
+            : renderDownloadEmptyState(
+                `No ${brand.label} folders yet`,
+                `There are no ${brand.label} solution folders connected yet.`,
+              ),
+        ),
+        undefined,
+        true,
+      )
+    } else {
+      app.innerHTML = renderSiteChrome(renderSolutionBrandStage(brand.label, brand.description, renderDownloadHomeSkeleton(6)), undefined, true)
+    }
   } else {
-    app.innerHTML = renderSiteChrome(
-      `
-      <main class="download-flow-page">
-        <div class="container py-4">
-          ${renderDownloadBreadcrumbs([
-            { label: 'Home', href: '/index.html' },
-            { label: 'Downloads', href: '/downloads.html' },
-            { label: brand.label, href: `/solution-files.html?brand=${brandId}` },
-            { label: 'Loading...' },
-          ])}
-          <section class="download-stage-card">
-            ${renderDownloadHeaderBar(brand.label, `/solution-files.html?brand=${brandId}`)}
+    if (cachedFileResult) {
+      app.innerHTML = renderSiteChrome(
+        renderSolutionCategoryStage(
+          brandId,
+          brand.label,
+          cachedFileResult.category.title,
+          `
+            <div class="download-stage-head">
+              <h1>${cachedFileResult.category.title}</h1>
+              <p>${brand.label} ${cachedFileResult.category.description}</p>
+            </div>
+            <div id="solutionToolbar"></div>
+            <div id="solutionResults"></div>
+          `,
+        ),
+        undefined,
+        true,
+      )
+    } else {
+      app.innerHTML = renderSiteChrome(
+        renderSolutionCategoryStage(
+          brandId,
+          brand.label,
+          'Loading...',
+          `
             <div class="download-stage-head">
               <h1>Loading folder</h1>
               <p>Preparing files for ${brand.label}.</p>
             </div>
             ${renderDownloadResultsSkeleton(3)}
-          </section>
-        </div>
-      </main>
-    `,
-      undefined,
-      true,
-    )
+          `,
+        ),
+        undefined,
+        true,
+      )
+    }
   }
 
   if (!categoryId) {
@@ -377,42 +447,26 @@ export const renderSolutionFilesPage = async () => {
     const categories = categoryResult.categories
 
     app.innerHTML = renderSiteChrome(
-      `
-      <main class="download-flow-page">
-        <div class="container py-4">
-          ${renderDownloadBreadcrumbs([
-            { label: 'Home', href: '/index.html' },
-            { label: 'Downloads', href: '/downloads.html' },
-            { label: brand.label },
-          ])}
-          <section class="download-stage-card">
-            ${renderDownloadHeaderBar('Downloads', '/downloads.html')}
-            <div class="download-stage-head">
-              <h1>${brand.label}</h1>
-              <p>${brand.description}</p>
-            </div>
-            ${
-              categories.length
-                ? `<div class="download-home-grid">${categories
-                    .map(
-                      (item) =>
-                        renderDownloadHomeCard({
-                          title: item.title,
-                          description: item.description,
-                          href: `/solution-files.html?brand=${brandId}&category=${item.id}`,
-                          kind: 'folder',
-                        }),
-                    )
-                    .join('')}</div>`
-                : renderDownloadEmptyState(
-                    `No ${brand.label} folders yet`,
-                    `There are no ${brand.label} solution folders connected yet.`,
-                  )
-            }
-          </section>
-        </div>
-      </main>
-    `,
+      renderSolutionBrandStage(
+        brand.label,
+        brand.description,
+        categories.length
+          ? `<div class="download-home-grid">${categories
+              .map(
+                (item) =>
+                  renderDownloadHomeCard({
+                    title: item.title,
+                    description: item.description,
+                    href: `/solution-files.html?brand=${brandId}&category=${item.id}`,
+                    kind: 'folder',
+                  }),
+              )
+              .join('')}</div>`
+          : renderDownloadEmptyState(
+              `No ${brand.label} folders yet`,
+              `There are no ${brand.label} solution folders connected yet.`,
+            ),
+      ),
       undefined,
       true,
     )
@@ -428,27 +482,19 @@ export const renderSolutionFilesPage = async () => {
   document.title = `${brand.label} ${category.title} | Downloads`
 
   app.innerHTML = renderSiteChrome(
-    `
-    <main class="download-flow-page">
-      <div class="container py-4">
-        ${renderDownloadBreadcrumbs([
-          { label: 'Home', href: '/index.html' },
-          { label: 'Downloads', href: '/downloads.html' },
-          { label: brand.label, href: `/solution-files.html?brand=${brandId}` },
-          { label: category.title },
-        ])}
-        <section class="download-stage-card">
-          ${renderDownloadHeaderBar(brand.label, `/solution-files.html?brand=${brandId}`)}
-          <div class="download-stage-head">
-            <h1>${category.title}</h1>
-            <p>${brand.label} ${category.description}</p>
-          </div>
-          <div id="solutionToolbar"></div>
-          <div id="solutionResults"></div>
-        </section>
-      </div>
-    </main>
-  `,
+    renderSolutionCategoryStage(
+      brandId,
+      brand.label,
+      category.title,
+      `
+        <div class="download-stage-head">
+          <h1>${category.title}</h1>
+          <p>${brand.label} ${category.description}</p>
+        </div>
+        <div id="solutionToolbar"></div>
+        <div id="solutionResults"></div>
+      `,
+    ),
     undefined,
     true,
   )

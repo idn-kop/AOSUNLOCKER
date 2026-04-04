@@ -221,6 +221,65 @@ const toTickerDownloadMeta = (file: PublicFileRecord) => {
 
 export const hasLiveApi = () => Boolean(getAppsScriptUrl())
 
+export const peekBrandFolders = () => {
+  const cached = readCache<PublicBrandsResponse>('brands')
+  if (!cached) return null
+
+  const brands = (cached.brands ?? [])
+    .filter((item) => item.id)
+    .map((item) => {
+      const brandId = String(item.id || '').trim()
+      const title = String(item.label || toDisplayLabel(brandId))
+      return {
+        title,
+        description: `Open ${title} solution folders, service categories, and download files.`,
+        href: `/solution-files.html?brand=${brandId}`,
+        kind: 'brand' as const,
+        brandId,
+      }
+    })
+
+  return {
+    source: 'cache' as const,
+    brands,
+  }
+}
+
+export const peekCategoriesByBrand = (brandId: BrandId) => {
+  const cached = readCache<PublicCategoriesResponse>(`categories:${brandId}`)
+  if (!cached) return null
+
+  return {
+    source: 'cache' as const,
+    categories: (cached.categories ?? []).map((item) => normalizeCategory(item, brandId)),
+  }
+}
+
+export const peekFilesByCategory = (categoryId: string, brandId?: BrandId) => {
+  const fallbackCategory = solutionCategories.find((item) => item.id === categoryId) ?? buildFallbackCategory(categoryId, brandId ?? 'huawei')
+  const requestBrandId = brandId ?? fallbackCategory.brandId
+  const cached = readCache<PublicFilesResponse>(`files:${requestBrandId}:${categoryId}`)
+  if (!cached) return null
+
+  const liveFiles = (cached.files ?? []).map(normalizeFile)
+  const category =
+    liveFiles[0]
+      ? {
+          id: categoryId,
+          brandId: (liveFiles[0].brandId as BrandId | undefined) || requestBrandId,
+          brandLabel: String((cached.files?.[0] as PublicFileRecord | undefined)?.brandLabel || brandLabelMap[requestBrandId] || toDisplayLabel(requestBrandId)),
+          title: String((cached.files?.[0] as PublicFileRecord | undefined)?.categoryLabel || fallbackCategory.title),
+          description: `${String((cached.files?.[0] as PublicFileRecord | undefined)?.brandLabel || brandLabelMap[requestBrandId] || toDisplayLabel(requestBrandId))} solution folder.`,
+        }
+      : fallbackCategory
+
+  return {
+    source: 'cache' as const,
+    category,
+    files: liveFiles,
+  }
+}
+
 export const loadCategoriesByBrand = async (brandId: BrandId) => {
   const url = buildApiUrl('categories', { brand: brandId })
   const cacheKey = `categories:${brandId}`

@@ -9,7 +9,7 @@ import type {
   SitePageKey,
   TickerItem,
 } from './data-types'
-import { warmRouteDataFromHref } from './live-data'
+import { loadHomepageTickers, warmRouteDataFromHref } from './live-data'
 
 const repeatForTicker = <T>(items: T[], minimum = 12) => {
   if (!items.length) return []
@@ -18,13 +18,47 @@ const repeatForTicker = <T>(items: T[], minimum = 12) => {
   return Array.from({ length: copies }, () => items).flat()
 }
 
+type AssetImageOptions = {
+  src: string
+  alt: string
+  className?: string
+  loading?: 'eager' | 'lazy'
+  decoding?: 'sync' | 'async' | 'auto'
+  fetchPriority?: 'high' | 'low' | 'auto'
+  width?: number
+  height?: number
+}
+
+const renderAssetImage = ({
+  src,
+  alt,
+  className = '',
+  loading = 'lazy',
+  decoding = 'async',
+  fetchPriority = 'low',
+  width,
+  height,
+}: AssetImageOptions) => `
+  <img
+    src="${src}"
+    alt="${alt}"
+    class="${className}"
+    loading="${loading}"
+    decoding="${decoding}"
+    fetchpriority="${fetchPriority}"
+    ${width ? `width="${width}"` : ''}
+    ${height ? `height="${height}"` : ''}
+  />
+`
+
 const getBrandArtwork = (brandId?: string) => {
   if (brandId === 'huawei') {
     return {
-      src: '/huawei-solutions.svg',
+      src: '/huawei-solutions.webp',
       alt: 'Huawei logo',
       className: 'download-brand-logo',
-      customBadge: '',
+      width: 700,
+      height: 700,
     }
   }
 
@@ -33,7 +67,8 @@ const getBrandArtwork = (brandId?: string) => {
       src: '/honor-solutions.svg',
       alt: 'Honor logo',
       className: 'download-brand-logo',
-      customBadge: '',
+      width: 100,
+      height: 86,
     }
   }
 
@@ -41,7 +76,8 @@ const getBrandArtwork = (brandId?: string) => {
     src: '/folder.svg',
     alt: 'Folder icon',
     className: 'download-brand-logo download-brand-logo-folder',
-    customBadge: '',
+    width: 100,
+    height: 86,
   }
 }
 
@@ -98,7 +134,7 @@ export const renderTicker = (items: TickerItem[]) =>
   repeatForTicker(items)
     .map(
       (item) => `
-        <a href="#packages" class="ticker-item">
+        <a href="/downloads.html" class="ticker-item">
           <i class="fas ${item.icon} me-2 ${item.icon === 'fa-fire' ? 'text-danger' : ''}"></i>
           <span class="ticker-text">${item.title}</span>
           <span class="ticker-meta">${item.meta}</span>
@@ -106,6 +142,74 @@ export const renderTicker = (items: TickerItem[]) =>
       `,
     )
     .join('')
+
+const renderSiteTickerSections = (latestHtml: string, topHtml: string) => `
+  ${latestHtml}
+  ${topHtml}
+`
+
+const renderSiteTickerLoading = () =>
+  renderSiteTickerSections(
+    `
+      <section class="ticker-wrapper ticker-latest ticker-static">
+        <span class="ticker-label"><i class="fas fa-clock me-2"></i>Recent Uploads</span>
+        <div class="ticker-content">
+          <div class="ticker-items ticker-items-static">
+            <span class="ticker-item ticker-item-placeholder">Loading recent files...</span>
+          </div>
+        </div>
+      </section>
+    `,
+    `
+      <section class="ticker-wrapper ticker-top ticker-static">
+        <span class="ticker-label"><i class="fas fa-fire me-2"></i>Top Files</span>
+        <div class="ticker-content">
+          <div class="ticker-items ticker-items-static">
+            <span class="ticker-item ticker-item-placeholder">Loading top files...</span>
+          </div>
+        </div>
+      </section>
+    `,
+  )
+
+const renderSiteTickerResult = (latest: string, top: string) =>
+  renderSiteTickerSections(
+    latest
+      ? `
+        <section class="ticker-wrapper ticker-latest">
+          <span class="ticker-label"><i class="fas fa-clock me-2"></i>Recent Uploads</span>
+          <div class="ticker-content"><div class="ticker-items">${latest}</div></div>
+        </section>
+      `
+      : '',
+    top
+      ? `
+        <section class="ticker-wrapper ticker-top">
+          <span class="ticker-label"><i class="fas fa-fire me-2"></i>Top Files</span>
+          <div class="ticker-content"><div class="ticker-items ticker-reverse">${top}</div></div>
+        </section>
+      `
+      : '',
+  )
+
+let siteTickerRequest: Promise<{ latest: TickerItem[]; top: TickerItem[] }> | null = null
+
+const hydrateSiteTicker = () => {
+  const tickerMount = document.querySelector<HTMLDivElement>('#siteTickerMount')
+  if (!tickerMount) return
+
+  tickerMount.innerHTML = renderSiteTickerLoading()
+
+  siteTickerRequest ??= loadHomepageTickers()
+
+  void siteTickerRequest.then((tickerResult) => {
+    if (!tickerMount.isConnected) return
+
+    const latest = tickerResult.latest.length ? renderTicker(tickerResult.latest) : ''
+    const top = tickerResult.top.length ? renderTicker(tickerResult.top) : ''
+    tickerMount.innerHTML = renderSiteTickerResult(latest, top)
+  })
+}
 
 export const renderSimpleCard = (item: SimpleCard) => `
   <div class="col-lg-3 col-md-4 col-sm-6">
@@ -197,10 +301,23 @@ export const renderDownloadHomeCard = (item: DownloadCategoryCard) => `
           : item.kind === 'brand'
             ? `
               <div class="download-brand-artwork">
-                <img src="${getBrandArtwork(item.brandId).src}" alt="${getBrandArtwork(item.brandId).alt}" class="${getBrandArtwork(item.brandId).className}" />
+                ${renderAssetImage({
+                  ...getBrandArtwork(item.brandId),
+                  loading: 'lazy',
+                  decoding: 'async',
+                  fetchPriority: 'low',
+                })}
               </div>
             `
-            : '<img src="/folder.svg" alt="Folder icon" />'
+            : renderAssetImage({
+                src: '/folder.svg',
+                alt: 'Folder icon',
+                loading: 'lazy',
+                decoding: 'async',
+                fetchPriority: 'low',
+                width: 100,
+                height: 86,
+              })
       }
     </div>
     <div>
@@ -229,7 +346,15 @@ export const renderBrandDownloadCard = (item: DownloadBrandCard) => `
 export const renderModelFolderCard = (item: DownloadModelFolder) => `
   <a class="model-folder-card" href="${item.href}">
     <div class="model-folder-art">
-      <img src="/folder.svg" alt="${item.title}" />
+      ${renderAssetImage({
+        src: '/folder.svg',
+        alt: item.title,
+        loading: 'lazy',
+        decoding: 'async',
+        fetchPriority: 'low',
+        width: 100,
+        height: 86,
+      })}
     </div>
     <div class="model-folder-copy">
       <h3>${item.title}</h3>
@@ -241,7 +366,15 @@ export const renderModelFolderCard = (item: DownloadModelFolder) => `
 export const renderDownloadListRow = (item: DownloadListFile) => `
   <article class="download-list-row">
     <div class="download-list-icon">
-      <img src="/folder.svg" alt="${item.title}" />
+      ${renderAssetImage({
+        src: '/folder.svg',
+        alt: item.title,
+        loading: 'lazy',
+        decoding: 'async',
+        fetchPriority: 'low',
+        width: 100,
+        height: 86,
+      })}
     </div>
     <div class="download-list-copy">
       <div class="file-badge-row">
@@ -265,7 +398,15 @@ export const renderDownloadListRow = (item: DownloadListFile) => `
 export const renderDownloadGridCard = (item: DownloadListFile) => `
   <article class="download-grid-card">
     <div class="download-grid-icon">
-      <img src="/folder.svg" alt="${item.title}" />
+      ${renderAssetImage({
+        src: '/folder.svg',
+        alt: item.title,
+        loading: 'lazy',
+        decoding: 'async',
+        fetchPriority: 'low',
+        width: 100,
+        height: 86,
+      })}
     </div>
     <div class="file-badge-row">
       ${item.featured ? '<span class="file-badge file-badge-featured">Featured</span>' : ''}
@@ -376,7 +517,16 @@ export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downlo
     <div class="container">
       <div class="logo-block">
         <div class="logo-wordmark-wrap">
-          <img class="logo-wordmark" src="/aosunlocker.svg" alt="AOSUNLOCKER" />
+          ${renderAssetImage({
+            src: '/aosunlocker%20(1).png',
+            alt: 'AOSUNLOCKER',
+            className: 'logo-wordmark',
+            loading: 'eager',
+            decoding: 'async',
+            fetchPriority: 'high',
+            width: 960,
+            height: 540,
+          })}
           <div class="logo-note"><i class="fas fa-circle-check"></i>Huawei, Honor, Kirin, HarmonyOS, and Qualcomm support</div>
         </div>
       </div>
@@ -480,6 +630,8 @@ export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downlo
       </details>
     </div>
   </nav>
+
+  <div id="siteTickerMount"></div>
 
   ${mainContent}
 
@@ -589,6 +741,8 @@ export const renderDownloadHeaderBar = (title: string, href: string) => `
 `
 
 export const setupSearchAndScroll = () => {
+  hydrateSiteTicker()
+
   const searchForm = document.querySelector<HTMLFormElement>('#searchForm')
   const searchInput = document.querySelector<HTMLInputElement>('#searchInput')
   const searchDropdown = document.querySelector<HTMLDivElement>('#searchDropdown')
@@ -598,7 +752,9 @@ export const setupSearchAndScroll = () => {
   const mobileMenuToggleButtons = Array.from(document.querySelectorAll<HTMLElement>('[data-mobile-menu-toggle]'))
   const cards = Array.from(document.querySelectorAll<HTMLElement>('.searchable'))
   const warmedHrefs = new Set<string>()
+  const warmedElements = new WeakSet<HTMLAnchorElement>()
   const canHover = window.matchMedia('(hover: hover)').matches
+  let searchRenderFrame = 0
 
   const getCardLabel = (card: HTMLElement) => {
     const heading = card.querySelector<HTMLElement>('h1, h2, h3, h4, strong')
@@ -615,6 +771,17 @@ export const setupSearchAndScroll = () => {
     if (!searchDropdown) return
     searchDropdown.hidden = true
     searchDropdown.innerHTML = ''
+  }
+
+  const scheduleDropdownRender = (value: string) => {
+    if (searchRenderFrame) {
+      window.cancelAnimationFrame(searchRenderFrame)
+    }
+
+    searchRenderFrame = window.requestAnimationFrame(() => {
+      searchRenderFrame = 0
+      renderDropdown(value)
+    })
   }
 
   const focusCard = (card: HTMLElement) => {
@@ -695,11 +862,11 @@ export const setupSearchAndScroll = () => {
   })
 
   searchInput?.addEventListener('input', () => {
-    renderDropdown(searchInput.value)
+    scheduleDropdownRender(searchInput.value)
   })
 
   searchInput?.addEventListener('focus', () => {
-    renderDropdown(searchInput.value)
+    scheduleDropdownRender(searchInput.value)
   })
 
   document.addEventListener('click', (event) => {
@@ -784,10 +951,18 @@ export const setupSearchAndScroll = () => {
   })
 
   const scrollTopBtn = document.querySelector<HTMLButtonElement>('#scrollTopBtn')
-  window.addEventListener('scroll', () => {
-    if (!scrollTopBtn) return
-    scrollTopBtn.style.display = window.scrollY > 320 ? 'inline-flex' : 'none'
-  })
+  if (scrollTopBtn) {
+    let scrollTopVisible = false
+    const syncScrollTopButton = () => {
+      const nextVisible = window.scrollY > 320
+      if (nextVisible === scrollTopVisible) return
+      scrollTopVisible = nextVisible
+      scrollTopBtn.style.display = nextVisible ? 'inline-flex' : 'none'
+    }
+
+    syncScrollTopButton()
+    window.addEventListener('scroll', syncScrollTopButton, { passive: true })
+  }
 
   scrollTopBtn?.addEventListener('click', () => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -796,6 +971,9 @@ export const setupSearchAndScroll = () => {
   const warmLink = (target: EventTarget | null) => {
     const element = target instanceof Element ? target.closest<HTMLAnchorElement>('a[href]') : null
     if (!element) return
+    if (warmedElements.has(element)) return
+
+    warmedElements.add(element)
 
     const href = element.getAttribute('href')?.trim() || ''
     if (!href || href.startsWith('#') || href.startsWith('http')) return
@@ -805,9 +983,29 @@ export const setupSearchAndScroll = () => {
     warmRouteDataFromHref(href)
   }
 
-  document.addEventListener('mouseover', (event) => {
-    warmLink(event.target)
-  })
+  document.addEventListener(
+    'mouseover',
+    (event) => {
+      warmLink(event.target)
+    },
+    { passive: true },
+  )
+
+  document.addEventListener(
+    'pointerdown',
+    (event) => {
+      warmLink(event.target)
+    },
+    { passive: true },
+  )
+
+  document.addEventListener(
+    'touchstart',
+    (event) => {
+      warmLink(event.target)
+    },
+    { passive: true },
+  )
 
   document.addEventListener('focusin', (event) => {
     warmLink(event.target)

@@ -110,7 +110,7 @@ const honorFocusCards: SimpleCard[] = [
 ]
 
 const kirinFocusCards: SimpleCard[] = [
-  { title: 'USB COM Drivers', subtitle: 'Loader Connection', badge: 'Required', icon: 'fa-usb', accent: 'violet' },
+  { title: 'USB COM Drivers', subtitle: 'Loader Connection', badge: 'Required', icon: 'fa-plug', accent: 'violet' },
   { title: 'Secure Boot Files', subtitle: 'Board Recovery', badge: 'Core', icon: 'fa-shield-halved', accent: 'green' },
   { title: 'Kirin Loader Suite', subtitle: 'Flash Support', badge: 'Ready', icon: 'fa-microchip', accent: 'pink' },
   { title: 'Board Repair Flow', subtitle: 'Service Notes', badge: 'Guide', icon: 'fa-route', accent: 'amber' },
