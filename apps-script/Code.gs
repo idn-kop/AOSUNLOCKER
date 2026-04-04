@@ -432,7 +432,7 @@ function getCategories_() {
   const headers = values[0] || [];
   const hasBrandColumns = headers.indexOf('brand_id') >= 0;
 
-  return values
+  return dedupeCategories_(values
     .slice(1)
     .map(function(row) {
       if (hasBrandColumns && row[0] && row[2] && row[3]) {
@@ -457,14 +457,14 @@ function getCategories_() {
     })
     .filter(function(item) {
       return item && item.id && item.label;
-    });
+    }));
 }
 
 function getBrands_() {
   const sheet = getBrandsSheet_();
   const values = sheet.getDataRange().getValues();
 
-  return values
+  return dedupeBrands_(values
     .slice(1)
     .map(function(row) {
       return {
@@ -474,7 +474,7 @@ function getBrands_() {
     })
     .filter(function(item) {
       return item.id && item.label;
-    });
+    }));
 }
 
 function getRecentFiles_() {
@@ -532,7 +532,7 @@ function getPublishedFiles_(categoryId) {
   const sheet = getDownloadsSheet_();
   const values = sheet.getDataRange().getValues();
 
-  return values
+  return dedupeFiles_(values
     .slice(1)
     .filter((row) => row[0])
     .map(toFileRecord_)
@@ -540,7 +540,7 @@ function getPublishedFiles_(categoryId) {
       const isPublished = String(file.status || '').toLowerCase() === 'published';
       const matchesCategory = !categoryId || file.categoryId === categoryId;
       return isPublished && matchesCategory;
-    });
+    }));
 }
 
 function getPublishedFileById_(fileId) {
@@ -887,4 +887,39 @@ function ensureHeaders_(sheet, headers) {
   if (needsUpdate) {
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   }
+}
+
+function dedupeBrands_(items) {
+  const seen = {};
+
+  return items.filter(function(item) {
+    const key = String((item && item.id) || '').trim().toLowerCase();
+    if (!key || seen[key]) return false;
+    seen[key] = true;
+    return true;
+  });
+}
+
+function dedupeCategories_(items) {
+  const seen = {};
+
+  return items.filter(function(item) {
+    const brandKey = String((item && item.brandId) || '').trim().toLowerCase();
+    const labelKey = String((item && (item.label || item.id)) || '').trim().toLowerCase();
+    const key = brandKey + ':' + labelKey;
+    if (!labelKey || seen[key]) return false;
+    seen[key] = true;
+    return true;
+  });
+}
+
+function dedupeFiles_(items) {
+  const seen = {};
+
+  return items.filter(function(item) {
+    const key = String((item && item.id) || '').trim();
+    if (!key || seen[key]) return false;
+    seen[key] = true;
+    return true;
+  });
 }

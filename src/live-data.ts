@@ -1,4 +1,4 @@
-import { solutionCategories, solutionFilesByCategory } from './download-data'
+import { downloadHomeCategories, solutionCategories, solutionFilesByCategory } from './download-data'
 import type { BrandId, DownloadListFile, SolutionCategory, TickerItem } from './data-types'
 
 declare global {
@@ -63,7 +63,8 @@ const brandLabelMap: Record<BrandId, string> = {
 
 const LIVE_CACHE_PREFIX = 'aosunlocker-live-cache:'
 const LIVE_CACHE_TTL = 1000 * 60 * 15
-const LIVE_FETCH_TIMEOUT = 3200
+const LIVE_FETCH_TIMEOUT = 1000 * 10
+const inFlightRequests = new Map<string, Promise<unknown>>()
 
 const getAppsScriptUrl = () => window.AOSUNLOCKER_CONFIG?.appsScriptUrl?.trim() ?? ''
 
@@ -107,9 +108,10 @@ const toDisplayLabel = (value: string) =>
     .replace(/\b\w/g, (char) => char.toUpperCase())
     .trim()
 
-const readCache = <T>(key: string) => {
+const readCache = <T>(key: string, options: { allowExpired?: boolean } = {}) => {
   const storageKey = `${LIVE_CACHE_PREFIX}${key}`
   const stores = [window.sessionStorage, window.localStorage]
+  const { allowExpired = false } = options
 
   for (const store of stores) {
     try {
@@ -117,8 +119,13 @@ const readCache = <T>(key: string) => {
       if (!raw) continue
 
       const parsed = JSON.parse(raw) as { timestamp?: number; value?: T }
-      if (!parsed?.timestamp || Date.now() - parsed.timestamp > LIVE_CACHE_TTL) {
+      if (!parsed?.timestamp) {
         store.removeItem(storageKey)
+        continue
+      }
+
+      const isExpired = Date.now() - parsed.timestamp > LIVE_CACHE_TTL
+      if (isExpired && !allowExpired) {
         continue
       }
 
@@ -150,19 +157,36 @@ const fetchJsonCached = async <T>(cacheKey: string, url: string) => {
   const cached = readCache<T>(cacheKey)
   if (cached) return cached
 
-  const controller = new AbortController()
-  const timeout = window.setTimeout(() => controller.abort(), LIVE_FETCH_TIMEOUT)
-  const response = await fetch(url, {
-    signal: controller.signal,
-    cache: 'force-cache',
-  }).finally(() => {
-    window.clearTimeout(timeout)
-  })
-  if (!response.ok) throw new Error('Request failed.')
+  const inFlightKey = `${cacheKey}:${url}`
+  const existingRequest = inFlightRequests.get(inFlightKey) as Promise<T> | undefined
+  if (existingRequest) return existingRequest
 
-  const data = (await response.json()) as T
-  writeCache(cacheKey, data)
-  return data
+  const request = (async () => {
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), LIVE_FETCH_TIMEOUT)
+
+    try {
+      const response = await fetch(url, {
+        signal: controller.signal,
+        cache: 'no-store',
+      })
+      if (!response.ok) throw new Error('Request failed.')
+
+      const data = (await response.json()) as T
+      writeCache(cacheKey, data)
+      return data
+    } catch (error) {
+      const stale = readCache<T>(cacheKey, { allowExpired: true })
+      if (stale) return stale
+      throw error
+    } finally {
+      window.clearTimeout(timeout)
+      inFlightRequests.delete(inFlightKey)
+    }
+  })()
+
+  inFlightRequests.set(inFlightKey, request)
+  return request
 }
 
 const buildFallbackCategory = (categoryId: string, brandId: BrandId): SolutionCategory => ({
@@ -212,6 +236,47 @@ const parseSortDate = (file: PublicFileRecord) => {
   return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime()
 }
 
+const dedupeBrands = (brands: Array<{ id?: string; label?: string }>) => {
+  const seen = new Set<string>()
+
+  return brands.filter((item) => {
+    const key = String(item.id || '').trim().toLowerCase()
+    if (!key || seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+const dedupeCategories = (categories: PublicCategoryRecord[]) => {
+  const seen = new Set<string>()
+
+  return categories.filter((item) => {
+    const brandKey = String(item.brandId || '').trim().toLowerCase()
+    const labelKey = String(item.label || item.id || '').trim().toLowerCase()
+    const key = `${brandKey}:${labelKey}`
+
+    if (!labelKey || seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+const dedupeFiles = (files: PublicFileRecord[]) => {
+  const uniqueFiles = new Map<string, PublicFileRecord>()
+
+  files.forEach((file) => {
+    const key = String(file.id || '').trim()
+    if (!key) return
+
+    const existing = uniqueFiles.get(key)
+    if (!existing || parseSortDate(file) >= parseSortDate(existing)) {
+      uniqueFiles.set(key, file)
+    }
+  })
+
+  return Array.from(uniqueFiles.values())
+}
+
 const toTickerTitle = (file: PublicFileRecord) => String(file.title || '').trim()
 
 const toTickerBrandMeta = (file: PublicFileRecord) =>
@@ -225,11 +290,41 @@ const toTickerDownloadMeta = (file: PublicFileRecord) => {
 
 export const hasLiveApi = () => Boolean(getAppsScriptUrl())
 
+const getLocalBrandFolders = () =>
+  downloadHomeCategories
+    .filter((item) => item.kind === 'brand' && item.brandId)
+    .map((item) => ({
+      title: item.title,
+      description: item.description,
+      href: item.href,
+      kind: 'brand' as const,
+      brandId: item.brandId as BrandId,
+    }))
+
+const getLocalFileById = (fileId: string) => {
+  for (const category of solutionCategories) {
+    const file = (solutionFilesByCategory[category.id] ?? []).find((item) => item.id === fileId)
+    if (file) {
+      return {
+        file,
+        category,
+      }
+    }
+  }
+
+  return null
+}
+
 export const peekBrandFolders = () => {
   const cached = readCache<PublicBrandsResponse>('brands')
-  if (!cached) return null
+  if (!cached) {
+    return {
+      source: 'local-cache-miss' as const,
+      brands: getLocalBrandFolders(),
+    }
+  }
 
-  const brands = (cached.brands ?? [])
+  const brands = dedupeBrands(cached.brands ?? [])
     .filter((item) => item.id)
     .map((item) => {
       const brandId = String(item.id || '').trim()
@@ -261,12 +356,11 @@ export const peekCategoriesByBrand = (brandId: BrandId) => {
       : null
   }
 
-  const categories = (cached.categories ?? []).map((item) => normalizeCategory(item, brandId))
-  const localCategories = getLocalCategoriesByBrand(brandId)
+  const categories = dedupeCategories(cached.categories ?? []).map((item) => normalizeCategory(item, brandId))
 
   return {
     source: 'cache' as const,
-    categories: categories.length ? categories : localCategories,
+    categories,
   }
 }
 
@@ -285,23 +379,23 @@ export const peekFilesByCategory = (categoryId: string, brandId?: BrandId) => {
       : null
   }
 
-  const liveFiles = (cached.files ?? []).map(normalizeFile)
-  const localFiles = getLocalFilesByCategory(categoryId)
+  const liveFileRecords = dedupeFiles(cached.files ?? [])
+  const liveFiles = liveFileRecords.map(normalizeFile)
   const category =
     liveFiles[0]
       ? {
           id: categoryId,
           brandId: (liveFiles[0].brandId as BrandId | undefined) || requestBrandId,
-          brandLabel: String((cached.files?.[0] as PublicFileRecord | undefined)?.brandLabel || brandLabelMap[requestBrandId] || toDisplayLabel(requestBrandId)),
-          title: String((cached.files?.[0] as PublicFileRecord | undefined)?.categoryLabel || fallbackCategory.title),
-          description: `${String((cached.files?.[0] as PublicFileRecord | undefined)?.brandLabel || brandLabelMap[requestBrandId] || toDisplayLabel(requestBrandId))} solution folder.`,
+          brandLabel: String((liveFileRecords[0] as PublicFileRecord | undefined)?.brandLabel || brandLabelMap[requestBrandId] || toDisplayLabel(requestBrandId)),
+          title: String((liveFileRecords[0] as PublicFileRecord | undefined)?.categoryLabel || fallbackCategory.title),
+          description: `${String((liveFileRecords[0] as PublicFileRecord | undefined)?.brandLabel || brandLabelMap[requestBrandId] || toDisplayLabel(requestBrandId))} solution folder.`,
         }
       : fallbackCategory
 
   return {
     source: 'cache' as const,
     category,
-    files: liveFiles.length ? liveFiles : localFiles,
+    files: liveFiles,
   }
 }
 
@@ -318,12 +412,11 @@ export const loadCategoriesByBrand = async (brandId: BrandId) => {
 
   try {
     const data = await fetchJsonCached<PublicCategoriesResponse>(cacheKey, url)
-    const liveCategories = (data.categories ?? []).map((item) => normalizeCategory(item, brandId))
-    const localCategories = getLocalCategoriesByBrand(brandId)
+    const liveCategories = dedupeCategories(data.categories ?? []).map((item) => normalizeCategory(item, brandId))
 
     return {
       source: 'live' as const,
-      categories: liveCategories.length ? liveCategories : localCategories,
+      categories: liveCategories,
     }
   } catch (error) {
     console.warn('Categories could not be loaded.', error)
@@ -348,7 +441,7 @@ export const loadBrandFolders = async () => {
 
   try {
     const data = await fetchJsonCached<PublicBrandsResponse>(cacheKey, url)
-    const liveBrands = (data.brands ?? [])
+    const liveBrands = dedupeBrands(data.brands ?? [])
       .filter((item) => item.id)
       .map((item) => {
         const brandId = String(item.id || '').trim()
@@ -370,7 +463,7 @@ export const loadBrandFolders = async () => {
     console.warn('Brands could not be loaded.', error)
     return {
       source: 'live-error' as const,
-      brands: [],
+      brands: getLocalBrandFolders(),
     }
   }
 }
@@ -383,7 +476,7 @@ export const loadHomepageTickers = async (): Promise<{ latest: TickerItem[]; top
 
   try {
     const data = await fetchJsonCached<PublicFilesResponse>('homepage-tickers', url)
-    const files = (data.files ?? []).filter((item) => toTickerTitle(item))
+    const files = dedupeFiles(data.files ?? []).filter((item) => toTickerTitle(item))
 
     const latest = [...files]
       .sort((a, b) => parseSortDate(b) - parseSortDate(a))
@@ -426,23 +519,23 @@ export const loadFilesByCategory = async (categoryId: string, brandId?: BrandId)
 
   try {
     const data = await fetchJsonCached<PublicFilesResponse>(cacheKey, url)
-    const liveFiles = (data.files ?? []).map(normalizeFile)
-    const localFiles = getLocalFilesByCategory(categoryId)
+    const liveFileRecords = dedupeFiles(data.files ?? [])
+    const liveFiles = liveFileRecords.map(normalizeFile)
     const liveCategory =
       liveFiles[0]
         ? {
             id: categoryId,
             brandId: (liveFiles[0].brandId as BrandId | undefined) || requestBrandId,
-            brandLabel: String((data.files?.[0] as PublicFileRecord | undefined)?.brandLabel || brandLabelMap[requestBrandId] || toDisplayLabel(requestBrandId)),
-            title: String((data.files?.[0] as PublicFileRecord | undefined)?.categoryLabel || fallbackCategory.title),
-            description: `${String((data.files?.[0] as PublicFileRecord | undefined)?.brandLabel || brandLabelMap[requestBrandId] || toDisplayLabel(requestBrandId))} solution folder.`,
+            brandLabel: String((liveFileRecords[0] as PublicFileRecord | undefined)?.brandLabel || brandLabelMap[requestBrandId] || toDisplayLabel(requestBrandId)),
+            title: String((liveFileRecords[0] as PublicFileRecord | undefined)?.categoryLabel || fallbackCategory.title),
+            description: `${String((liveFileRecords[0] as PublicFileRecord | undefined)?.brandLabel || brandLabelMap[requestBrandId] || toDisplayLabel(requestBrandId))} solution folder.`,
           }
         : fallbackCategory
 
     return {
       source: 'live' as const,
       category: liveCategory,
-      files: liveFiles.length ? liveFiles : localFiles,
+      files: liveFiles,
     }
   } catch (error) {
     console.warn('Category files could not be loaded.', error)
@@ -456,7 +549,9 @@ export const loadFilesByCategory = async (categoryId: string, brandId?: BrandId)
 }
 
 export const loadFileById = async (fileId: string) => {
+  const localFileMatch = getLocalFileById(fileId)
   const fallbackCategory =
+    localFileMatch?.category ??
     solutionCategories.find((category) => (solutionFilesByCategory[category.id] ?? []).some((item) => item.id === fileId)) ??
     solutionCategories[0]
 
@@ -464,10 +559,10 @@ export const loadFileById = async (fileId: string) => {
   if (!url) {
     return {
       source: 'unconfigured' as const,
-      file: null,
+      file: localFileMatch?.file ?? null,
       category: fallbackCategory,
       driveUrl: '',
-      price: '',
+      price: localFileMatch?.file.price || '',
       status: '',
     }
   }
@@ -477,6 +572,17 @@ export const loadFileById = async (fileId: string) => {
     const file = data.file
 
     if (!file) {
+      if (localFileMatch) {
+        return {
+          source: 'live-local-fallback' as const,
+          file: localFileMatch.file,
+          category: localFileMatch.category,
+          driveUrl: '',
+          price: localFileMatch.file.price || '',
+          status: '',
+        }
+      }
+
       return {
         source: 'live' as const,
         file: null,
@@ -499,6 +605,18 @@ export const loadFileById = async (fileId: string) => {
     }
   } catch (error) {
     console.warn('File detail could not be loaded.', error)
+
+    if (localFileMatch) {
+      return {
+        source: 'live-error-local' as const,
+        file: localFileMatch.file,
+        category: localFileMatch.category,
+        driveUrl: '',
+        price: localFileMatch.file.price || '',
+        status: '',
+      }
+    }
+
     return {
       source: 'live-error' as const,
       file: null,
@@ -526,14 +644,14 @@ export const incrementDownloadCount = async (fileId: string) => {
   }
 }
 
-export const warmRouteDataFromHref = (href: string) => {
+export const warmRouteDataFromHref = (href: string, intent: 'hover' | 'navigation' = 'navigation') => {
   try {
     const url = new URL(href, window.location.origin)
     const path = url.pathname.toLowerCase()
 
     if (path.endsWith('/downloads.html') || path.endsWith('downloads.html')) {
       void loadBrandFolders()
-      return
+      return true
     }
 
     if (path.endsWith('/solution-files.html') || path.endsWith('solution-files.html')) {
@@ -545,16 +663,20 @@ export const warmRouteDataFromHref = (href: string) => {
       } else {
         void loadCategoriesByBrand(brand)
       }
-      return
+      return true
     }
 
     if (path.endsWith('/download.html') || path.endsWith('download.html')) {
+      if (intent === 'hover') return false
       const fileId = url.searchParams.get('file')
       if (fileId) {
         void loadFileById(fileId)
+        return true
       }
     }
   } catch {
     // ignore invalid hrefs
   }
+
+  return false
 }

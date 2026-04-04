@@ -976,33 +976,36 @@ export const setupSearchAndScroll = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   })
 
-  const warmLink = (target: EventTarget | null) => {
+  const warmLink = (target: EventTarget | null, intent: 'hover' | 'navigation') => {
     const element = target instanceof Element ? target.closest<HTMLAnchorElement>('a[href]') : null
     if (!element) return
     if (warmedElements.has(element)) return
-
-    warmedElements.add(element)
 
     const href = element.getAttribute('href')?.trim() || ''
     if (!href || href.startsWith('#') || href.startsWith('http')) return
     if (warmedHrefs.has(href)) return
 
+    const warmed = warmRouteDataFromHref(href, intent)
+    if (!warmed) return
+
+    warmedElements.add(element)
     warmedHrefs.add(href)
-    warmRouteDataFromHref(href)
   }
 
-  document.addEventListener(
-    'mouseover',
-    (event) => {
-      warmLink(event.target)
-    },
-    { passive: true },
-  )
+  if (canHover) {
+    document.addEventListener(
+      'mouseover',
+      (event) => {
+        warmLink(event.target, 'hover')
+      },
+      { passive: true },
+    )
+  }
 
   document.addEventListener(
     'pointerdown',
     (event) => {
-      warmLink(event.target)
+      warmLink(event.target, 'navigation')
     },
     { passive: true },
   )
@@ -1010,13 +1013,13 @@ export const setupSearchAndScroll = () => {
   document.addEventListener(
     'touchstart',
     (event) => {
-      warmLink(event.target)
+      warmLink(event.target, 'navigation')
     },
     { passive: true },
   )
 
   document.addEventListener('focusin', (event) => {
-    warmLink(event.target)
+    warmLink(event.target, 'navigation')
   })
 }
 

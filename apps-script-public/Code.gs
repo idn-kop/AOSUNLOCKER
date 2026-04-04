@@ -75,7 +75,7 @@ function getCategories_(brandId) {
   const headers = values[0] || [];
   const hasBrandColumns = headers.indexOf('brand_id') >= 0;
 
-  return values
+  return dedupeCategories_(values
     .slice(1)
     .map(function(row) {
       if (hasBrandColumns && row[0] && row[2] && row[3]) {
@@ -101,14 +101,14 @@ function getCategories_(brandId) {
     .filter(function(item) {
       if (!item || !item.id || !item.label) return false;
       return !brandId || item.brandId === brandId;
-    });
+    }));
 }
 
 function getBrands_() {
   const sheet = getSpreadsheet_().getSheetByName(BRANDS_SHEET_NAME);
 
   if (sheet) {
-    return sheet
+    return dedupeBrands_(sheet
       .getDataRange()
       .getValues()
       .slice(1)
@@ -120,7 +120,7 @@ function getBrands_() {
       })
       .filter(function(item) {
         return item.id && item.label;
-      });
+      }));
   }
 
   const categories = getCategories_('');
@@ -130,12 +130,12 @@ function getBrands_() {
     brandMap[item.brandId] = item.brandLabel || item.brandId;
   });
 
-  return Object.keys(brandMap).map(function(id) {
+  return dedupeBrands_(Object.keys(brandMap).map(function(id) {
     return {
       id: id,
       label: String(brandMap[id] || id),
     };
-  });
+  }));
 }
 
 function getPublishedFiles_(categoryId, brandId) {
@@ -147,7 +147,7 @@ function getPublishedFiles_(categoryId, brandId) {
   const values = sheet.getDataRange().getValues();
   const headers = values[0] || [];
 
-  return values
+  return dedupeFiles_(values
     .slice(1)
     .filter(function(row) {
       return row[0];
@@ -160,7 +160,7 @@ function getPublishedFiles_(categoryId, brandId) {
       const matchesCategory = !categoryId || file.categoryId === categoryId;
       const matchesBrand = !brandId || file.brandId === brandId;
       return isPublished && matchesCategory && matchesBrand;
-    });
+    }));
 }
 
 function getPublishedFileById_(fileId) {
@@ -273,4 +273,39 @@ function jsonOutput_(payload) {
   return ContentService
     .createTextOutput(JSON.stringify(payload))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function dedupeBrands_(items) {
+  const seen = {};
+
+  return items.filter(function(item) {
+    const key = String((item && item.id) || '').trim().toLowerCase();
+    if (!key || seen[key]) return false;
+    seen[key] = true;
+    return true;
+  });
+}
+
+function dedupeCategories_(items) {
+  const seen = {};
+
+  return items.filter(function(item) {
+    const brandKey = String((item && item.brandId) || '').trim().toLowerCase();
+    const labelKey = String((item && (item.label || item.id)) || '').trim().toLowerCase();
+    const key = brandKey + ':' + labelKey;
+    if (!labelKey || seen[key]) return false;
+    seen[key] = true;
+    return true;
+  });
+}
+
+function dedupeFiles_(items) {
+  const seen = {};
+
+  return items.filter(function(item) {
+    const key = String((item && item.id) || '').trim();
+    if (!key || seen[key]) return false;
+    seen[key] = true;
+    return true;
+  });
 }

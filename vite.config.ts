@@ -1,6 +1,11 @@
 import { defineConfig } from 'vite'
 
 export default defineConfig({
+  server: {
+    watch: {
+      ignored: ['**/apps-script/**', '**/apps-script-public/**', '**/*.log'],
+    },
+  },
   build: {
     rollupOptions: {
       input: {
