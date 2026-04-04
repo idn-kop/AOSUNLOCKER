@@ -659,7 +659,7 @@ export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downlo
     </div>
   </nav>
 
-  <div id="siteTickerMount" data-ticker-mode="${activeKey === 'home' ? 'live' : 'static'}"></div>
+  <div id="siteTickerMount" data-ticker-mode="static"></div>
 
   ${mainContent}
 
