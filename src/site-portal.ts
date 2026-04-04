@@ -150,6 +150,11 @@ export const renderPage = async (pageKey: SitePageKey) => {
   if (!app || !page) return
 
   document.title = page.title
+  const heroHasCopy = Boolean(page.heroCopy && page.heroCopy.trim())
+  const heroHeading =
+    page.key === 'home'
+      ? `<h2 class="hero-title-home">${page.heroTitle}</h2>`
+      : `<h2><i class="fas fa-mobile-alt me-2 text-primary"></i>${page.heroTitle}</h2>`
 
   app.innerHTML = renderSiteChrome(
     `
@@ -159,8 +164,8 @@ export const renderPage = async (pageKey: SitePageKey) => {
           <div class="hero-panel hero-panel-clean ${page.key === 'home' ? 'hero-panel-home' : ''}">
             <div class="hero-center ${page.key === 'home' ? 'hero-center-home' : ''}">
               <p class="eyebrow">${page.eyebrow}</p>
-              <h2><i class="fas fa-mobile-alt me-2 text-primary"></i>${page.heroTitle}</h2>
-              <p class="lead-copy">${page.heroCopy}</p>
+              ${heroHeading}
+              ${heroHasCopy ? `<p class="lead-copy">${page.heroCopy}</p>` : ''}
             </div>
             <div class="stats-strip ${page.key === 'home' ? 'stats-strip-home' : ''}">
               <div class="stats-row ${page.key === 'home' ? 'stats-row-home' : ''}">

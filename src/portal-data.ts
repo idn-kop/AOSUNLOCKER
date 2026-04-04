@@ -424,9 +424,9 @@ export const pages: Record<SitePageKey, SitePage> = {
   home: {
     key: 'home',
     title: 'AOSUNLOCKER Huawei Lab',
-    eyebrow: 'Huawei Service Hub',
-    heroTitle: 'Huawei & Honor Firmware, Kirin Repair Tools, and HarmonyOS Packages',
-    heroCopy: 'A dedicated dark portal for Huawei and Honor service work, focused on Kirin devices, HarmonyOS packages, Qualcomm rescue resources, and specialist unlock support.',
+    eyebrow: 'Firmware, Tools, and Packages',
+    heroTitle: 'Huawei & Honor Download Center',
+    heroCopy: '',
     quickLabel: 'Huawei Focus',
     primaryEyebrow: 'Core Services',
     primaryTitle: 'Huawei and Honor Service Access',

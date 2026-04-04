@@ -1060,8 +1060,8 @@ a {
   position: relative;
   grid-template-columns: 1fr;
   align-items: stretch;
-  gap: 1rem;
-  padding: 1.5rem 1.45rem 1.2rem;
+  gap: 0.85rem;
+  padding: 1.3rem 1.45rem 1.05rem;
   background:
     radial-gradient(circle at top left, rgba(255, 123, 114, 0.1), transparent 28%),
     radial-gradient(circle at bottom right, rgba(247, 191, 127, 0.08), transparent 24%),
@@ -1096,11 +1096,18 @@ a {
 .hero-panel-home .eyebrow {
   background: rgba(255, 255, 255, 0.03);
   border-color: rgba(247, 191, 127, 0.08);
+  margin-bottom: 0.85rem;
 }
 
 .hero-panel-home .hero-center h2 {
-  max-width: 12.5ch;
+  max-width: 16ch;
   margin-inline: 0;
+  font-size: clamp(2.48rem, 3.95vw, 3.95rem);
+  line-height: 0.96;
+}
+
+.hero-title-home {
+  text-wrap: pretty;
 }
 
 .hero-panel-home .lead-copy {
@@ -3383,7 +3390,13 @@ h6 {
   }
 
   .hero-panel-home {
-    padding: 1.12rem 0.96rem 1rem;
+    padding: 1.04rem 0.96rem 0.96rem;
+  }
+
+  .hero-panel-home .hero-center h2 {
+    max-width: 10.4ch;
+    font-size: clamp(1.98rem, 8.9vw, 2.58rem);
+    line-height: 0.98;
   }
 
   .stats-row-home {
