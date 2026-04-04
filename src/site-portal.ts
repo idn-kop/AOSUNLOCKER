@@ -3,7 +3,6 @@ import { loadBrandFolders } from './live-data'
 import { pageLinks, pages, remoteServiceQualcommEntries, stats } from './portal-data'
 import {
   renderDownloadHomeCard,
-  renderDownloadHomeSkeleton,
   renderDownloadEmptyState,
   renderFeature,
   renderPageLinkCard,
@@ -22,6 +21,14 @@ const groupRemoteServiceEntries = (entries: RemoteServiceEntry[]) =>
       return acc
     }, {}),
   ).sort(([left], [right]) => left.localeCompare(right))
+
+const renderBrandHomeGrid = (content = downloadHomeCategories) =>
+  content.length
+    ? `<div class="download-home-grid">${content.map((item) => renderDownloadHomeCard(item)).join('')}</div>`
+    : renderDownloadEmptyState(
+        'No brand folders available yet',
+        'Published brand folders will appear here automatically as soon as they are available.',
+      )
 
 const renderRemoteServiceSection = () => {
   const groups = groupRemoteServiceEntries(remoteServiceQualcommEntries)
@@ -256,7 +263,7 @@ export const renderPage = async (pageKey: SitePageKey) => {
   const brandMount = document.querySelector<HTMLDivElement>('#homeBrandMount')
 
   if (brandMount) {
-    brandMount.innerHTML = renderDownloadHomeSkeleton(3)
+    brandMount.innerHTML = renderBrandHomeGrid()
   }
 
   const brandPromise = loadBrandFolders()
@@ -265,12 +272,7 @@ export const renderPage = async (pageKey: SitePageKey) => {
     if (!brandMount?.isConnected) return
 
     const brandCards = brandResult.brands.length ? brandResult.brands : downloadHomeCategories
-    brandMount.innerHTML = brandCards.length
-      ? `<div class="download-home-grid">${brandCards.map((item) => renderDownloadHomeCard(item)).join('')}</div>`
-      : renderDownloadEmptyState(
-          'No brand folders available yet',
-          'Published brand folders will appear here automatically as soon as they are available.',
-        )
+    brandMount.innerHTML = renderBrandHomeGrid(brandCards)
   })
 
   await brandPromise

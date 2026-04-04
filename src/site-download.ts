@@ -1,5 +1,6 @@
 import {
   anaAn00Files,
+  downloadHomeCategories,
   firmwareHuaweiCards,
   huaweiUpdateFolders,
 } from './download-data'
@@ -170,6 +171,14 @@ const renderDownloadsHubStage = (content: string) => `
   </main>
 `
 
+const renderBrandHubGrid = (content = downloadHomeCategories) =>
+  content.length
+    ? `<div class="download-home-grid">${content.map((item: (typeof downloadHomeCategories)[number]) => renderDownloadHomeCard(item)).join('')}</div>`
+    : renderDownloadEmptyState(
+        'No brand folders available yet',
+        'Published brand folders will appear here automatically as soon as they are available.',
+      )
+
 const renderSolutionBrandStage = (brandLabel: string, brandDescription: string, content: string) => `
   <main class="download-flow-page">
     <div class="container py-4">
@@ -323,25 +332,13 @@ export const renderDownloadsHubPage = async () => {
   if (cachedBrandResult) {
     const brandCards = cachedBrandResult.brands
     app.innerHTML = renderSiteChrome(
-      renderDownloadsHubStage(
-        brandCards.length
-          ? `<div class="download-home-grid">${brandCards.map((item) => renderDownloadHomeCard(item)).join('')}</div>`
-          : renderDownloadEmptyState(
-              'No brand folders available yet',
-              'Published brand folders will appear here automatically as soon as they are available.',
-            ),
-      ),
+      renderDownloadsHubStage(renderBrandHubGrid(brandCards)),
       undefined,
       true,
     )
   } else {
     app.innerHTML = renderSiteChrome(
-      renderDownloadsHubStage(
-        renderDownloadLoadingState(
-          'Loading brands',
-          'Preparing available brand folders for this session.',
-        ),
-      ),
+      renderDownloadsHubStage(renderBrandHubGrid()),
       undefined,
       true,
     )
@@ -351,14 +348,7 @@ export const renderDownloadsHubPage = async () => {
   const brandCards = brandResult.brands
 
   app.innerHTML = renderSiteChrome(
-    renderDownloadsHubStage(
-      brandCards.length
-        ? `<div class="download-home-grid">${brandCards.map((item) => renderDownloadHomeCard(item)).join('')}</div>`
-        : renderDownloadEmptyState(
-            'No brand folders available yet',
-            'Published brand folders will appear here automatically as soon as they are available.',
-          ),
-    ),
+    renderDownloadsHubStage(renderBrandHubGrid(brandCards)),
     undefined,
     true,
   )
