@@ -200,6 +200,22 @@ const renderSolutionBrandStage = (brandLabel: string, brandDescription: string, 
   </main>
 `
 
+const warmCategoryFileCache = (brandId: BrandId, categoryIds: string[]) => {
+  const uniqueIds = Array.from(
+    new Set(
+      categoryIds
+        .map((categoryId) => String(categoryId || '').trim())
+        .filter(Boolean),
+    ),
+  ).slice(0, 8)
+
+  uniqueIds.forEach((categoryId, index) => {
+    window.setTimeout(() => {
+      void loadFilesByCategory(categoryId, brandId)
+    }, 80 + index * 120)
+  })
+}
+
 const renderSolutionCategoryStage = (brandId: BrandId, brandLabel: string, categoryTitle: string, body: string) => `
   <main class="download-flow-page">
     <div class="container py-4">
@@ -380,6 +396,10 @@ export const renderSolutionFilesPage = async () => {
   if (!categoryId) {
     if (cachedCategoryResult) {
       const categories = cachedCategoryResult.categories
+      warmCategoryFileCache(
+        brandId,
+        categories.map((item) => item.id),
+      )
       app.innerHTML = renderSiteChrome(
         renderSolutionBrandStage(
           brand.label,
@@ -466,6 +486,11 @@ export const renderSolutionFilesPage = async () => {
     const categoryResult = await loadCategoriesByBrand(brandId)
     const categories = categoryResult.categories
 
+    warmCategoryFileCache(
+      brandId,
+      categories.map((item) => item.id),
+    )
+
     app.innerHTML = renderSiteChrome(
       renderSolutionBrandStage(
         brand.label,
@@ -495,37 +520,14 @@ export const renderSolutionFilesPage = async () => {
     return
   }
 
-  const result = await loadFilesByCategory(categoryId, brandId)
-  const category = result.category
-  const files = result.files
-
-  document.title = `${brand.label} ${category.title} | Downloads`
-
-  app.innerHTML = renderSiteChrome(
-    renderSolutionCategoryStage(
-      brandId,
-      brand.label,
-      category.title,
-      `
-        <div class="download-stage-head">
-          <h1>${category.title}</h1>
-          <p>${brand.label} ${category.description}</p>
-        </div>
-        <div id="solutionToolbar"></div>
-        <div id="solutionResults"></div>
-      `,
-    ),
-    undefined,
-    true,
-  )
-
-  const toolbarMount = document.querySelector<HTMLDivElement>('#solutionToolbar')
-  const resultsMount = document.querySelector<HTMLDivElement>('#solutionResults')
   const state = {
     sortField: initialSortField,
     sortOrder: initialSortOrder,
     view: initialView,
   }
+
+  let activeCategory = cachedFileResult?.category ?? null
+  let activeFiles = cachedFileResult?.files ?? []
 
   const syncUrl = () => {
     const nextParams = new URLSearchParams(window.location.search)
@@ -538,43 +540,79 @@ export const renderSolutionFilesPage = async () => {
     window.history.replaceState({}, '', nextUrl)
   }
 
-  const bindToolbar = () => {
-    toolbarMount?.querySelectorAll<HTMLElement>('[data-sort-field]').forEach((button) => {
-      button.addEventListener('click', () => {
-        state.sortField = normalizeSortField(button.dataset.sortField ?? null)
-        renderInteractiveSection()
-      })
-    })
+  const renderCategoryScreen = () => {
+    if (!activeCategory) return
 
-    toolbarMount?.querySelectorAll<HTMLElement>('[data-sort-order]').forEach((button) => {
-      button.addEventListener('click', () => {
-        state.sortOrder = normalizeSortOrder(button.dataset.sortOrder ?? null)
-        renderInteractiveSection()
-      })
-    })
+    document.title = `${brand.label} ${activeCategory.title} | Downloads`
 
-    toolbarMount?.querySelectorAll<HTMLElement>('[data-view-mode]').forEach((button) => {
-      button.addEventListener('click', () => {
-        state.view = normalizeViewMode(button.dataset.viewMode ?? null)
-        renderInteractiveSection()
+    app.innerHTML = renderSiteChrome(
+      renderSolutionCategoryStage(
+        brandId,
+        brand.label,
+        activeCategory.title,
+        `
+          <div class="download-stage-head">
+            <h1>${activeCategory.title}</h1>
+            <p>${brand.label} ${activeCategory.description}</p>
+          </div>
+          <div id="solutionToolbar"></div>
+          <div id="solutionResults"></div>
+        `,
+      ),
+      undefined,
+      true,
+    )
+
+    const toolbarMount = document.querySelector<HTMLDivElement>('#solutionToolbar')
+    const resultsMount = document.querySelector<HTMLDivElement>('#solutionResults')
+
+    const bindToolbar = () => {
+      toolbarMount?.querySelectorAll<HTMLElement>('[data-sort-field]').forEach((button) => {
+        button.addEventListener('click', () => {
+          state.sortField = normalizeSortField(button.dataset.sortField ?? null)
+          renderInteractiveSection()
+        })
       })
-    })
+
+      toolbarMount?.querySelectorAll<HTMLElement>('[data-sort-order]').forEach((button) => {
+        button.addEventListener('click', () => {
+          state.sortOrder = normalizeSortOrder(button.dataset.sortOrder ?? null)
+          renderInteractiveSection()
+        })
+      })
+
+      toolbarMount?.querySelectorAll<HTMLElement>('[data-view-mode]').forEach((button) => {
+        button.addEventListener('click', () => {
+          state.view = normalizeViewMode(button.dataset.viewMode ?? null)
+          renderInteractiveSection()
+        })
+      })
+    }
+
+    const renderInteractiveSection = () => {
+      const sortedFiles = sortDownloadFiles(activeFiles, state.sortField, state.sortOrder)
+      if (toolbarMount) {
+        toolbarMount.innerHTML = renderDownloadToolbar(state.sortField, state.sortOrder, state.view)
+      }
+      if (resultsMount) {
+        resultsMount.innerHTML = renderSolutionFileResults(sortedFiles, state.view, activeCategory?.title || 'Files')
+      }
+      bindToolbar()
+      syncUrl()
+    }
+
+    renderInteractiveSection()
+    setupSearchAndScroll()
   }
 
-  const renderInteractiveSection = () => {
-    const sortedFiles = sortDownloadFiles(files, state.sortField, state.sortOrder)
-    if (toolbarMount) {
-      toolbarMount.innerHTML = renderDownloadToolbar(state.sortField, state.sortOrder, state.view)
-    }
-    if (resultsMount) {
-      resultsMount.innerHTML = renderSolutionFileResults(sortedFiles, state.view, category.title)
-    }
-    bindToolbar()
-    syncUrl()
+  if (activeCategory) {
+    renderCategoryScreen()
   }
 
-  renderInteractiveSection()
-  setupSearchAndScroll()
+  const result = await loadFilesByCategory(categoryId, brandId)
+  activeCategory = result.category
+  activeFiles = result.files
+  renderCategoryScreen()
 }
 
 export const renderFirmwareHuaweiPage = () => {
