@@ -95,21 +95,21 @@
       </aside>
 
       <main class="content">
-        <section class="hero-panel">
+        <section class="hero-panel hero-panel-compact">
           <div>
             <p class="eyebrow">Admin panel</p>
             <h2>Manage Download Files</h2>
-            <p class="muted">Create, edit, and organize the files shown on the public website.</p>
+            <p class="muted hero-copy-compact">Fast add, edit, and organize the files shown on the public website.</p>
           </div>
           <div id="flash" class="flash hidden"></div>
         </section>
 
-        <section class="panel integrity-panel" id="integrityPanel">
+        <section class="panel integrity-panel integrity-panel-compact" id="integrityPanel">
           <div class="integrity-head">
             <div>
               <p class="eyebrow">Integrity Check</p>
               <h3>Scan brands, folders, and files</h3>
-              <p class="muted">Catch duplicate IDs, wrong brand/category links, and label mismatches before they break the public website.</p>
+              <p class="muted integrity-copy-compact">Catch duplicate IDs and broken folder links before they break the public website.</p>
             </div>
             <div class="integrity-actions">
               <span id="integrityStatusBadge" class="integrity-status">Not scanned yet</span>
@@ -136,11 +136,23 @@
           <section class="panel" id="filePanel">
             <div class="panel-head">
               <h3>New file</h3>
-              <p>Fields marked with * are required.</p>
+              <p>Paste the Drive link first, auto fill, then finish the file details.</p>
             </div>
 
             <form id="fileForm" class="form-grid">
               <input type="hidden" name="originalId" />
+
+              <div class="full priority-intake-row">
+                <label class="priority-drive-link">
+                  <span>Google Drive Link *</span>
+                  <input type="url" name="driveUrl" required />
+                  <small class="field-note">Paste the Drive link first. File name and size can be filled automatically.</small>
+                </label>
+                <div class="priority-intake-actions">
+                  <button type="button" id="autofillButton" class="ghost">Auto Fill From Drive</button>
+                  <span id="autofillNote" class="muted"></span>
+                </div>
+              </div>
 
               <label>
                 <span>Brand *</span>
@@ -199,17 +211,6 @@
                 <span>Downloads</span>
                 <input type="number" name="downloads" min="0" />
               </label>
-
-              <label class="full">
-                <span>Google Drive Link *</span>
-                <input type="url" name="driveUrl" required />
-                <small class="field-note">Paste the Drive link first. File name and size can be filled automatically.</small>
-              </label>
-
-              <div class="full autofill-row">
-                <button type="button" id="autofillButton" class="ghost">Auto Fill From Drive</button>
-                <span id="autofillNote" class="muted"></span>
-              </div>
 
               <label class="switch-row full">
                 <input type="checkbox" name="featured" />

@@ -92,6 +92,18 @@
     margin-bottom: 20px;
   }
 
+  .hero-panel-compact {
+    align-items: center;
+    padding: 16px 22px;
+    margin-bottom: 14px;
+  }
+
+  .hero-copy-compact {
+    margin-top: 4px;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
   .flash {
     min-width: 220px;
     padding: 12px 14px;
@@ -116,7 +128,7 @@
 
   .grid {
     display: grid;
-    grid-template-columns: minmax(0, 0.94fr) minmax(0, 1.06fr);
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
     gap: 20px;
     align-items: start;
   }
@@ -143,6 +155,11 @@
     padding: 22px;
   }
 
+  .integrity-panel-compact {
+    margin-bottom: 16px;
+    padding: 16px 22px;
+  }
+
   .integrity-head {
     display: flex;
     justify-content: space-between;
@@ -153,6 +170,12 @@
 
   .integrity-head h3 {
     margin: 0;
+  }
+
+  .integrity-copy-compact {
+    margin-top: 4px;
+    font-size: 14px;
+    line-height: 1.45;
   }
 
   .integrity-actions {
@@ -225,7 +248,7 @@
   }
 
   .integrity-summary-card {
-    padding: 14px;
+    padding: 11px 14px;
   }
 
   .integrity-summary-label {
@@ -238,7 +261,7 @@
   }
 
   .integrity-summary-value {
-    font-size: 24px;
+    font-size: 22px;
     font-weight: 800;
     color: var(--text);
   }
@@ -246,7 +269,7 @@
   .integrity-empty,
   .integrity-scan-meta {
     grid-column: 1 / -1;
-    padding: 14px 16px;
+    padding: 12px 14px;
     color: var(--muted);
   }
 
@@ -331,6 +354,27 @@
     margin-top: 4px;
     font-size: 12px;
     color: var(--muted);
+  }
+
+  .priority-intake-row {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 4px;
+    padding: 14px;
+    border: 1px solid rgba(88, 166, 255, 0.14);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .priority-drive-link {
+    margin: 0;
+  }
+
+  .priority-intake-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
   }
 
   .form-grid {
@@ -582,6 +626,11 @@
       padding: 18px;
     }
 
+    .hero-panel-compact,
+    .integrity-panel-compact {
+      padding: 16px 18px;
+    }
+
     .integrity-head,
     .integrity-actions {
       flex-direction: column;
@@ -599,6 +648,10 @@
 
     .finder-toolbar {
       grid-template-columns: 1fr;
+    }
+
+    .priority-intake-row {
+      padding: 12px;
     }
 
     .mobile-quick-strip {
@@ -621,14 +674,16 @@
 
     .actions,
     .autofill-row,
-    .row-actions {
+    .row-actions,
+    .priority-intake-actions {
       flex-direction: column;
       align-items: stretch;
     }
 
     .actions > *,
     .autofill-row > *,
-    .row-actions > * {
+    .row-actions > *,
+    .priority-intake-actions > * {
       width: 100%;
     }
 
