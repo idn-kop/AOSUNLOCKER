@@ -205,7 +205,7 @@ a {
 }
 
 .middle-header {
-  padding: 14px 0 18px;
+  padding: 10px 0 12px;
   background: transparent;
   border-bottom: 0;
 }
@@ -220,17 +220,17 @@ a {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1.5rem;
-  padding: 1rem 1.25rem;
-  border-radius: 30px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  gap: 1.15rem;
+  padding: 0.82rem 1.1rem;
+  border-radius: 28px;
+  border: 1px solid rgba(120, 150, 210, 0.12);
   background:
-    radial-gradient(circle at top left, rgba(255, 255, 255, 0.05), transparent 26%),
-    radial-gradient(circle at top right, rgba(255, 123, 114, 0.08), transparent 32%),
-    linear-gradient(180deg, rgba(17, 22, 30, 0.98), rgba(11, 15, 21, 0.98));
+    radial-gradient(circle at top left, rgba(120, 150, 210, 0.07), transparent 26%),
+    radial-gradient(circle at top right, rgba(255, 123, 114, 0.06), transparent 30%),
+    linear-gradient(180deg, rgba(10, 16, 27, 0.98), rgba(6, 10, 18, 0.98));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 24px 48px rgba(1, 4, 9, 0.2);
+    0 20px 38px rgba(1, 4, 9, 0.16);
   overflow: hidden;
 }
 
@@ -239,8 +239,8 @@ a {
   position: absolute;
   inset: 0 auto 0 52%;
   width: 1px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0));
-  opacity: 0.7;
+  background: linear-gradient(180deg, rgba(120, 150, 210, 0), rgba(120, 150, 210, 0.12), rgba(120, 150, 210, 0));
+  opacity: 0.55;
 }
 
 .logo-block {
@@ -273,35 +273,35 @@ a {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.75rem;
+  gap: 0.48rem;
   min-width: 0;
 }
 
 .logo-capability-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.55rem;
+  gap: 0.42rem;
   max-width: 100%;
 }
 
 .logo-capability-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.55rem;
-  padding: 0.4rem 0.72rem 0.4rem 0.48rem;
+  gap: 0.42rem;
+  padding: 0.34rem 0.64rem 0.34rem 0.42rem;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(255, 255, 255, 0.025);
-  color: #d8dde4;
-  font-size: 0.76rem;
+  border: 1px solid rgba(120, 150, 210, 0.12);
+  background: rgba(120, 150, 210, 0.04);
+  color: #cdd8e6;
+  font-size: 0.71rem;
   font-weight: 700;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
 }
 
 .logo-wordmark {
-  width: min(360px, 100%);
+  width: min(300px, 100%);
   max-width: 100%;
-  max-height: 118px;
+  max-height: 96px;
   height: auto;
   display: block;
   object-fit: contain;
@@ -310,7 +310,7 @@ a {
 
 .logo-wordmark-picture {
   display: block;
-  width: min(360px, 100%);
+  width: min(300px, 100%);
   max-width: 100%;
   border-radius: 22px;
   overflow: hidden;
@@ -353,16 +353,16 @@ a {
   display: inline-flex;
   align-items: center;
   justify-content: flex-start;
-  flex-wrap: wrap;
-  gap: 0.55rem;
-  padding: 0.48rem 0.86rem;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(255, 123, 114, 0.14);
-  color: #c3ccd5;
-  font-size: 0.88rem;
+  gap: 0.4rem;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  border: 0;
+  color: #8ea0b8;
+  font-size: 0.78rem;
   font-weight: 600;
   text-align: left;
+  letter-spacing: 0.03em;
 }
 
 .mini-social-links {
@@ -671,7 +671,7 @@ a {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.07),
     inset 0 -1px 0 rgba(255, 255, 255, 0.05),
-    0 14px 28px rgba(1, 4, 9, 0.22);
+    0 10px 22px rgba(1, 4, 9, 0.16);
   border-top: 1px solid rgba(255, 255, 255, 0.05);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -680,7 +680,9 @@ a {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 0.22rem;
+  gap: 0.16rem;
+  padding-top: 0.38rem;
+  padding-bottom: 0.38rem;
 }
 
 .nav-link {
@@ -689,9 +691,9 @@ a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin: 0.08rem 0;
+  margin: 0;
   gap: 0.42rem;
-  padding: 0.82rem 0.98rem;
+  padding: 0.68rem 0.9rem;
   min-width: 0;
   font-weight: 700;
   letter-spacing: -0.01em;
@@ -933,26 +935,31 @@ a {
 .ticker-wrapper {
   position: relative;
   overflow: hidden;
-  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.38rem 1rem;
+  border-top: 1px solid rgba(120, 150, 210, 0.08);
 }
 
 .ticker-latest,
 .ticker-top {
-  background: rgba(15, 19, 26, 0.94);
+  background: rgba(9, 13, 22, 0.9);
 }
 
 .ticker-content {
   position: relative;
   overflow: hidden;
-  padding-right: 152px;
+  padding-right: 0;
   mask-image: linear-gradient(90deg, transparent 0, rgba(0, 0, 0, 0.96) 5.5%, rgba(0, 0, 0, 0.96) 91%, transparent 100%);
   -webkit-mask-image: linear-gradient(90deg, transparent 0, rgba(0, 0, 0, 0.96) 5.5%, rgba(0, 0, 0, 0.96) 91%, transparent 100%);
 }
 
 .ticker-items {
   display: inline-flex;
-  gap: 20px;
-  padding: 8px 0;
+  gap: 10px;
+  padding: 2px 0;
   white-space: nowrap;
   animation: ticker-scroll 28s linear infinite;
 }
@@ -968,11 +975,12 @@ a {
 .ticker-item {
   display: inline-flex;
   align-items: center;
-  padding: 4px 12px;
+  padding: 3px 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.02);
   color: var(--text-main);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(120, 150, 210, 0.08);
+  font-size: 0.86rem;
 }
 
 .ticker-item-placeholder {
@@ -981,38 +989,44 @@ a {
 }
 
 .ticker-text {
-  max-width: 270px;
+  max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .ticker-meta {
-  margin-left: 10px;
-  padding-left: 10px;
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  margin-left: 8px;
+  padding-left: 8px;
+  border-left: 1px solid rgba(120, 150, 210, 0.12);
   color: var(--text-soft);
-  font-size: 0.84rem;
+  font-size: 0.76rem;
 }
 
 .ticker-label {
-  position: absolute;
-  top: 50%;
-  right: 20px;
-  transform: translateY(-50%);
+  position: static;
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.48rem 0.86rem;
-  border-radius: 999px;
-  color: #ffd8d4;
-  border: 1px solid rgba(255, 123, 114, 0.22);
-  background: linear-gradient(180deg, rgba(255, 123, 114, 0.12), rgba(255, 123, 114, 0.08));
-  font-size: 0.78rem;
+  gap: 0.35rem;
+  padding: 0;
+  border-radius: 0;
+  color: #8ea0b8;
+  border: 0;
+  background: transparent;
+  font-size: 0.68rem;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  box-shadow: 0 12px 24px rgba(1, 4, 9, 0.18);
-  z-index: 2;
+  white-space: nowrap;
+}
+
+.ticker-label i.site-icon {
+  width: 1rem;
+  height: 1rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .hero-section {
@@ -1021,7 +1035,7 @@ a {
 
 .hero-section-home {
   position: relative;
-  padding-top: 2.05rem;
+  padding-top: 1.2rem;
 }
 
 .hero-section-home::before {
@@ -1062,8 +1076,8 @@ a {
   position: relative;
   grid-template-columns: 1fr;
   align-items: stretch;
-  gap: 0.85rem;
-  padding: 1.3rem 1.45rem 1.05rem;
+  gap: 0.72rem;
+  padding: 1.05rem 1.2rem 0.9rem;
   background:
     radial-gradient(circle at top left, rgba(110, 146, 215, 0.14), transparent 28%),
     radial-gradient(circle at bottom right, rgba(247, 191, 127, 0.06), transparent 24%),
@@ -1241,7 +1255,7 @@ a {
 .stats-row-home {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.72rem;
+  gap: 0.48rem;
   min-width: 0;
 }
 
@@ -1296,28 +1310,31 @@ a {
 }
 
 .stats-row-home .stat-card {
-  height: 100%;
-  min-height: 108px;
-  padding: 0.85rem 0.9rem !important;
+  height: auto;
+  min-height: 0;
+  padding: 0.7rem 0.78rem !important;
   text-align: left !important;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.58rem;
+  border-radius: 18px;
 }
 
 .stats-row-home .stat-card i.site-icon {
-  margin-bottom: 0.5rem !important;
+  margin-bottom: 0 !important;
 }
 
 .stats-row-home .stat-card h3 {
-  font-size: 1rem;
+  font-size: 0.86rem;
   line-height: 1.1;
   letter-spacing: -0.02em;
+  margin: 0 !important;
+  color: var(--text-strong) !important;
 }
 
 .stats-row-home .stat-card p {
-  font-size: 0.82rem;
-  line-height: 1.35;
+  display: none;
 }
 
 .hub-card {
@@ -3228,7 +3245,7 @@ h6 {
     position: static;
     transform: none;
     display: inline-flex;
-    margin: 0 0 0.75rem 1rem;
+    margin: 0;
   }
 
   .ticker-content {
@@ -3275,10 +3292,8 @@ h6 {
     justify-content: flex-start;
     width: fit-content;
     max-width: 100%;
-    padding: 0.38rem 0.72rem;
-    border-radius: 14px;
     font-size: 0.74rem;
-    gap: 0.42rem;
+    gap: 0.35rem;
   }
 
   .eyebrow {
@@ -3408,19 +3423,20 @@ h6 {
   }
 
   .stats-row-home {
-    gap: 0.58rem;
+    gap: 0.42rem;
   }
 
   .stats-row-home .stat-card {
-    padding: 0.88rem 0.8rem !important;
+    padding: 0.58rem 0.68rem !important;
+    gap: 0.48rem;
   }
 
   .stats-row-home .stat-card h3 {
-    font-size: 0.98rem;
+    font-size: 0.78rem;
   }
 
   .stats-row-home .stat-card p {
-    font-size: 0.82rem;
+    display: none;
   }
 
   .lead-copy {
@@ -3703,27 +3719,27 @@ h6 {
   .ticker-wrapper {
     margin-top: 0;
     display: grid;
-    grid-template-columns: 38px minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
-    gap: 0.55rem;
-    padding: 0.3rem 0.8rem;
+    gap: 0.46rem;
+    padding: 0.28rem 0.72rem;
   }
 
   .ticker-label {
     margin: 0;
-    width: 38px;
-    height: 38px;
+    width: auto;
+    height: auto;
     padding: 0;
-    justify-content: center;
-    border-radius: 999px;
-    font-size: 0;
-    letter-spacing: 0;
-    box-shadow: 0 10px 20px rgba(201, 60, 69, 0.16);
+    justify-content: flex-start;
+    border-radius: 0;
+    font-size: 0.58rem;
+    letter-spacing: 0.14em;
+    box-shadow: none;
   }
 
   .ticker-label i {
     margin: 0 !important;
-    font-size: 0.9rem;
+    font-size: 0.72rem;
   }
 
   .ticker-content {
@@ -3732,16 +3748,16 @@ h6 {
   }
 
   .ticker-items {
-    gap: 12px;
-    padding: 4px 0;
+    gap: 8px;
+    padding: 2px 0;
   }
 
   .ticker-item {
-    padding: 3px 10px;
+    padding: 2px 8px;
   }
 
   .ticker-text {
-    max-width: 180px;
+    max-width: 138px;
   }
 
   .downloads-home-shell {

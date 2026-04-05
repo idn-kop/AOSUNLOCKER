@@ -119,20 +119,6 @@ const globeSvg = `
 
 const primarySiteUrl = 'https://aosunlocker.com'
 
-const renderMiniSocialLinks = (extraClass = '') => `
-  <div class="mini-social-links ${extraClass}".trim() aria-label="AOSUNLOCKER social links">
-    <a class="mini-social-link mini-social-link-whatsapp" href="https://wa.me/6282234370999" target="_blank" rel="noreferrer" aria-label="WhatsApp admin" title="WhatsApp admin">
-      ${whatsappSvg}
-    </a>
-    <a class="mini-social-link mini-social-link-facebook" href="https://www.facebook.com/anggaaosunlocker" target="_blank" rel="noreferrer" aria-label="Facebook" title="Facebook">
-      ${facebookSvg}
-    </a>
-    <a class="mini-social-link mini-social-link-web" href="${primarySiteUrl}" target="_blank" rel="noreferrer" aria-label="Website" title="Website">
-      ${globeSvg}
-    </a>
-  </div>
-`
-
 export const renderTicker = (items: TickerItem[]) =>
   repeatForTicker(items)
     .map(
@@ -156,7 +142,7 @@ const renderSiteTickerResult = (latest: string, top: string) =>
     latest
       ? `
         <section class="ticker-wrapper ticker-latest">
-          <span class="ticker-label"><i class="fas fa-clock me-2"></i>Recent Uploads</span>
+          <span class="ticker-label"><i class="fas fa-clock me-2"></i>Latest</span>
           <div class="ticker-content"><div class="ticker-items">${latest}</div></div>
         </section>
       `
@@ -164,7 +150,7 @@ const renderSiteTickerResult = (latest: string, top: string) =>
     top
       ? `
         <section class="ticker-wrapper ticker-top">
-          <span class="ticker-label"><i class="fas fa-fire me-2"></i>Top Files</span>
+          <span class="ticker-label"><i class="fas fa-fire me-2"></i>Popular</span>
           <div class="ticker-content"><div class="ticker-items ticker-reverse">${top}</div></div>
         </section>
       `
@@ -179,7 +165,7 @@ const renderSiteTickerFallback = () => {
     return renderSiteTickerSections(
       `
         <section class="ticker-wrapper ticker-latest ticker-static">
-          <span class="ticker-label"><i class="fas fa-clock me-2"></i>Recent Uploads</span>
+          <span class="ticker-label"><i class="fas fa-clock me-2"></i>Latest</span>
           <div class="ticker-content">
             <div class="ticker-items ticker-items-static">
               <span class="ticker-item ticker-item-placeholder">Loading recent files...</span>
@@ -189,7 +175,7 @@ const renderSiteTickerFallback = () => {
       `,
       `
         <section class="ticker-wrapper ticker-top ticker-static">
-          <span class="ticker-label"><i class="fas fa-fire me-2"></i>Top Files</span>
+          <span class="ticker-label"><i class="fas fa-fire me-2"></i>Popular</span>
           <div class="ticker-content">
             <div class="ticker-items ticker-items-static">
               <span class="ticker-item ticker-item-placeholder">Loading top files...</span>
@@ -554,21 +540,6 @@ export const renderDownloadDetailSkeleton = () => `
 `
 
 export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downloadsActive = false) => `
-  <div class="top-bar">
-    <div class="container d-flex justify-content-between align-items-center flex-wrap">
-      <div class="d-flex flex-wrap">
-        <a href="/index.html"><i class="fas fa-house me-1"></i>Home</a>
-        <a href="/downloads.html"><i class="fas fa-folder-tree me-1"></i>Downloads</a>
-        <a href="/solution-files.html?brand=huawei"><i class="fas fa-mobile-alt me-1"></i>Huawei</a>
-        <a href="/solution-files.html?brand=honor"><i class="fas fa-download me-1"></i>Honor</a>
-      </div>
-      <div class="top-bar-actions">
-        <a class="support-link" href="https://wa.me/6282234370999" target="_blank" rel="noreferrer"><i class="fas fa-headset me-1"></i>WhatsApp Support</a>
-        ${renderMiniSocialLinks('mini-social-links-topbar')}
-      </div>
-    </div>
-  </div>
-
   <header class="middle-header">
     <div class="container">
       <div class="middle-header-panel">
@@ -576,11 +547,10 @@ export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downlo
           <div class="logo-wordmark-wrap">
             ${renderLogoWordmark()}
             <div class="logo-capability-row" aria-label="Portal capabilities">
-              <span class="logo-capability-chip"><i class="fas fa-folder-tree"></i>Curated folders</span>
-              <span class="logo-capability-chip"><i class="fas fa-signal"></i>Verified updates</span>
-              <span class="logo-capability-chip"><i class="fas fa-headset"></i>Direct support</span>
+              <span class="logo-capability-chip"><i class="fas fa-circle-check"></i>Verified files</span>
+              <span class="logo-capability-chip"><i class="fas fa-headset"></i>Fast support</span>
             </div>
-            <div class="logo-note"><i class="fas fa-circle-check"></i>Huawei, Honor, Kirin, HarmonyOS, and Qualcomm support</div>
+            <div class="logo-note">Huawei, Honor, Kirin, HarmonyOS, Qualcomm</div>
           </div>
         </div>
         <form class="search-form" id="searchForm">
@@ -653,7 +623,7 @@ export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downlo
     </div>
   </section>
 
-  <nav class="main-nav py-2">
+  <nav class="main-nav">
     <div class="container nav-grid">
       ${navItems
         .map(
@@ -665,7 +635,7 @@ export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downlo
         )
         .join('')}
       <a class="nav-link ${downloadsActive ? 'active' : ''}" href="/downloads.html"><i class="fas fa-folder-tree me-1"></i>Downloads</a>
-      <a class="nav-link nav-link-remote ${activeKey === 'remote' ? 'active' : ''}" href="/remote-service.html"><i class="fas fa-laptop-medical me-1"></i>Remote Service <span class="nav-link-mini-badge">Fast reply</span></a>
+      <a class="nav-link nav-link-remote ${activeKey === 'remote' ? 'active' : ''}" href="/remote-service.html"><i class="fas fa-laptop-medical me-1"></i>Remote Service</a>
       <details class="nav-contact-menu">
         <summary class="nav-link nav-link-contact nav-link-contact-toggle" aria-label="Open contact links">
           <i class="fas fa-address-card me-1"></i>Contact
