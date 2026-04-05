@@ -856,6 +856,68 @@ function getRecentFiles_() {
     .slice(0, 12);
 }
 
+function searchDownloadFiles(query) {
+  ensureSchema_();
+
+  const keyword = String(query || '').trim().toLowerCase();
+  if (!keyword) {
+    return {
+      ok: true,
+      query: '',
+      total: 0,
+      results: [],
+    };
+  }
+
+  const sheet = getDownloadsSheet_();
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0] || [];
+
+  const matches = values
+    .slice(1)
+    .map(function(row, index) {
+      return {
+        rowNumber: index + 2,
+        file: toFileRecord_(row, headers),
+      };
+    })
+    .filter(function(entry) {
+      return String(entry.file.id || '').trim();
+    })
+    .reverse()
+    .filter(function(entry) {
+      const file = entry.file;
+      const haystack = [
+        file.id,
+        file.brandId,
+        file.brandLabel,
+        file.categoryId,
+        file.categoryLabel,
+        file.title,
+        file.subtitle,
+        file.summary,
+        file.driveUrl,
+      ]
+        .map(function(value) {
+          return String(value || '').trim().toLowerCase();
+        })
+        .join(' ');
+
+      return haystack.indexOf(keyword) >= 0;
+    });
+
+  return {
+    ok: true,
+    query: keyword,
+    total: matches.length,
+    results: matches.slice(0, 40).map(function(entry) {
+      return Object.assign({}, entry.file, {
+        rowNumber: entry.rowNumber,
+      });
+    }),
+  };
+}
+
 function syncDownloadsCategoryUpdate_(originalCategoryId, nextCategoryId, categoryLabel, brandId, brandLabel) {
   const sheet = getDownloadsSheet_();
   const values = sheet.getDataRange().getValues();

@@ -225,9 +225,18 @@
 
           <section class="panel" id="recentPanel">
             <div class="panel-head">
-              <h3>Latest rows</h3>
-              <p>Recent entries saved to the sheet.</p>
+              <h3>File finder & latest rows</h3>
+              <p>Search all saved files, then edit or delete the exact row you need.</p>
             </div>
+
+            <div class="finder-toolbar">
+              <label class="finder-search">
+                <span class="visually-hidden">Find old files</span>
+                <input type="search" id="fileFinderInput" placeholder="Find old file by title, ID, brand, or folder" />
+              </label>
+              <button type="button" class="ghost" id="fileFinderClearButton">Clear</button>
+            </div>
+            <p class="muted finder-meta" id="fileFinderMeta">Showing the latest 12 rows.</p>
 
             <div class="table-wrap">
               <table>

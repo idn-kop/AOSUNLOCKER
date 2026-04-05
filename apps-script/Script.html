@@ -2,6 +2,10 @@
   const state = {
     categories: [],
     recentFiles: [],
+    searchResults: [],
+    searchQuery: '',
+    searchLoading: false,
+    searchTotal: 0,
     editId: '',
     brands: [],
     categoryEditId: '',
@@ -11,6 +15,7 @@
     integrityLoading: false,
     integrityExpanded: false,
   };
+  let fileSearchTimer = 0;
 
   document.addEventListener('DOMContentLoaded', () => {
     google.script.run
@@ -31,6 +36,8 @@
     document.getElementById('mobileDriveFocusShortcut').addEventListener('click', () => focusField('driveUrl'));
     document.getElementById('mobileRecentShortcut').addEventListener('click', () => jumpToPanel('recentPanel'));
     document.getElementById('mobileSaveShortcut').addEventListener('click', () => document.getElementById('fileForm').requestSubmit());
+    document.getElementById('fileFinderInput').addEventListener('input', onFileFinderInput);
+    document.getElementById('fileFinderClearButton').addEventListener('click', clearFileFinder);
     document.getElementById('integrityScanButton').addEventListener('click', () => refreshIntegrityScan(false));
     document.getElementById('integrityToggleButton').addEventListener('click', toggleIntegrityDetails);
     document.getElementById('confirmCancelButton').addEventListener('click', () => closeConfirmDialog(false));
@@ -120,21 +127,136 @@
       : '<option value="">No categories for this brand</option>';
   }
 
-  function renderRecentRows() {
-    const tbody = document.getElementById('recentRows');
+  function getVisibleFiles() {
+    return state.searchQuery.trim() ? state.searchResults : state.recentFiles;
+  }
 
-    if (!state.recentFiles.length) {
-      tbody.innerHTML = '<tr><td colspan="8" class="muted">No entries yet.</td></tr>';
+  function findFileRecord(fileId) {
+    const targetId = String(fileId || '').trim();
+    if (!targetId) return null;
+
+    const pools = [getVisibleFiles(), state.recentFiles, state.searchResults];
+    for (const pool of pools) {
+      const match = pool.find((item) => String(item.id || '').trim() === targetId);
+      if (match) return match;
+    }
+
+    return null;
+  }
+
+  function onFileFinderInput(event) {
+    const query = String(event.currentTarget.value || '').trim();
+    state.searchQuery = query;
+
+    if (fileSearchTimer) {
+      window.clearTimeout(fileSearchTimer);
+    }
+
+    if (!query) {
+      state.searchLoading = false;
+      state.searchResults = [];
+      state.searchTotal = 0;
+      renderRecentRows();
       return;
     }
 
-    tbody.innerHTML = state.recentFiles
-      .map((item, index) => `
+    state.searchLoading = true;
+    renderRecentRows();
+    fileSearchTimer = window.setTimeout(() => {
+      runFileFinderQuery(query, true);
+    }, 260);
+  }
+
+  function clearFileFinder() {
+    if (fileSearchTimer) {
+      window.clearTimeout(fileSearchTimer);
+    }
+
+    state.searchQuery = '';
+    state.searchLoading = false;
+    state.searchResults = [];
+    state.searchTotal = 0;
+    const input = document.getElementById('fileFinderInput');
+    input.value = '';
+    renderRecentRows();
+    input.focus();
+  }
+
+  function runFileFinderQuery(query, silent) {
+    const keyword = String(query || '').trim();
+    if (!keyword) {
+      clearFileFinder();
+      return;
+    }
+
+    state.searchLoading = true;
+    renderRecentRows();
+
+    google.script.run
+      .withSuccessHandler((response) => {
+        if (String(state.searchQuery || '').trim() !== keyword) return;
+
+        state.searchResults = response && Array.isArray(response.results) ? response.results : [];
+        state.searchTotal = response ? Number(response.total || state.searchResults.length || 0) : state.searchResults.length;
+        state.searchLoading = false;
+        renderRecentRows();
+
+        if (!silent) {
+          showSuccess(state.searchTotal ? `Found ${state.searchTotal} matching file(s).` : 'No matching files were found.');
+        }
+      })
+      .withFailureHandler((error) => {
+        state.searchLoading = false;
+        renderRecentRows();
+        if (!silent) {
+          showError(error);
+        }
+      })
+      .searchDownloadFiles(keyword);
+  }
+
+  function refreshFileFinderIfNeeded() {
+    const query = String(state.searchQuery || '').trim();
+    if (!query) {
+      renderRecentRows();
+      return;
+    }
+
+    runFileFinderQuery(query, true);
+  }
+
+  function renderRecentRows() {
+    const tbody = document.getElementById('recentRows');
+    const meta = document.getElementById('fileFinderMeta');
+    const visibleFiles = getVisibleFiles();
+
+    if (state.searchLoading) {
+      meta.textContent = `Searching all rows for "${state.searchQuery}"...`;
+      tbody.innerHTML = '<tr><td colspan="8" class="muted">Searching all rows...</td></tr>';
+      return;
+    }
+
+    if (state.searchQuery.trim()) {
+      meta.textContent = state.searchTotal
+        ? `Showing ${visibleFiles.length} of ${state.searchTotal} match(es) for "${state.searchQuery}".`
+        : `No matches found for "${state.searchQuery}".`;
+    } else {
+      meta.textContent = 'Showing the latest 12 rows.';
+    }
+
+    if (!visibleFiles.length) {
+      tbody.innerHTML = `<tr><td colspan="8" class="muted">${state.searchQuery.trim() ? 'No matching files were found.' : 'No entries yet.'}</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = visibleFiles
+      .map((item) => `
         <tr>
           <td>${escapeHtml(item.brandLabel || capitalize(item.brandId || ''))}</td>
           <td>${escapeHtml(item.categoryLabel)}</td>
           <td>
             <strong>${escapeHtml(item.title)}</strong>
+            <div class="finder-title-meta">${escapeHtml(item.id || '')}${item.rowNumber ? ` • Row ${escapeHtml(item.rowNumber)}` : ''}</div>
           </td>
           <td>${escapeHtml(item.date || '-')}</td>
           <td>${escapeHtml(item.size || '-')}</td>
@@ -142,20 +264,20 @@
           <td><span class="status-pill ${escapeHtml(item.status)}">${escapeHtml(item.status)}</span></td>
           <td>
             <div class="row-actions">
-              <button type="button" class="row-action" data-edit-index="${index}">Edit</button>
-              <button type="button" class="row-action row-action-danger" data-delete-index="${index}">Delete</button>
+              <button type="button" class="row-action" data-edit-file-id="${escapeHtml(item.id || '')}">Edit</button>
+              <button type="button" class="row-action row-action-danger" data-delete-file-id="${escapeHtml(item.id || '')}">Delete</button>
             </div>
           </td>
         </tr>
       `)
       .join('');
 
-    tbody.querySelectorAll('[data-edit-index]').forEach((button) => {
-      button.addEventListener('click', () => startEdit(Number(button.getAttribute('data-edit-index'))));
+    tbody.querySelectorAll('[data-edit-file-id]').forEach((button) => {
+      button.addEventListener('click', () => startEdit(button.getAttribute('data-edit-file-id')));
     });
 
-    tbody.querySelectorAll('[data-delete-index]').forEach((button) => {
-      button.addEventListener('click', () => onDeleteFile(Number(button.getAttribute('data-delete-index'))));
+    tbody.querySelectorAll('[data-delete-file-id]').forEach((button) => {
+      button.addEventListener('click', () => onDeleteFile(button.getAttribute('data-delete-file-id')));
     });
   }
 
@@ -249,6 +371,7 @@
         resetCategoryFormState();
         resetBrandFormState();
         showSuccess(response.message || 'Brand saved.');
+        refreshFileFinderIfNeeded();
         refreshIntegrityScan(true);
       })
       .withFailureHandler((error) => {
@@ -292,7 +415,7 @@
         setSaving(false);
         showSuccess(response.message || 'Saved.');
         state.recentFiles = response.recentFiles || [];
-        renderRecentRows();
+        refreshFileFinderIfNeeded();
         resetFormState();
         refreshIntegrityScan(true);
       })
@@ -334,6 +457,7 @@
         document.getElementById('categoryBrandId').value = state.brands[0] ? state.brands[0].id : 'huawei';
         resetCategoryFormState();
         showSuccess(response.message || 'Category added.');
+        refreshFileFinderIfNeeded();
         refreshIntegrityScan(true);
       })
       .withFailureHandler((error) => {
@@ -400,8 +524,8 @@
     button.textContent = isSaving ? 'Saving...' : state.editId ? 'Update File' : 'Save File';
   }
 
-  function startEdit(index) {
-    const item = state.recentFiles[index];
+  function startEdit(fileId) {
+    const item = findFileRecord(fileId);
     if (!item) return;
 
     state.editId = item.id;
@@ -530,6 +654,7 @@
         resetBrandFormState();
         resetCategoryFormState();
         showSuccess(response.message || 'Brand deleted.');
+        refreshFileFinderIfNeeded();
         refreshIntegrityScan(true);
       })
       .withFailureHandler((error) => {
@@ -562,6 +687,7 @@
         renderCategoryRows();
         resetCategoryFormState();
         showSuccess(response.message || 'Category deleted.');
+        refreshFileFinderIfNeeded();
         refreshIntegrityScan(true);
       })
       .withFailureHandler((error) => {
@@ -570,8 +696,8 @@
       .deleteCategory(item.id);
   }
 
-  async function onDeleteFile(index) {
-    const item = state.recentFiles[index];
+  async function onDeleteFile(fileId) {
+    const item = findFileRecord(fileId);
     if (!item) return;
 
     const confirmed = await showConfirmDialog({
@@ -588,7 +714,7 @@
     google.script.run
       .withSuccessHandler((response) => {
         state.recentFiles = response.recentFiles || [];
-        renderRecentRows();
+        refreshFileFinderIfNeeded();
         resetFormState();
         showSuccess(response.message || 'File deleted.');
         refreshIntegrityScan(true);
