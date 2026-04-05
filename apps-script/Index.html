@@ -104,6 +104,24 @@
           <div id="flash" class="flash hidden"></div>
         </section>
 
+        <section class="panel integrity-panel" id="integrityPanel">
+          <div class="integrity-head">
+            <div>
+              <p class="eyebrow">Integrity Check</p>
+              <h3>Scan brands, folders, and files</h3>
+              <p class="muted">Catch duplicate IDs, wrong brand/category links, and label mismatches before they break the public website.</p>
+            </div>
+            <div class="integrity-actions">
+              <span id="integrityStatusBadge" class="integrity-status">Not scanned yet</span>
+              <button type="button" class="ghost" id="integrityScanButton">Run Scan</button>
+            </div>
+          </div>
+          <div id="integritySummary" class="integrity-summary">
+            <div class="integrity-empty">Run a scan to verify the current sheet structure.</div>
+          </div>
+          <div id="integrityIssues" class="integrity-issues"></div>
+        </section>
+
         <section class="mobile-quick-strip" aria-label="Quick add shortcuts">
           <a class="quick-chip" href="#filePanel">New File</a>
           <button type="button" class="quick-chip ghost" id="mobileDriveFocusShortcut">Drive Link</button>

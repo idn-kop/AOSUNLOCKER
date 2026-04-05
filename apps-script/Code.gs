@@ -76,6 +76,246 @@ function getBootstrapData() {
   };
 }
 
+function runIntegrityScan() {
+  ensureSchema_();
+
+  const brandsSheet = getBrandsSheet_();
+  const settingsSheet = getSettingsSheet_();
+  const downloadsSheet = getDownloadsSheet_();
+
+  const brandRows = brandsSheet.getDataRange().getValues().slice(1);
+  const categoryValues = settingsSheet.getDataRange().getValues();
+  const categoryHeaders = categoryValues[0] || [];
+  const categoryRows = categoryValues.slice(1);
+  const downloadValues = downloadsSheet.getDataRange().getValues();
+  const downloadHeaders = downloadValues[0] || [];
+  const downloadRows = downloadValues.slice(1);
+  const hasBrandColumns = categoryHeaders.indexOf('brand_id') >= 0;
+
+  const issues = [];
+  const addIssue = function(level, title, detail) {
+    issues.push({
+      level: level === 'critical' ? 'critical' : 'warning',
+      title: String(title || '').trim() || 'Integrity issue',
+      detail: String(detail || '').trim() || 'Please review this row.',
+    });
+  };
+
+  const brandRegistry = {};
+  brandRows.forEach(function(row, index) {
+    const rowNumber = index + 2;
+    const brandId = String(row[0] || '').trim().toLowerCase();
+    const brandLabel = String(row[1] || '').trim();
+
+    if (!brandId && !brandLabel) return;
+
+    if (!brandId || !brandLabel) {
+      addIssue('warning', 'Incomplete brand row', 'Brand row ' + rowNumber + ' is missing ID or label.');
+      return;
+    }
+
+    if (!brandRegistry[brandId]) {
+      brandRegistry[brandId] = {
+        label: brandLabel,
+        rows: [rowNumber],
+      };
+      return;
+    }
+
+    brandRegistry[brandId].rows.push(rowNumber);
+    if (brandRegistry[brandId].label !== brandLabel) {
+      addIssue(
+        'warning',
+        'Brand label mismatch',
+        'Brand "' + brandId + '" uses different labels in rows ' + brandRegistry[brandId].rows.join(', ') + '.',
+      );
+    }
+  });
+
+  Object.keys(brandRegistry).forEach(function(brandId) {
+    if (brandRegistry[brandId].rows.length > 1) {
+      addIssue(
+        'critical',
+        'Duplicate brand ID',
+        'Brand "' + brandId + '" appears more than once in rows ' + brandRegistry[brandId].rows.join(', ') + '.',
+      );
+    }
+  });
+
+  const categoryRegistry = {};
+  categoryRows.forEach(function(row, index) {
+    const rowNumber = index + 2;
+    const brandId = String(hasBrandColumns ? row[0] : 'huawei').trim().toLowerCase();
+    const brandLabel = String(hasBrandColumns ? row[1] : 'Huawei').trim();
+    const categoryId = String(hasBrandColumns ? row[2] : row[0] || '').trim();
+    const categoryLabel = String(hasBrandColumns ? row[3] : row[1] || '').trim();
+
+    if (!brandId && !categoryId && !categoryLabel) return;
+
+    if (!brandId || !categoryId || !categoryLabel) {
+      addIssue('warning', 'Incomplete category row', 'Category row ' + rowNumber + ' is missing brand, ID, or label.');
+      return;
+    }
+
+    if (!brandRegistry[brandId]) {
+      addIssue(
+        'critical',
+        'Category points to missing brand',
+        'Category "' + categoryLabel + '" in row ' + rowNumber + ' uses unknown brand "' + brandId + '".',
+      );
+    } else if (brandLabel && brandRegistry[brandId].label !== brandLabel) {
+      addIssue(
+        'warning',
+        'Category brand label mismatch',
+        'Category "' + categoryLabel + '" in row ' + rowNumber + ' stores brand label "' + brandLabel + '" but brand "' + brandId + '" is "' + brandRegistry[brandId].label + '".',
+      );
+    }
+
+    if (!categoryRegistry[categoryId]) {
+      categoryRegistry[categoryId] = {
+        brandId: brandId,
+        label: categoryLabel,
+        rows: [rowNumber],
+      };
+      return;
+    }
+
+    categoryRegistry[categoryId].rows.push(rowNumber);
+    if (categoryRegistry[categoryId].brandId !== brandId) {
+      addIssue(
+        'critical',
+        'Duplicate category ID across brands',
+        'Category ID "' + categoryId + '" is reused by "' + categoryRegistry[categoryId].brandId + '" and "' + brandId + '" in rows ' + categoryRegistry[categoryId].rows.join(', ') + '.',
+      );
+    } else {
+      addIssue(
+        'critical',
+        'Duplicate category ID',
+        'Category ID "' + categoryId + '" appears more than once in rows ' + categoryRegistry[categoryId].rows.join(', ') + '.',
+      );
+    }
+
+    if (categoryRegistry[categoryId].label !== categoryLabel) {
+      addIssue(
+        'warning',
+        'Category label mismatch',
+        'Category ID "' + categoryId + '" stores different labels in rows ' + categoryRegistry[categoryId].rows.join(', ') + '.',
+      );
+    }
+  });
+
+  const fileRegistry = {};
+  downloadRows.forEach(function(row, index) {
+    const rowNumber = index + 2;
+    if (!String(row[0] || '').trim()) return;
+
+    const file = toFileRecord_(row, downloadHeaders);
+    const fileId = String(file.id || '').trim();
+    const fileTitle = String(file.title || file.subtitle || fileId || 'Untitled file').trim();
+    const fileBrandId = String(file.brandId || '').trim().toLowerCase();
+    const fileCategoryId = String(file.categoryId || '').trim();
+    const category = categoryRegistry[fileCategoryId];
+
+    if (!fileId) {
+      addIssue('warning', 'File row missing ID', 'File row ' + rowNumber + ' has no generated file ID.');
+      return;
+    }
+
+    if (!fileRegistry[fileId]) {
+      fileRegistry[fileId] = {
+        rows: [rowNumber],
+      };
+    } else {
+      fileRegistry[fileId].rows.push(rowNumber);
+    }
+
+    if (!brandRegistry[fileBrandId]) {
+      addIssue(
+        'critical',
+        'File points to missing brand',
+        'File "' + fileTitle + '" in row ' + rowNumber + ' uses unknown brand "' + fileBrandId + '".',
+      );
+    }
+
+    if (!category) {
+      addIssue(
+        'critical',
+        'File points to missing category',
+        'File "' + fileTitle + '" in row ' + rowNumber + ' uses unknown category "' + fileCategoryId + '".',
+      );
+    } else {
+      if (category.brandId !== fileBrandId) {
+        addIssue(
+          'critical',
+          'File brand/category mismatch',
+          'File "' + fileTitle + '" in row ' + rowNumber + ' uses brand "' + fileBrandId + '" but category "' + fileCategoryId + '" belongs to "' + category.brandId + '".',
+        );
+      }
+
+      if (String(file.categoryLabel || '').trim() && String(file.categoryLabel || '').trim() !== category.label) {
+        addIssue(
+          'warning',
+          'File category label mismatch',
+          'File "' + fileTitle + '" in row ' + rowNumber + ' stores category label "' + file.categoryLabel + '" but the folder is "' + category.label + '".',
+        );
+      }
+    }
+
+    if (brandRegistry[fileBrandId] && String(file.brandLabel || '').trim() && String(file.brandLabel || '').trim() !== brandRegistry[fileBrandId].label) {
+      addIssue(
+        'warning',
+        'File brand label mismatch',
+        'File "' + fileTitle + '" in row ' + rowNumber + ' stores brand label "' + file.brandLabel + '" but the brand label is "' + brandRegistry[fileBrandId].label + '".',
+      );
+    }
+
+    if (!String(file.driveUrl || '').trim()) {
+      addIssue('warning', 'File missing Drive link', 'File "' + fileTitle + '" in row ' + rowNumber + ' has no Google Drive link.');
+    }
+
+    if (!String(file.title || '').trim()) {
+      addIssue('warning', 'File missing title', 'File row ' + rowNumber + ' has an empty title.');
+    }
+  });
+
+  Object.keys(fileRegistry).forEach(function(fileId) {
+    if (fileRegistry[fileId].rows.length > 1) {
+      addIssue(
+        'critical',
+        'Duplicate file ID',
+        'File ID "' + fileId + '" appears more than once in rows ' + fileRegistry[fileId].rows.join(', ') + '.',
+      );
+    }
+  });
+
+  const sortedIssues = issues.sort(function(left, right) {
+    if (left.level === right.level) return left.title.localeCompare(right.title);
+    return left.level === 'critical' ? -1 : 1;
+  });
+
+  const criticalCount = sortedIssues.filter(function(issue) {
+    return issue.level === 'critical';
+  }).length;
+  const warningCount = sortedIssues.length - criticalCount;
+
+  return {
+    ok: true,
+    checkedAt: new Date().toISOString(),
+    status: criticalCount ? 'critical' : warningCount ? 'warning' : 'clean',
+    summary: {
+      brands: Object.keys(brandRegistry).length,
+      categories: Object.keys(categoryRegistry).length,
+      files: downloadRows.filter(function(row) {
+        return Boolean(String(row[0] || '').trim());
+      }).length,
+      critical: criticalCount,
+      warning: warningCount,
+      totalIssues: sortedIssues.length,
+    },
+    issues: sortedIssues.slice(0, 18),
+  };
+}
+
 function addBrand(payload) {
   ensureSchema_();
 

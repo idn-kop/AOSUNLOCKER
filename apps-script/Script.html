@@ -7,6 +7,8 @@
     categoryEditId: '',
     brandEditId: '',
     confirmResolver: null,
+    integrity: null,
+    integrityLoading: false,
   };
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -28,6 +30,7 @@
     document.getElementById('mobileDriveFocusShortcut').addEventListener('click', () => focusField('driveUrl'));
     document.getElementById('mobileRecentShortcut').addEventListener('click', () => jumpToPanel('recentPanel'));
     document.getElementById('mobileSaveShortcut').addEventListener('click', () => document.getElementById('fileForm').requestSubmit());
+    document.getElementById('integrityScanButton').addEventListener('click', () => refreshIntegrityScan(false));
     document.getElementById('confirmCancelButton').addEventListener('click', () => closeConfirmDialog(false));
     document.getElementById('confirmAcceptButton').addEventListener('click', () => closeConfirmDialog(true));
     document.querySelectorAll('[data-confirm-close]').forEach((node) => {
@@ -46,6 +49,8 @@
     renderBrandRows();
     renderRecentRows();
     renderCategoryRows();
+    renderIntegrityPanel();
+    refreshIntegrityScan(true);
     syncMobileSaveButton(false);
   }
 
@@ -242,6 +247,7 @@
         resetCategoryFormState();
         resetBrandFormState();
         showSuccess(response.message || 'Brand saved.');
+        refreshIntegrityScan(true);
       })
       .withFailureHandler((error) => {
         showError(error);
@@ -286,6 +292,7 @@
         state.recentFiles = response.recentFiles || [];
         renderRecentRows();
         resetFormState();
+        refreshIntegrityScan(true);
       })
       .withFailureHandler((error) => {
         setSaving(false);
@@ -325,6 +332,7 @@
         document.getElementById('categoryBrandId').value = state.brands[0] ? state.brands[0].id : 'huawei';
         resetCategoryFormState();
         showSuccess(response.message || 'Category added.');
+        refreshIntegrityScan(true);
       })
       .withFailureHandler((error) => {
         showError(error);
@@ -520,6 +528,7 @@
         resetBrandFormState();
         resetCategoryFormState();
         showSuccess(response.message || 'Brand deleted.');
+        refreshIntegrityScan(true);
       })
       .withFailureHandler((error) => {
         showError(error);
@@ -551,6 +560,7 @@
         renderCategoryRows();
         resetCategoryFormState();
         showSuccess(response.message || 'Category deleted.');
+        refreshIntegrityScan(true);
       })
       .withFailureHandler((error) => {
         showError(error);
@@ -579,11 +589,156 @@
         renderRecentRows();
         resetFormState();
         showSuccess(response.message || 'File deleted.');
+        refreshIntegrityScan(true);
       })
       .withFailureHandler((error) => {
         showError(error);
       })
       .deleteDownloadFile(item.id);
+  }
+
+  function refreshIntegrityScan(silent) {
+    state.integrityLoading = true;
+    renderIntegrityPanel();
+
+    google.script.run
+      .withSuccessHandler((report) => {
+        state.integrity = report || null;
+        state.integrityLoading = false;
+        renderIntegrityPanel();
+
+        if (!silent) {
+          const totalIssues = report && report.summary ? Number(report.summary.totalIssues || 0) : 0;
+          showSuccess(totalIssues ? `Integrity scan finished with ${totalIssues} issue(s).` : 'Integrity scan finished. No issues found.');
+        }
+      })
+      .withFailureHandler((error) => {
+        state.integrityLoading = false;
+        renderIntegrityPanel(error);
+
+        if (!silent) {
+          showError(error);
+        }
+      })
+      .runIntegrityScan();
+  }
+
+  function renderIntegrityPanel(error) {
+    const badge = document.getElementById('integrityStatusBadge');
+    const summary = document.getElementById('integritySummary');
+    const issues = document.getElementById('integrityIssues');
+    const button = document.getElementById('integrityScanButton');
+    const report = state.integrity;
+    const summaryData = report && report.summary ? report.summary : null;
+    const issueItems = report && Array.isArray(report.issues) ? report.issues : [];
+
+    button.disabled = state.integrityLoading;
+    button.textContent = state.integrityLoading ? 'Scanning...' : 'Run Scan';
+
+    badge.className = 'integrity-status';
+
+    if (state.integrityLoading) {
+      badge.classList.add('loading');
+      badge.textContent = 'Scanning data...';
+    } else if (error) {
+      badge.classList.add('critical');
+      badge.textContent = 'Scan failed';
+    } else if (!report) {
+      badge.textContent = 'Not scanned yet';
+    } else if (report.status === 'clean') {
+      badge.classList.add('clean');
+      badge.textContent = 'Structure looks clean';
+    } else if (report.status === 'critical') {
+      badge.classList.add('critical');
+      badge.textContent = 'Critical issues found';
+    } else {
+      badge.classList.add('warning');
+      badge.textContent = 'Warnings found';
+    }
+
+    if (!report && !error) {
+      summary.innerHTML = '<div class="integrity-empty">Run a scan to verify the current sheet structure.</div>';
+      issues.innerHTML = '';
+      return;
+    }
+
+    if (error) {
+      summary.innerHTML = '<div class="integrity-empty">The integrity scan could not finish. Try again after checking your sheet connection.</div>';
+      issues.innerHTML = `
+        <article class="integrity-issue critical">
+          <div class="integrity-issue-top">
+            <strong>Scan error</strong>
+            <span class="integrity-issue-level critical">Critical</span>
+          </div>
+          <p class="muted">${escapeHtml(error && error.message ? error.message : 'Something went wrong while checking the sheet.')}</p>
+        </article>
+      `;
+      return;
+    }
+
+    summary.innerHTML = `
+      <article class="integrity-summary-card">
+        <span class="integrity-summary-label">Brands</span>
+        <strong class="integrity-summary-value">${escapeHtml(summaryData.brands || 0)}</strong>
+      </article>
+      <article class="integrity-summary-card">
+        <span class="integrity-summary-label">Folders</span>
+        <strong class="integrity-summary-value">${escapeHtml(summaryData.categories || 0)}</strong>
+      </article>
+      <article class="integrity-summary-card">
+        <span class="integrity-summary-label">Files</span>
+        <strong class="integrity-summary-value">${escapeHtml(summaryData.files || 0)}</strong>
+      </article>
+      <article class="integrity-summary-card">
+        <span class="integrity-summary-label">Critical</span>
+        <strong class="integrity-summary-value">${escapeHtml(summaryData.critical || 0)}</strong>
+      </article>
+      <article class="integrity-summary-card">
+        <span class="integrity-summary-label">Warnings</span>
+        <strong class="integrity-summary-value">${escapeHtml(summaryData.warning || 0)}</strong>
+      </article>
+      <div class="integrity-scan-meta">Checked ${escapeHtml(formatDateTime(report.checkedAt))}</div>
+    `;
+
+    if (!issueItems.length) {
+      issues.innerHTML = `
+        <article class="integrity-issue">
+          <div class="integrity-issue-top">
+            <strong>No issues found</strong>
+            <span class="integrity-issue-level">Clean</span>
+          </div>
+          <p class="muted">Brands, folders, and files look aligned for the public website.</p>
+        </article>
+      `;
+      return;
+    }
+
+    issues.innerHTML = issueItems
+      .map((item) => {
+        const level = item && item.level === 'critical' ? 'critical' : 'warning';
+        return `
+          <article class="integrity-issue ${level}">
+            <div class="integrity-issue-top">
+              <strong>${escapeHtml(item && item.title ? item.title : 'Integrity issue')}</strong>
+              <span class="integrity-issue-level ${level}">${escapeHtml(level)}</span>
+            </div>
+            <p class="muted">${escapeHtml(item && item.detail ? item.detail : 'Please review this row.')}</p>
+          </article>
+        `;
+      })
+      .join('');
+  }
+
+  function formatDateTime(value) {
+    const text = String(value || '').trim();
+    if (!text) return 'just now';
+
+    const parsed = new Date(text);
+    if (Number.isNaN(parsed.getTime())) {
+      return text;
+    }
+
+    return parsed.toLocaleString();
   }
 
   function showConfirmDialog(options) {
