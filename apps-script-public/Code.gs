@@ -5,9 +5,11 @@ const BRANDS_SHEET_NAME = 'Brands';
 const META_SHEET_NAME = 'Meta';
 const CACHE_TTL_SECONDS = 60;
 const CACHE_VERSION_LOOKUP_SECONDS = 15;
+const CACHE_VERSION_META_SYNC_SECONDS = 300;
 const MAX_CACHE_VALUE_LENGTH = 95000;
 const CACHE_VERSION_PROPERTY = 'AOSUNLOCKER_PUBLIC_CACHE_VERSION';
 const CACHE_VERSION_CACHE_KEY = 'AOSUNLOCKER_PUBLIC_CACHE_VERSION_RUNTIME';
+const CACHE_VERSION_META_SYNC_KEY = 'AOSUNLOCKER_PUBLIC_CACHE_VERSION_META_SYNC';
 const SPREADSHEET_ID_PROPERTY = 'AOSUNLOCKER_PUBLIC_SPREADSHEET_ID';
 const PUBLIC_CACHE_VERSION_KEY = 'public_cache_version';
 
@@ -19,6 +21,11 @@ var allPublishedFilesMemo_ = null;
 function doGet(e) {
   resetRequestState_();
   const view = String((e && e.parameter && e.parameter.view) || 'catalog');
+
+  if (view === 'refresh') {
+    const requestedVersion = String((e && e.parameter && e.parameter.version) || '').trim();
+    return jsonOutput_(refreshPublicCache_(requestedVersion));
+  }
 
   if (view === 'categories') {
     const brandId = String((e && e.parameter && e.parameter.brand) || '').trim();
@@ -392,6 +399,27 @@ function writeCachedJson_(cacheKey, value) {
   }
 }
 
+function refreshPublicCache_(requestedVersion) {
+  const fallbackVersion = String(getMetaValue_(PUBLIC_CACHE_VERSION_KEY) || '').trim();
+  const nextVersion = String(requestedVersion || fallbackVersion || Date.now()).trim();
+
+  setCacheVersion_(nextVersion, false);
+  warmPublicCaches_();
+
+  return {
+    ok: true,
+    cacheVersion: cacheVersionMemo_,
+    warmedAt: new Date().toISOString(),
+  };
+}
+
+function warmPublicCaches_() {
+  getBrands_();
+  getCategories_('');
+  getAllPublishedFiles_();
+  getPublishedFiles_('', '');
+}
+
 function getCacheVersion_() {
   if (cacheVersionMemo_) {
     return cacheVersionMemo_;
@@ -404,32 +432,61 @@ function getCacheVersion_() {
     return cacheVersionMemo_;
   }
 
-  const sheetVersion = String(getMetaValue_(PUBLIC_CACHE_VERSION_KEY) || '').trim();
-  if (sheetVersion) {
-    cacheVersionMemo_ = sheetVersion;
+  const properties = PropertiesService.getScriptProperties();
+  var version = String(properties.getProperty(CACHE_VERSION_PROPERTY) || '').trim();
+  if (version) {
+    version = syncCacheVersionFromMetaIfNeeded_(version, runtimeCache, properties);
+    cacheVersionMemo_ = version;
     runtimeCache.put(CACHE_VERSION_CACHE_KEY, cacheVersionMemo_, CACHE_VERSION_LOOKUP_SECONDS);
-    PropertiesService.getScriptProperties().setProperty(CACHE_VERSION_PROPERTY, cacheVersionMemo_);
     return cacheVersionMemo_;
   }
 
-  const properties = PropertiesService.getScriptProperties();
-  var version = String(properties.getProperty(CACHE_VERSION_PROPERTY) || '').trim();
-  if (!version) {
-    version = String(Date.now());
-    properties.setProperty(CACHE_VERSION_PROPERTY, version);
+  const sheetVersion = String(getMetaValue_(PUBLIC_CACHE_VERSION_KEY) || '').trim();
+  if (sheetVersion) {
+    return setCacheVersion_(sheetVersion, false);
   }
 
-  cacheVersionMemo_ = version;
+  return setCacheVersion_(String(Date.now()), false);
+}
+
+function syncCacheVersionFromMetaIfNeeded_(currentVersion, runtimeCache, properties) {
+  if (String(runtimeCache.get(CACHE_VERSION_META_SYNC_KEY) || '').trim()) {
+    return currentVersion;
+  }
+
+  runtimeCache.put(CACHE_VERSION_META_SYNC_KEY, '1', CACHE_VERSION_META_SYNC_SECONDS);
+
+  const sheetVersion = String(getMetaValue_(PUBLIC_CACHE_VERSION_KEY) || '').trim();
+  if (!sheetVersion) {
+    return currentVersion;
+  }
+
+  if (sheetVersion !== currentVersion) {
+    properties.setProperty(CACHE_VERSION_PROPERTY, sheetVersion);
+  }
+
+  return sheetVersion;
+}
+
+function setCacheVersion_(version, updateMetaSheet) {
+  const nextVersion = String(version || '').trim() || String(Date.now());
+
+  cacheVersionMemo_ = nextVersion;
+  PropertiesService.getScriptProperties().setProperty(CACHE_VERSION_PROPERTY, cacheVersionMemo_);
+
+  const runtimeCache = CacheService.getScriptCache();
   runtimeCache.put(CACHE_VERSION_CACHE_KEY, cacheVersionMemo_, CACHE_VERSION_LOOKUP_SECONDS);
+  runtimeCache.put(CACHE_VERSION_META_SYNC_KEY, '1', CACHE_VERSION_META_SYNC_SECONDS);
+
+  if (updateMetaSheet) {
+    setMetaValue_(PUBLIC_CACHE_VERSION_KEY, cacheVersionMemo_);
+  }
+
   return cacheVersionMemo_;
 }
 
 function bumpCacheVersion_() {
-  cacheVersionMemo_ = String(Date.now());
-  PropertiesService.getScriptProperties().setProperty(CACHE_VERSION_PROPERTY, cacheVersionMemo_);
-  CacheService.getScriptCache().put(CACHE_VERSION_CACHE_KEY, cacheVersionMemo_, CACHE_VERSION_LOOKUP_SECONDS);
-  setMetaValue_(PUBLIC_CACHE_VERSION_KEY, cacheVersionMemo_);
-  return cacheVersionMemo_;
+  return setCacheVersion_(String(Date.now()), true);
 }
 
 function getMetaValue_(key) {

@@ -7,6 +7,8 @@ const SETTINGS_HEADERS = ['brand_id', 'brand_label', 'category_id', 'category_la
 const META_HEADERS = ['key', 'value'];
 const PUBLIC_CACHE_VERSION_KEY = 'public_cache_version';
 const LAST_ADMIN_UPDATE_KEY = 'last_admin_update';
+const PUBLIC_REFRESH_URL_PROPERTY = 'AOSUNLOCKER_PUBLIC_REFRESH_URL';
+const DEFAULT_PUBLIC_REFRESH_URL = 'https://script.google.com/macros/s/AKfycbyihbk4zf7wShGfRLyZ8Lo4faZS0jHJkIPV-kIE9mu6uw_BTuZ995b93m7ewb09h8Ts/exec';
 
 const DOWNLOADS_HEADERS = [
   'id',
@@ -959,8 +961,44 @@ function setMetaValue_(key, value) {
 
 function touchPublicCacheVersion_() {
   const now = new Date();
-  setMetaValue_(PUBLIC_CACHE_VERSION_KEY, String(now.getTime()));
-  setMetaValue_(LAST_ADMIN_UPDATE_KEY, now.toISOString());
+  const version = String(now.getTime());
+  const updatedAt = now.toISOString();
+
+  setMetaValue_(PUBLIC_CACHE_VERSION_KEY, version);
+  setMetaValue_(LAST_ADMIN_UPDATE_KEY, updatedAt);
+  refreshPublicCacheEndpoint_(version, updatedAt);
+}
+
+function refreshPublicCacheEndpoint_(version, updatedAt) {
+  const baseUrl = getPublicRefreshUrl_();
+  if (!baseUrl) return;
+
+  const separator = baseUrl.indexOf('?') >= 0 ? '&' : '?';
+  const url = baseUrl +
+    separator +
+    'view=refresh&version=' + encodeURIComponent(String(version || '').trim()) +
+    '&updatedAt=' + encodeURIComponent(String(updatedAt || '').trim());
+
+  try {
+    const response = UrlFetchApp.fetch(url, {
+      followRedirects: true,
+      muteHttpExceptions: true,
+    });
+
+    if (response.getResponseCode() >= 400) {
+      Logger.log('Public cache refresh returned HTTP ' + response.getResponseCode());
+    }
+  } catch (error) {
+    Logger.log('Public cache refresh failed: ' + error.message);
+  }
+}
+
+function getPublicRefreshUrl_() {
+  const configured = String(
+    PropertiesService.getScriptProperties().getProperty(PUBLIC_REFRESH_URL_PROPERTY) || ''
+  ).trim();
+
+  return configured || DEFAULT_PUBLIC_REFRESH_URL;
 }
 
 function getOrCreateSheet_(spreadsheet, name) {
