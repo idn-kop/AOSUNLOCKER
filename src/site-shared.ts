@@ -194,7 +194,7 @@ const renderSiteTickerFallback = () => {
           <span class="ticker-label"><i class="fas fa-clock me-2"></i>Latest</span>
           <div class="ticker-content">
             <div class="ticker-items ticker-items-static">
-              <span class="ticker-item ticker-item-placeholder">Loading recent files...</span>
+              <span class="ticker-item ticker-item-placeholder">Waiting for latest update</span>
             </div>
           </div>
         </section>
@@ -204,7 +204,7 @@ const renderSiteTickerFallback = () => {
           <span class="ticker-label"><i class="fas fa-fire me-2"></i>Popular</span>
           <div class="ticker-content">
             <div class="ticker-items ticker-items-static">
-              <span class="ticker-item ticker-item-placeholder">Loading top files...</span>
+              <span class="ticker-item ticker-item-placeholder">Waiting for top file update</span>
             </div>
           </div>
         </section>
@@ -512,6 +512,17 @@ export const renderDownloadLoadingState = (title: string, copy: string) => `
   </div>
 `
 
+export const renderFooterPayments = () => `
+  <div class="footer-bottom-meta footer-payment-strip" aria-label="Accepted payments">
+    <span class="footer-payment-badge">
+      <img src="/binance.webp" alt="Binance" loading="lazy" decoding="async" />
+    </span>
+    <span class="footer-payment-badge">
+      <img src="/tether.png" alt="Tether" loading="lazy" decoding="async" />
+    </span>
+  </div>
+`
+
 export const renderDownloadHomeSkeleton = (count = 3) => `
   <div class="download-home-grid download-home-grid-skeleton">
     ${Array.from({ length: count })
@@ -608,7 +619,7 @@ export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downlo
             <i class="fas fa-magnifying-glass search-shell-icon"></i>
             <div class="search-copy">
               <span class="search-shell-label">Search</span>
-              <input type="text" id="searchInput" aria-label="Search downloads" placeholder="Search files, models, or solutions..." autocomplete="off" autocapitalize="none" spellcheck="false" inputmode="search" enterkeyhint="search" />
+              <input type="text" id="searchInput" aria-label="Search downloads" autocomplete="off" autocapitalize="none" spellcheck="false" inputmode="search" enterkeyhint="search" />
             </div>
             <button class="search-submit-button" type="submit" aria-label="Search"><i class="fas fa-arrow-up-right-from-square"></i></button>
           </div>
@@ -744,9 +755,7 @@ export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downlo
       </div>
       <div class="footer-bottom">
         <span>&copy; 2026 AOSUNLOCKER Huawei Lab. All rights reserved.</span>
-        <div class="footer-bottom-meta">
-          <span>Huawei, Honor, Kirin, HarmonyOS, and Qualcomm only</span>
-        </div>
+        ${renderFooterPayments()}
       </div>
     </div>
   </footer>
@@ -1052,7 +1061,7 @@ export const setupSearchAndScroll = () => {
       searchDropdown.innerHTML = `
         <div class="search-dropdown-empty">
           <i class="fas fa-magnifying-glass"></i>
-          <span>No matching results for "${escapeHtml(value.trim())}"</span>
+          <span>Still no matching file for "${escapeHtml(value.trim())}"</span>
         </div>
       `
       return

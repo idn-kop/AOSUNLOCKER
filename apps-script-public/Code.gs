@@ -4,8 +4,10 @@ const SETTINGS_SHEET_NAME = 'Settings';
 const BRANDS_SHEET_NAME = 'Brands';
 const META_SHEET_NAME = 'Meta';
 const CACHE_TTL_SECONDS = 60;
+const CACHE_VERSION_LOOKUP_SECONDS = 15;
 const MAX_CACHE_VALUE_LENGTH = 95000;
 const CACHE_VERSION_PROPERTY = 'AOSUNLOCKER_PUBLIC_CACHE_VERSION';
+const CACHE_VERSION_CACHE_KEY = 'AOSUNLOCKER_PUBLIC_CACHE_VERSION_RUNTIME';
 const SPREADSHEET_ID_PROPERTY = 'AOSUNLOCKER_PUBLIC_SPREADSHEET_ID';
 const PUBLIC_CACHE_VERSION_KEY = 'public_cache_version';
 
@@ -391,9 +393,22 @@ function writeCachedJson_(cacheKey, value) {
 }
 
 function getCacheVersion_() {
+  if (cacheVersionMemo_) {
+    return cacheVersionMemo_;
+  }
+
+  const runtimeCache = CacheService.getScriptCache();
+  const cachedRuntimeVersion = String(runtimeCache.get(CACHE_VERSION_CACHE_KEY) || '').trim();
+  if (cachedRuntimeVersion) {
+    cacheVersionMemo_ = cachedRuntimeVersion;
+    return cacheVersionMemo_;
+  }
+
   const sheetVersion = String(getMetaValue_(PUBLIC_CACHE_VERSION_KEY) || '').trim();
   if (sheetVersion) {
     cacheVersionMemo_ = sheetVersion;
+    runtimeCache.put(CACHE_VERSION_CACHE_KEY, cacheVersionMemo_, CACHE_VERSION_LOOKUP_SECONDS);
+    PropertiesService.getScriptProperties().setProperty(CACHE_VERSION_PROPERTY, cacheVersionMemo_);
     return cacheVersionMemo_;
   }
 
@@ -405,12 +420,14 @@ function getCacheVersion_() {
   }
 
   cacheVersionMemo_ = version;
+  runtimeCache.put(CACHE_VERSION_CACHE_KEY, cacheVersionMemo_, CACHE_VERSION_LOOKUP_SECONDS);
   return cacheVersionMemo_;
 }
 
 function bumpCacheVersion_() {
   cacheVersionMemo_ = String(Date.now());
   PropertiesService.getScriptProperties().setProperty(CACHE_VERSION_PROPERTY, cacheVersionMemo_);
+  CacheService.getScriptCache().put(CACHE_VERSION_CACHE_KEY, cacheVersionMemo_, CACHE_VERSION_LOOKUP_SECONDS);
   setMetaValue_(PUBLIC_CACHE_VERSION_KEY, cacheVersionMemo_);
   return cacheVersionMemo_;
 }

@@ -17,6 +17,7 @@ import {
   renderDownloadLoadingState,
   renderDownloadListRow,
   renderFirmware,
+  renderFooterPayments,
   renderModelFolderCard,
   renderSiteChrome,
   renderStars,
@@ -314,7 +315,7 @@ export const renderDownloadPage = () => {
       <div class="container py-5">
         <div class="footer-bottom">
           <span>&copy; 2026 AOSUNLOCKER Huawei Lab. All rights reserved.</span>
-          <span>Huawei, Honor, Kirin, HarmonyOS, and Qualcomm only</span>
+          ${renderFooterPayments()}
         </div>
       </div>
     </footer>
