@@ -162,8 +162,13 @@ const writeCache = <T>(key: string, value: T) => {
   }
 }
 
-const fetchJsonCached = async <T>(cacheKey: string, url: string) => {
-  const cached = readCache<T>(cacheKey)
+const fetchJsonCached = async <T>(
+  cacheKey: string,
+  url: string,
+  options: { preferFresh?: boolean } = {},
+) => {
+  const { preferFresh = false } = options
+  const cached = preferFresh ? null : readCache<T>(cacheKey)
   if (cached) return cached
 
   const inFlightKey = `${cacheKey}:${url}`
@@ -498,7 +503,9 @@ export const loadCategoriesByBrand = async (brandId: BrandId) => {
   }
 
   try {
-    const data = await fetchJsonCached<PublicCategoriesResponse>(cacheKey, url)
+    const data = await fetchJsonCached<PublicCategoriesResponse>(cacheKey, url, {
+      preferFresh: true,
+    })
     const liveCategories = dedupeCategories(data.categories ?? []).map((item) => normalizeCategory(item, brandId))
 
     return {
@@ -527,7 +534,9 @@ export const loadBrandFolders = async () => {
   }
 
   try {
-    const data = await fetchJsonCached<PublicBrandsResponse>(cacheKey, url)
+    const data = await fetchJsonCached<PublicBrandsResponse>(cacheKey, url, {
+      preferFresh: true,
+    })
     const liveBrands = dedupeBrands(data.brands ?? [])
       .filter((item) => item.id)
       .map((item) => {
@@ -562,7 +571,9 @@ export const loadHomepageTickers = async (): Promise<{ latest: TickerItem[]; top
   }
 
   try {
-    const data = await fetchJsonCached<PublicFilesResponse>('homepage-tickers', url)
+    const data = await fetchJsonCached<PublicFilesResponse>('homepage-tickers', url, {
+      preferFresh: true,
+    })
     const files = dedupeFiles(data.files ?? []).filter((item) => toTickerTitle(item))
 
     const latest = [...files]
@@ -597,7 +608,9 @@ export const loadGlobalSearchCatalog = async (): Promise<SearchCatalogEntry[]> =
   }
 
   try {
-    const data = await fetchJsonCached<PublicFilesResponse>('homepage-tickers', url)
+    const data = await fetchJsonCached<PublicFilesResponse>('homepage-tickers', url, {
+      preferFresh: true,
+    })
     const liveEntries = dedupeFiles(data.files ?? [])
       .filter((file) => {
         const fileId = String(file.id || '').trim()
@@ -652,7 +665,9 @@ export const loadFilesByCategory = async (categoryId: string, brandId?: BrandId)
   }
 
   try {
-    const data = await fetchJsonCached<PublicFilesResponse>(cacheKey, url)
+    const data = await fetchJsonCached<PublicFilesResponse>(cacheKey, url, {
+      preferFresh: true,
+    })
     const liveFileRecords = dedupeFiles(data.files ?? [])
     const liveFiles = liveFileRecords.map(normalizeFile)
     const liveCategory =
@@ -702,7 +717,9 @@ export const loadFileById = async (fileId: string) => {
   }
 
   try {
-    const data = await fetchJsonCached<PublicFileResponse>(`file:${fileId}`, url)
+    const data = await fetchJsonCached<PublicFileResponse>(`file:${fileId}`, url, {
+      preferFresh: true,
+    })
     const file = data.file
 
     if (!file) {
