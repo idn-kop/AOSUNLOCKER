@@ -202,7 +202,6 @@ export const renderPage = async (pageKey: SitePageKey) => {
               ? `
                 <div class="downloads-home-head">
                   <p class="eyebrow">Huawei & Honor Files</p>
-                  <h2 class="visually-hidden">Huawei & Honor Files</h2>
                 </div>
                 <div class="downloads-home-shell" id="homeBrandMount">${renderDownloadEmptyState(
                   'Loading folders',
