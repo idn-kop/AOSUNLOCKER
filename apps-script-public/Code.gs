@@ -7,11 +7,13 @@ const CACHE_TTL_SECONDS = 60;
 const CACHE_VERSION_LOOKUP_SECONDS = 15;
 const CACHE_VERSION_META_SYNC_SECONDS = 300;
 const MAX_CACHE_VALUE_LENGTH = 95000;
+const MAX_PERSISTENT_JSON_LENGTH = 8500;
 const CACHE_VERSION_PROPERTY = 'AOSUNLOCKER_PUBLIC_CACHE_VERSION';
 const CACHE_VERSION_CACHE_KEY = 'AOSUNLOCKER_PUBLIC_CACHE_VERSION_RUNTIME';
 const CACHE_VERSION_META_SYNC_KEY = 'AOSUNLOCKER_PUBLIC_CACHE_VERSION_META_SYNC';
 const SPREADSHEET_ID_PROPERTY = 'AOSUNLOCKER_PUBLIC_SPREADSHEET_ID';
 const PUBLIC_CACHE_VERSION_KEY = 'public_cache_version';
+const PERSISTENT_JSON_PROPERTY_PREFIX = 'AOSUNLOCKER_PUBLIC_JSON_';
 
 var spreadsheetMemo_ = null;
 var sheetValuesMemo_ = {};
@@ -118,6 +120,49 @@ function getCategories_(brandId) {
   const normalizedBrandId = normalizeId_(brandId);
 
   return withJsonCache_('categories', [normalizedBrandId], function() {
+    return getAllCategories_().filter(function(item) {
+      if (!item || !item.id || !item.label) return false;
+      return !normalizedBrandId || normalizeId_(item.brandId) === normalizedBrandId;
+    });
+  });
+}
+
+function getBrands_() {
+  return withPersistentJsonCache_('brands', [], function() {
+    const values = getSheetValues_(BRANDS_SHEET_NAME);
+
+    if (values.length) {
+      return dedupeBrands_(values
+        .slice(1)
+        .map(function(row) {
+          return {
+            id: String(row[0] || '').trim(),
+            label: String(row[1] || '').trim(),
+          };
+        })
+        .filter(function(item) {
+          return item.id && item.label;
+        }));
+    }
+
+    const categories = getCategories_('');
+    const brandMap = {};
+    categories.forEach(function(item) {
+      if (!item.brandId) return;
+      brandMap[item.brandId] = item.brandLabel || item.brandId;
+    });
+
+    return dedupeBrands_(Object.keys(brandMap).map(function(id) {
+      return {
+        id: id,
+        label: String(brandMap[id] || id),
+      };
+    }));
+  });
+}
+
+function getAllCategories_() {
+  return withPersistentJsonCache_('categories-all', [], function() {
     const values = getSheetValues_(SETTINGS_SHEET_NAME);
     if (!values.length) {
       return [];
@@ -151,43 +196,8 @@ function getCategories_(brandId) {
         return null;
       })
       .filter(function(item) {
-        if (!item || !item.id || !item.label) return false;
-        return !normalizedBrandId || normalizeId_(item.brandId) === normalizedBrandId;
+        return item && item.id && item.label;
       }));
-  });
-}
-
-function getBrands_() {
-  return withJsonCache_('brands', [], function() {
-    const values = getSheetValues_(BRANDS_SHEET_NAME);
-
-    if (values.length) {
-      return dedupeBrands_(values
-        .slice(1)
-        .map(function(row) {
-          return {
-            id: String(row[0] || '').trim(),
-            label: String(row[1] || '').trim(),
-          };
-        })
-        .filter(function(item) {
-          return item.id && item.label;
-        }));
-    }
-
-    const categories = getCategories_('');
-    const brandMap = {};
-    categories.forEach(function(item) {
-      if (!item.brandId) return;
-      brandMap[item.brandId] = item.brandLabel || item.brandId;
-    });
-
-    return dedupeBrands_(Object.keys(brandMap).map(function(id) {
-      return {
-        id: id,
-        label: String(brandMap[id] || id),
-      };
-    }));
   });
 }
 
@@ -345,6 +355,25 @@ function withJsonCache_(scope, keyParts, producer) {
   return value;
 }
 
+function withPersistentJsonCache_(scope, keyParts, producer) {
+  const cacheKey = getCacheKey_(scope, keyParts);
+  const cachedValue = readCachedJson_(cacheKey);
+  if (cachedValue !== null) {
+    return cachedValue;
+  }
+
+  const persistentValue = readPersistentJson_(scope);
+  if (persistentValue !== null) {
+    writeCachedJson_(cacheKey, persistentValue);
+    return persistentValue;
+  }
+
+  const value = producer();
+  writeCachedJson_(cacheKey, value);
+  writePersistentJson_(scope, value);
+  return value;
+}
+
 function getCacheKey_(scope, keyParts) {
   const parts = (keyParts || []).map(function(part) {
     return normalizeId_(part) || 'all';
@@ -399,6 +428,70 @@ function writeCachedJson_(cacheKey, value) {
   }
 }
 
+function getPersistentJsonPropertyKey_(scope) {
+  return PERSISTENT_JSON_PROPERTY_PREFIX + String(scope || '').trim().toUpperCase().replace(/[^A-Z0-9_]+/g, '_');
+}
+
+function readPersistentJson_(scope) {
+  const raw = String(PropertiesService.getScriptProperties().getProperty(getPersistentJsonPropertyKey_(scope)) || '').trim();
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    var parsed = null;
+
+    if (raw.indexOf('gz:') === 0) {
+      const compressedBytes = Utilities.base64Decode(raw.slice(3));
+      const text = Utilities.ungzip(Utilities.newBlob(compressedBytes)).getDataAsString();
+      parsed = JSON.parse(text);
+    } else {
+      parsed = JSON.parse(raw);
+    }
+
+    if (!parsed || parsed.version !== getCacheVersion_()) {
+      return null;
+    }
+
+    return parsed.data;
+  } catch (error) {
+    return null;
+  }
+}
+
+function writePersistentJson_(scope, value) {
+  const wrapped = {
+    version: getCacheVersion_(),
+    data: value,
+  };
+  const serialized = serializePersistentJson_(wrapped);
+  if (!serialized) {
+    return;
+  }
+
+  PropertiesService.getScriptProperties().setProperty(getPersistentJsonPropertyKey_(scope), serialized);
+}
+
+function serializePersistentJson_(value) {
+  const json = JSON.stringify(value);
+  if (json.length <= MAX_PERSISTENT_JSON_LENGTH) {
+    return json;
+  }
+
+  try {
+    const compressed = 'gz:' + Utilities.base64Encode(
+      Utilities.gzip(Utilities.newBlob(json, 'application/json')).getBytes(),
+    );
+
+    if (compressed.length <= MAX_PERSISTENT_JSON_LENGTH) {
+      return compressed;
+    }
+  } catch (error) {
+  }
+
+  return '';
+}
+
 function refreshPublicCache_(requestedVersion) {
   const fallbackVersion = String(getMetaValue_(PUBLIC_CACHE_VERSION_KEY) || '').trim();
   const nextVersion = String(requestedVersion || fallbackVersion || Date.now()).trim();
@@ -414,10 +507,18 @@ function refreshPublicCache_(requestedVersion) {
 }
 
 function warmPublicCaches_() {
-  getBrands_();
-  getCategories_('');
+  const brands = getBrands_();
+  getAllCategories_();
   getAllPublishedFiles_();
   getPublishedFiles_('', '');
+
+  brands.forEach(function(brand) {
+    const brandId = String((brand && brand.id) || '').trim();
+    if (!brandId) return;
+
+    getCategories_(brandId);
+    getPublishedFiles_('', brandId);
+  });
 }
 
 function getCacheVersion_() {
