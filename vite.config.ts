@@ -9,6 +9,7 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
+        admin: 'admin.html',
         main: 'index.html',
         download: 'download.html',
         downloads: 'downloads.html',
