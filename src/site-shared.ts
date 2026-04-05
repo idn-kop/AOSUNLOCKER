@@ -10,7 +10,7 @@ import type {
   TickerItem,
 } from './data-types'
 import type { SearchCatalogEntry } from './live-data'
-import { loadGlobalSearchCatalog, loadHomepageTickers, warmRouteDataFromHref } from './live-data'
+import { loadGlobalSearchCatalog, loadHomepageTickers, peekHomepageTickers, warmRouteDataFromHref } from './live-data'
 
 const repeatForTicker = <T>(items: T[], minimum = 12) => {
   if (!items.length) return []
@@ -205,7 +205,18 @@ const hydrateSiteTicker = () => {
   const tickerMount = document.querySelector<HTMLDivElement>('#siteTickerMount')
   if (!tickerMount) return
 
-  tickerMount.innerHTML = renderSiteTickerFallback()
+  const cachedTicker = peekHomepageTickers()
+  tickerMount.innerHTML =
+    cachedTicker && (cachedTicker.latest.length || cachedTicker.top.length)
+      ? renderSiteTickerSections(
+          cachedTicker.latest.length
+            ? renderSiteTickerResult(renderTicker(cachedTicker.latest), '')
+            : renderSiteTickerPlaceholder('Latest', 'fa-clock', 'Waiting for latest update'),
+          cachedTicker.top.length
+            ? renderSiteTickerResult('', renderTicker(cachedTicker.top))
+            : renderSiteTickerPlaceholder('Popular', 'fa-fire', 'Waiting for top file update'),
+        )
+      : renderSiteTickerFallback()
 
   if (tickerMount.dataset.tickerMode === 'static') {
     return

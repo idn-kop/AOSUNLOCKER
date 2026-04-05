@@ -1,5 +1,5 @@
 import { downloadHomeCategories } from './download-data'
-import { loadBrandFolders } from './live-data'
+import { loadBrandFolders, peekBrandFolders } from './live-data'
 import { pageLinks, pages, remoteServiceQualcommEntries, stats } from './portal-data'
 import {
   renderDownloadHomeCard,
@@ -29,6 +29,11 @@ const renderBrandHomeGrid = (content = downloadHomeCategories) =>
         'No brand folders available yet',
         'Published brand folders will appear here automatically as soon as they are available.',
       )
+
+const getHomeCoreBrands = <T extends { brandId?: string }>(items: T[]) =>
+  ['huawei', 'honor']
+    .map((brandId) => items.find((item) => item.brandId === brandId))
+    .filter((item): item is T => Boolean(item))
 
 const renderRemoteServiceSection = () => {
   const groups = groupRemoteServiceEntries(remoteServiceQualcommEntries)
@@ -203,10 +208,7 @@ export const renderPage = async (pageKey: SitePageKey) => {
                 <div class="downloads-home-head">
                   <p class="eyebrow">Huawei & Honor Files</p>
                 </div>
-                <div class="downloads-home-shell" id="homeBrandMount">${renderDownloadEmptyState(
-                  'Waiting for admin update',
-                  'Folder access will appear after the next publish.',
-                )}</div>
+                <div class="downloads-home-shell" id="homeBrandMount">${renderBrandHomeGrid(getHomeCoreBrands(downloadHomeCategories))}</div>
               `
               : `
                 <div class="section-head">
@@ -273,7 +275,8 @@ export const renderPage = async (pageKey: SitePageKey) => {
   const brandMount = document.querySelector<HTMLDivElement>('#homeBrandMount')
 
   if (brandMount) {
-    brandMount.innerHTML = renderBrandHomeGrid()
+    const cachedBrandCards = getHomeCoreBrands(peekBrandFolders()?.brands ?? downloadHomeCategories)
+    brandMount.innerHTML = renderBrandHomeGrid(cachedBrandCards.length ? cachedBrandCards : getHomeCoreBrands(downloadHomeCategories))
   }
 
   const brandPromise = loadBrandFolders()
@@ -281,7 +284,7 @@ export const renderPage = async (pageKey: SitePageKey) => {
   void brandPromise.then((brandResult) => {
     if (!brandMount?.isConnected) return
 
-    const brandCards = brandResult.brands.length ? brandResult.brands : downloadHomeCategories
+    const brandCards = getHomeCoreBrands(brandResult.brands.length ? brandResult.brands : downloadHomeCategories)
     brandMount.innerHTML = renderBrandHomeGrid(brandCards)
   })
 

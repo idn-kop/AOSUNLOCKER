@@ -574,31 +574,41 @@ export const loadHomepageTickers = async (): Promise<{ latest: TickerItem[]; top
     const data = await fetchJsonCached<PublicFilesResponse>('homepage-tickers', url, {
       preferFresh: true,
     })
-    const files = dedupeFiles(data.files ?? []).filter((item) => toTickerTitle(item))
-
-    const latest = [...files]
-      .sort((a, b) => parseSortDate(b) - parseSortDate(a))
-      .slice(0, 6)
-      .map((item) => ({
-        title: toTickerTitle(item),
-        meta: toTickerBrandMeta(item) || 'Published file',
-        icon: 'fa-file-archive',
-      }))
-
-    const top = [...files]
-      .sort((a, b) => Number(String(b.downloads || '0').replace(/[^\d.-]/g, '')) - Number(String(a.downloads || '0').replace(/[^\d.-]/g, '')))
-      .slice(0, 6)
-      .map((item) => ({
-        title: toTickerTitle(item),
-        meta: toTickerDownloadMeta(item),
-        icon: 'fa-fire',
-      }))
-
-    return { latest, top }
+    return buildHomepageTickerPayload(data.files ?? [])
   } catch (error) {
     console.warn('Homepage tickers could not be loaded.', error)
     return { latest: [], top: [] }
   }
+}
+
+const buildHomepageTickerPayload = (files: PublicFileRecord[]): { latest: TickerItem[]; top: TickerItem[] } => {
+  const normalizedFiles = dedupeFiles(files).filter((item) => toTickerTitle(item))
+
+  const latest = [...normalizedFiles]
+    .sort((a, b) => parseSortDate(b) - parseSortDate(a))
+    .slice(0, 6)
+    .map((item) => ({
+      title: toTickerTitle(item),
+      meta: toTickerBrandMeta(item) || 'Published file',
+      icon: 'fa-file-archive',
+    }))
+
+  const top = [...normalizedFiles]
+    .sort((a, b) => Number(String(b.downloads || '0').replace(/[^\d.-]/g, '')) - Number(String(a.downloads || '0').replace(/[^\d.-]/g, '')))
+    .slice(0, 6)
+    .map((item) => ({
+      title: toTickerTitle(item),
+      meta: toTickerDownloadMeta(item),
+      icon: 'fa-fire',
+    }))
+
+  return { latest, top }
+}
+
+export const peekHomepageTickers = () => {
+  const cached = readCache<PublicFilesResponse>('homepage-tickers')
+  if (!cached?.files?.length) return null
+  return buildHomepageTickerPayload(cached.files)
 }
 
 export const loadGlobalSearchCatalog = async (): Promise<SearchCatalogEntry[]> => {
