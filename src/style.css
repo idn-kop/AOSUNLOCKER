@@ -3032,18 +3032,19 @@ h6 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.55rem;
-  border-radius: 0.95rem;
+  gap: 0.42rem;
+  border-radius: 0.82rem;
   border: 1px solid rgba(255, 123, 114, 0.22);
   background:
     linear-gradient(180deg, rgba(255, 123, 114, 0.98), rgba(229, 83, 75, 0.92)),
     rgba(255, 255, 255, 0.02);
   color: white;
-  font-weight: 800;
-  letter-spacing: -0.01em;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.16),
-    0 14px 30px rgba(229, 83, 75, 0.22);
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 10px 22px rgba(229, 83, 75, 0.18);
   transition:
     transform 0.18s ease,
     box-shadow 0.18s ease,
@@ -3052,8 +3053,9 @@ h6 {
 }
 
 .download-small-button {
-  min-width: 124px;
-  padding: 0.74rem 1rem;
+  min-width: 112px;
+  padding: 0.62rem 0.86rem;
+  font-size: 0.93rem;
 }
 
 .download-small-button i,
@@ -3062,13 +3064,13 @@ h6 {
 .download-button i {
   display: inline-grid;
   place-items: center;
-  width: 1.65rem;
-  height: 1.65rem;
+  width: 1.45rem;
+  height: 1.45rem;
   margin-right: 0 !important;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.12);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
-  font-size: 0.82rem;
+  font-size: 0.72rem;
 }
 
 .download-small-button:hover,
@@ -3078,8 +3080,8 @@ h6 {
   color: #fff;
   border-color: rgba(255, 123, 114, 0.28);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.2),
-    0 18px 36px rgba(229, 83, 75, 0.28);
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 14px 28px rgba(229, 83, 75, 0.24);
   filter: saturate(1.04);
   transform: translateY(-1px);
 }
@@ -3138,12 +3140,12 @@ h6 {
 .download-big-button {
   width: 100%;
   margin-top: 1.5rem;
-  padding: 1rem 1.25rem;
+  padding: 0.92rem 1.12rem;
   border-color: rgba(255, 123, 114, 0.22);
   background:
     linear-gradient(180deg, rgba(255, 123, 114, 0.98), rgba(229, 83, 75, 0.92)),
     rgba(255, 255, 255, 0.02);
-  font-size: 1.45rem;
+  font-size: 1.3rem;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.18),
     0 18px 32px rgba(229, 83, 75, 0.24);
