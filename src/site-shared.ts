@@ -145,13 +145,6 @@ const renderHeaderSupportPanel = () => `
   </a>
 `
 
-const renderMemberPortalLink = (extraClass = '') => `
-  <a class="member-portal-link ${extraClass}".trim() href="https://aosunlock.my.id" target="_blank" rel="noreferrer">
-    <span class="member-portal-link-label">Member Portal</span>
-    <span class="member-portal-link-copy">Login-based full archive access</span>
-  </a>
-`
-
 export const renderTicker = (items: TickerItem[]) =>
   repeatForTicker(items)
     .map(
@@ -635,10 +628,7 @@ export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downlo
           </div>
           <div class="search-dropdown" id="searchDropdown" hidden></div>
         </form>
-        <div class="header-utility-stack">
-          ${renderHeaderSupportPanel()}
-          ${renderMemberPortalLink('member-portal-link-header')}
-        </div>
+        ${renderHeaderSupportPanel()}
       </div>
     </div>
   </header>
@@ -678,6 +668,10 @@ export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downlo
             <i class="fas fa-laptop-medical"></i>
             <span>Remote Service</span>
           </a>
+          <a class="mobile-menu-link mobile-menu-link-full-access" href="https://aosunlock.my.id" target="_blank" rel="noreferrer">
+            <i class="fas fa-layer-group"></i>
+            <span>Full Access</span>
+          </a>
           <a class="mobile-menu-link mobile-menu-link-support" href="https://wa.me/6282234370999" target="_blank" rel="noreferrer">
             <i class="fas fa-headset"></i>
             <span>WhatsApp Support</span>
@@ -711,6 +705,7 @@ export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downlo
         .join('')}
       <a class="nav-link ${downloadsActive ? 'active' : ''}" href="/downloads.html"><i class="fas fa-folder-tree me-1"></i>Downloads</a>
       <a class="nav-link nav-link-remote ${activeKey === 'remote' ? 'active' : ''}" href="/remote-service.html"><i class="fas fa-laptop-medical me-1"></i>Remote Service</a>
+      <a class="nav-link nav-link-full-access" href="https://aosunlock.my.id" target="_blank" rel="noreferrer"><i class="fas fa-layer-group me-1"></i>Full Access</a>
       <details class="nav-contact-menu">
         <summary class="nav-link nav-link-contact nav-link-contact-toggle" aria-label="Open contact links">
           <i class="fas fa-address-card me-1"></i>Contact
@@ -830,7 +825,6 @@ export const renderContactAdminPanel = () => `
           <span>aosunlocker.com</span>
         </span>
       </a>
-      ${renderMemberPortalLink('member-portal-link-inline')}
     </div>
   </section>
 `

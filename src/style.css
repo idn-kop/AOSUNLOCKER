@@ -526,38 +526,6 @@ a {
   line-height: 1.2;
 }
 
-.member-portal-link {
-  display: grid;
-  gap: 0.12rem;
-  padding: 0.68rem 0.92rem;
-  border-radius: 16px;
-  border: 1px solid rgba(120, 150, 210, 0.12);
-  background: rgba(8, 13, 22, 0.74);
-  color: var(--text-main);
-  transition: border-color 0.18s ease, transform 0.18s ease, background 0.18s ease;
-}
-
-.member-portal-link:hover {
-  color: var(--text-strong);
-  transform: translateY(-1px);
-  border-color: rgba(247, 191, 127, 0.26);
-  background: rgba(12, 18, 29, 0.9);
-}
-
-.member-portal-link-label {
-  color: #f7bf7f;
-  font-size: 0.66rem;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-.member-portal-link-copy {
-  color: var(--text-soft);
-  font-size: 0.78rem;
-  line-height: 1.3;
-}
-
 .search-shell {
   position: relative;
   display: flex;
@@ -869,6 +837,12 @@ a {
   background: rgba(240, 192, 88, 0.03);
 }
 
+.nav-link-full-access {
+  color: #7ee787;
+  border-color: rgba(126, 231, 135, 0.14);
+  background: rgba(46, 160, 67, 0.05);
+}
+
 .nav-link-mini-badge {
   display: inline-flex;
   align-items: center;
@@ -892,6 +866,14 @@ a {
     rgba(210, 153, 34, 0.05);
   border-color: rgba(227, 179, 65, 0.16);
   color: #ffe49b;
+}
+
+.nav-link-full-access:hover {
+  background:
+    linear-gradient(180deg, rgba(46, 160, 67, 0.1), rgba(46, 160, 67, 0.03)),
+    rgba(46, 160, 67, 0.06);
+  border-color: rgba(126, 231, 135, 0.18);
+  color: #d2f7da;
 }
 
 .nav-link-contact {
@@ -3210,11 +3192,6 @@ h6 {
   gap: 0.12rem;
 }
 
-.member-portal-link-inline {
-  min-height: 100%;
-  justify-content: center;
-}
-
 .contact-card-copy strong {
   color: var(--text-strong);
   font-size: 1rem;
@@ -3437,10 +3414,6 @@ h6 {
   }
 
   .header-support-panel {
-    display: none;
-  }
-
-  .member-portal-link-header {
     display: none;
   }
 
@@ -3868,11 +3841,17 @@ h6 {
     color: var(--text-strong);
   }
 
-  .mobile-menu-link-support {
-    color: #dcfce7;
-    border-color: rgba(37, 211, 102, 0.14);
-    background: rgba(37, 211, 102, 0.08);
-  }
+.mobile-menu-link-support {
+  color: #dcfce7;
+  border-color: rgba(37, 211, 102, 0.14);
+  background: rgba(37, 211, 102, 0.08);
+}
+
+.mobile-menu-link-full-access {
+  color: #d2f7da;
+  border-color: rgba(126, 231, 135, 0.14);
+  background: rgba(46, 160, 67, 0.08);
+}
 
   .mobile-menu-contact-row {
     display: flex;
