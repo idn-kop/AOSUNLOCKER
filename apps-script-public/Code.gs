@@ -2,10 +2,12 @@ const SPREADSHEET_NAME = 'AOSUNLOCKER DATA';
 const DOWNLOADS_SHEET_NAME = 'Downloads';
 const SETTINGS_SHEET_NAME = 'Settings';
 const BRANDS_SHEET_NAME = 'Brands';
-const CACHE_TTL_SECONDS = 180;
+const META_SHEET_NAME = 'Meta';
+const CACHE_TTL_SECONDS = 60;
 const MAX_CACHE_VALUE_LENGTH = 95000;
 const CACHE_VERSION_PROPERTY = 'AOSUNLOCKER_PUBLIC_CACHE_VERSION';
 const SPREADSHEET_ID_PROPERTY = 'AOSUNLOCKER_PUBLIC_SPREADSHEET_ID';
+const PUBLIC_CACHE_VERSION_KEY = 'public_cache_version';
 
 var spreadsheetMemo_ = null;
 var sheetValuesMemo_ = {};
@@ -13,6 +15,7 @@ var cacheVersionMemo_ = '';
 var allPublishedFilesMemo_ = null;
 
 function doGet(e) {
+  resetRequestState_();
   const view = String((e && e.parameter && e.parameter.view) || 'catalog');
 
   if (view === 'categories') {
@@ -93,6 +96,13 @@ function resolveSpreadsheet_() {
   const spreadsheetId = files.next().getId();
   properties.setProperty(SPREADSHEET_ID_PROPERTY, spreadsheetId);
   return SpreadsheetApp.openById(spreadsheetId);
+}
+
+function resetRequestState_() {
+  spreadsheetMemo_ = null;
+  sheetValuesMemo_ = {};
+  cacheVersionMemo_ = '';
+  allPublishedFilesMemo_ = null;
 }
 
 function getCategories_(brandId) {
@@ -381,7 +391,9 @@ function writeCachedJson_(cacheKey, value) {
 }
 
 function getCacheVersion_() {
-  if (cacheVersionMemo_) {
+  const sheetVersion = String(getMetaValue_(PUBLIC_CACHE_VERSION_KEY) || '').trim();
+  if (sheetVersion) {
+    cacheVersionMemo_ = sheetVersion;
     return cacheVersionMemo_;
   }
 
@@ -399,7 +411,54 @@ function getCacheVersion_() {
 function bumpCacheVersion_() {
   cacheVersionMemo_ = String(Date.now());
   PropertiesService.getScriptProperties().setProperty(CACHE_VERSION_PROPERTY, cacheVersionMemo_);
+  setMetaValue_(PUBLIC_CACHE_VERSION_KEY, cacheVersionMemo_);
   return cacheVersionMemo_;
+}
+
+function getMetaValue_(key) {
+  const targetKey = String(key || '').trim();
+  if (!targetKey) return '';
+
+  const sheet = getSpreadsheet_().getSheetByName(META_SHEET_NAME);
+  if (!sheet) {
+    return '';
+  }
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) {
+    return '';
+  }
+
+  const values = sheet.getRange(2, 1, lastRow - 1, 2).getValues();
+  for (var i = 0; i < values.length; i++) {
+    if (String(values[i][0] || '').trim() === targetKey) {
+      return String(values[i][1] || '').trim();
+    }
+  }
+
+  return '';
+}
+
+function setMetaValue_(key, value) {
+  const targetKey = String(key || '').trim();
+  if (!targetKey) return;
+
+  const sheet = getSpreadsheet_().getSheetByName(META_SHEET_NAME);
+  if (!sheet) {
+    return;
+  }
+
+  const lastRow = sheet.getLastRow();
+  const rowCount = Math.max(lastRow - 1, 1);
+  const values = sheet.getRange(2, 1, rowCount, 2).getValues();
+  for (var i = 0; i < values.length; i++) {
+    if (String(values[i][0] || '').trim() === targetKey) {
+      sheet.getRange(i + 2, 2).setValue(String(value || '').trim());
+      return;
+    }
+  }
+
+  sheet.appendRow([targetKey, String(value || '').trim()]);
 }
 
 function createHeaderLookup_(headers) {

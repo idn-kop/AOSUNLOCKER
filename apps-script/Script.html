@@ -20,6 +20,11 @@
     document.getElementById('cancelEditButton').addEventListener('click', resetFormState);
     document.getElementById('cancelCategoryEditButton').addEventListener('click', resetCategoryFormState);
     document.getElementById('brandId').addEventListener('change', renderCategories);
+    document.getElementById('mobileAutofillShortcut').addEventListener('click', onAutofill);
+    document.getElementById('mobileStickyAutofill').addEventListener('click', onAutofill);
+    document.getElementById('mobileDriveFocusShortcut').addEventListener('click', () => focusField('driveUrl'));
+    document.getElementById('mobileRecentShortcut').addEventListener('click', () => jumpToPanel('recentPanel'));
+    document.getElementById('mobileSaveShortcut').addEventListener('click', () => document.getElementById('fileForm').requestSubmit());
   });
 
   function bootstrap(data) {
@@ -32,6 +37,23 @@
     renderCategories();
     renderRecentRows();
     renderCategoryRows();
+    syncMobileSaveButton(false);
+  }
+
+  function focusField(name) {
+    const field = document.querySelector(`[name="${name}"]`);
+    if (!field) return;
+
+    field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    window.setTimeout(() => {
+      field.focus({ preventScroll: true });
+    }, 180);
+  }
+
+  function jumpToPanel(id) {
+    const panel = document.getElementById(id);
+    if (!panel) return;
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function syncBrands() {
@@ -306,6 +328,15 @@
     const button = document.getElementById('saveButton');
     button.disabled = isSaving;
     button.textContent = isSaving ? 'Saving...' : state.editId ? 'Update File' : 'Save File';
+    syncMobileSaveButton(isSaving);
+  }
+
+  function syncMobileSaveButton(isSaving) {
+    const button = document.getElementById('mobileSaveShortcut');
+    if (!button) return;
+
+    button.disabled = Boolean(isSaving);
+    button.textContent = isSaving ? 'Saving...' : state.editId ? 'Update File' : 'Save File';
   }
 
   function startEdit(index) {
@@ -333,6 +364,7 @@
     document.getElementById('saveButton').textContent = 'Update File';
     document.getElementById('cancelEditButton').classList.remove('hidden');
     document.getElementById('autofillNote').textContent = 'Editing mode is active.';
+    syncMobileSaveButton(false);
     hideFlash();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -354,6 +386,7 @@
     document.getElementById('cancelEditButton').classList.add('hidden');
     document.getElementById('autofillNote').textContent = '';
     document.getElementById('categoryBrandId').value = state.brands[0] ? state.brands[0].id : 'huawei';
+    syncMobileSaveButton(false);
     hideFlash();
   }
 

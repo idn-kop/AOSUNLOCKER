@@ -1,8 +1,12 @@
 const DOWNLOADS_SHEET_NAME = 'Downloads';
 const SETTINGS_SHEET_NAME = 'Settings';
 const BRANDS_SHEET_NAME = 'Brands';
+const META_SHEET_NAME = 'Meta';
 const BRANDS_HEADERS = ['brand_id', 'brand_label'];
 const SETTINGS_HEADERS = ['brand_id', 'brand_label', 'category_id', 'category_label'];
+const META_HEADERS = ['key', 'value'];
+const PUBLIC_CACHE_VERSION_KEY = 'public_cache_version';
+const LAST_ADMIN_UPDATE_KEY = 'last_admin_update';
 
 const DOWNLOADS_HEADERS = [
   'id',
@@ -66,6 +70,7 @@ function getBootstrapData() {
     categories: getCategories_(),
     recentFiles: getRecentFiles_(),
     sheetName: DOWNLOADS_SHEET_NAME,
+    lastPublicRefresh: getMetaValue_(LAST_ADMIN_UPDATE_KEY),
   };
 }
 
@@ -93,6 +98,7 @@ function addBrand(payload) {
   }
 
   getBrandsSheet_().appendRow([brandId, brandLabel]);
+  touchPublicCacheVersion_();
 
   return {
     ok: true,
@@ -129,6 +135,7 @@ function addCategory(payload) {
 
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SETTINGS_SHEET_NAME);
   sheet.appendRow([brandId, brandLabel, categoryId, categoryLabel]);
+  touchPublicCacheVersion_();
 
   return {
     ok: true,
@@ -178,6 +185,7 @@ function updateCategory(payload) {
 
   settingsSheet.getRange(rowIndex + 1, 1, 1, 4).setValues([[brandId, brandLabel, nextCategoryId, categoryLabel]]);
   syncDownloadsCategoryUpdate_(originalCategoryId, nextCategoryId, categoryLabel, brandId, brandLabel);
+  touchPublicCacheVersion_();
 
   return {
     ok: true,
@@ -213,6 +221,7 @@ function deleteCategory(categoryId) {
   }
 
   settingsSheet.deleteRow(rowIndex + 1);
+  touchPublicCacheVersion_();
 
   return {
     ok: true,
@@ -241,6 +250,7 @@ function deleteDownloadFile(fileId) {
   }
 
   sheet.deleteRow(rowIndex + 1);
+  touchPublicCacheVersion_();
 
   return {
     ok: true,
@@ -330,6 +340,7 @@ function addDownloadFile(payload) {
 
   const sheet = getDownloadsSheet_();
   sheet.appendRow(row);
+  touchPublicCacheVersion_();
 
   return {
     ok: true,
@@ -384,6 +395,7 @@ function updateDownloadFile(payload) {
   ];
 
   sheet.getRange(rowIndex + 1, 1, 1, row.length).setValues([row]);
+  touchPublicCacheVersion_();
 
   return {
     ok: true,
@@ -398,9 +410,11 @@ function ensureSchema_() {
   const brandsSheet = getOrCreateSheet_(spreadsheet, BRANDS_SHEET_NAME);
   const settingsSheet = getOrCreateSheet_(spreadsheet, SETTINGS_SHEET_NAME);
   const downloadsSheet = getOrCreateSheet_(spreadsheet, DOWNLOADS_SHEET_NAME);
+  const metaSheet = getOrCreateSheet_(spreadsheet, META_SHEET_NAME);
 
   ensureHeaders_(brandsSheet, BRANDS_HEADERS);
   ensureHeaders_(downloadsSheet, DOWNLOADS_HEADERS);
+  ensureMetaSheet_(metaSheet);
 
   if (brandsSheet.getLastRow() === 1) {
     const brandRows = DEFAULT_BRANDS.map(function(item) {
@@ -787,6 +801,14 @@ function getBrandsSheet_() {
   return sheet;
 }
 
+function getMetaSheet_() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(META_SHEET_NAME);
+  if (!sheet) {
+    throw new Error('Meta sheet is missing.');
+  }
+  return sheet;
+}
+
 function migrateLegacySettingsSheet_(sheet) {
   const values = sheet.getDataRange().getValues();
   if (!values.length) return;
@@ -862,6 +884,83 @@ function ensureDefaultBrands_(sheet) {
   if (!missingRows.length) return;
 
   sheet.getRange(sheet.getLastRow() + 1, 1, missingRows.length, BRANDS_HEADERS.length).setValues(missingRows);
+}
+
+function ensureMetaSheet_(sheet) {
+  ensureHeaders_(sheet, META_HEADERS);
+
+  const values = sheet.getDataRange().getValues();
+  const existingKeys = values
+    .slice(1)
+    .map(function(row) {
+      return String(row[0] || '').trim();
+    })
+    .filter(function(key) {
+      return key;
+    });
+  const now = new Date();
+  const missingRows = [];
+
+  if (existingKeys.indexOf(PUBLIC_CACHE_VERSION_KEY) === -1) {
+    missingRows.push([PUBLIC_CACHE_VERSION_KEY, String(now.getTime())]);
+  }
+
+  if (existingKeys.indexOf(LAST_ADMIN_UPDATE_KEY) === -1) {
+    missingRows.push([LAST_ADMIN_UPDATE_KEY, now.toISOString()]);
+  }
+
+  if (missingRows.length) {
+    sheet.getRange(sheet.getLastRow() + 1, 1, missingRows.length, META_HEADERS.length).setValues(missingRows);
+  }
+
+  try {
+    sheet.hideSheet();
+  } catch (error) {
+  }
+}
+
+function getMetaValue_(key) {
+  const targetKey = String(key || '').trim();
+  if (!targetKey) return '';
+
+  const sheet = getMetaSheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) {
+    return '';
+  }
+
+  const values = sheet.getRange(2, 1, lastRow - 1, 2).getValues();
+  const match = values.find(function(row) {
+    return String(row[0] || '').trim() === targetKey;
+  });
+
+  return match ? String(match[1] || '').trim() : '';
+}
+
+function setMetaValue_(key, value) {
+  const targetKey = String(key || '').trim();
+  if (!targetKey) return;
+
+  const sheet = getMetaSheet_();
+  ensureMetaSheet_(sheet);
+  const lastRow = sheet.getLastRow();
+  const values = sheet.getRange(2, 1, Math.max(lastRow - 1, 1), 2).getValues();
+  const rowIndex = values.findIndex(function(row) {
+    return String(row[0] || '').trim() === targetKey;
+  });
+
+  if (rowIndex >= 0) {
+    sheet.getRange(rowIndex + 2, 2).setValue(String(value || '').trim());
+    return;
+  }
+
+  sheet.appendRow([targetKey, String(value || '').trim()]);
+}
+
+function touchPublicCacheVersion_() {
+  const now = new Date();
+  setMetaValue_(PUBLIC_CACHE_VERSION_KEY, String(now.getTime()));
+  setMetaValue_(LAST_ADMIN_UPDATE_KEY, now.toISOString());
 }
 
 function getOrCreateSheet_(spreadsheet, name) {

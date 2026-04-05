@@ -83,8 +83,16 @@
           <div id="flash" class="flash hidden"></div>
         </section>
 
+        <section class="mobile-quick-strip" aria-label="Quick add shortcuts">
+          <a class="quick-chip" href="#filePanel">New File</a>
+          <button type="button" class="quick-chip ghost" id="mobileDriveFocusShortcut">Drive Link</button>
+          <button type="button" class="quick-chip ghost" id="mobileAutofillShortcut">Auto Fill</button>
+          <a class="quick-chip ghost" href="#recentPanel">Latest</a>
+          <a class="quick-chip ghost" href="#folderPanel">Folders</a>
+        </section>
+
         <section class="grid">
-          <section class="panel">
+          <section class="panel" id="filePanel">
             <div class="panel-head">
               <h3>New file</h3>
               <p>Fields marked with * are required.</p>
@@ -175,7 +183,7 @@
             </form>
           </section>
 
-          <section class="panel">
+          <section class="panel" id="recentPanel">
             <div class="panel-head">
               <h3>Latest rows</h3>
               <p>Recent entries saved to the sheet.</p>
@@ -201,7 +209,7 @@
           </section>
         </section>
 
-        <section class="panel">
+        <section class="panel" id="folderPanel">
           <div class="panel-head">
             <h3>Solution folders</h3>
             <p>Edit or remove brand folders before filling file data.</p>
@@ -222,6 +230,12 @@
           </div>
         </section>
       </main>
+    </div>
+
+    <div class="mobile-sticky-actions" aria-label="Quick save actions">
+      <button type="button" class="ghost" id="mobileRecentShortcut">Latest</button>
+      <button type="button" class="ghost" id="mobileStickyAutofill">Auto Fill</button>
+      <button type="button" id="mobileSaveShortcut">Save File</button>
     </div>
 
     <?!= include('Script'); ?>
