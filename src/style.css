@@ -3048,33 +3048,33 @@ h6 {
 .download-big-button,
 .download-button {
   display: inline-flex;
-  align-items: stretch;
-  justify-content: flex-start;
-  gap: 0;
-  padding: 0;
-  border-radius: 0.62rem;
-  border: 1px solid rgba(81, 226, 255, 0.72);
-  background: linear-gradient(180deg, rgba(250, 252, 255, 0.99), rgba(236, 244, 252, 0.96));
-  color: #162033;
-  font-weight: 700;
+  align-items: center;
+  justify-content: center;
+  gap: 0.58rem;
+  padding: 0.48rem 1rem 0.48rem 0.82rem;
+  border-radius: 0.42rem;
+  border: 1px solid rgba(10, 16, 26, 0.82);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(245, 249, 252, 0.98));
+  color: #171d26;
+  font-weight: 600;
   line-height: 1;
-  letter-spacing: -0.01em;
-  overflow: hidden;
+  letter-spacing: 0;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.85),
-    0 0 0 1px rgba(37, 198, 255, 0.16),
-    0 10px 18px rgba(13, 26, 42, 0.12);
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 0 0 2px rgba(63, 231, 255, 0.9),
+    0 6px 16px rgba(4, 10, 18, 0.14);
 }
 
 .download-small-button {
-  min-width: 136px;
-  min-height: 40px;
+  min-width: 148px;
+  min-height: 42px;
   font-size: 0.9rem;
 }
 
 .download-big-button,
 .download-button {
   min-height: 48px;
+  padding: 0.54rem 1.12rem 0.54rem 0.92rem;
   font-size: 1rem;
 }
 
@@ -3083,45 +3083,32 @@ h6 {
   align-items: center;
   justify-content: center;
   min-width: 0;
-  padding: 0 0.95rem 0 0.82rem;
   white-space: nowrap;
 }
 
 .download-small-button i,
 .download-big-button i,
 .download-button i {
-  flex: 0 0 40px;
-  display: inline-grid;
-  place-items: center;
-  align-self: stretch;
   margin-right: 0 !important;
-  border-radius: 0;
-  border-right: 1px solid rgba(13, 62, 95, 0.12);
-  background:
-    linear-gradient(180deg, rgba(84, 228, 255, 0.98), rgba(37, 190, 255, 0.94)),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    inset -1px 0 0 rgba(255, 255, 255, 0.08);
-  color: #fff;
-  font-size: 0.84rem;
-}
-
-.download-big-button i,
-.download-button i {
-  flex-basis: 48px;
+  color: #21b8ff;
+  font-size: 1.02rem;
+  text-shadow: 0 0 10px rgba(63, 231, 255, 0.24);
+  background: linear-gradient(180deg, #6ae8ff 0%, #26b7ff 48%, #238bff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .download-small-button:hover,
 .download-big-button:hover,
 .download-button:hover {
-  color: #101826;
-  border-color: rgba(81, 226, 255, 0.86);
+  color: #111822;
+  border-color: rgba(10, 16, 26, 0.88);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.92),
-    0 0 0 1px rgba(37, 198, 255, 0.24),
-    0 14px 24px rgba(13, 26, 42, 0.16);
-  filter: saturate(1.03);
+    0 0 0 2px rgba(63, 231, 255, 1),
+    0 10px 20px rgba(4, 10, 18, 0.16);
+  filter: saturate(1.01);
   transform: translateY(-1px);
 }
 
@@ -3180,11 +3167,6 @@ h6 {
   width: 100%;
   margin-top: 1.5rem;
   justify-content: center;
-}
-
-.download-big-button .download-button-label,
-.download-button .download-button-label {
-  padding-inline: 1rem 1.1rem;
 }
 
 .download-link {
