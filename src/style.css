@@ -1100,11 +1100,28 @@ a {
 }
 
 .ticker-meta {
+  display: inline-flex;
+  align-items: center;
   margin-left: 8px;
-  padding-left: 8px;
-  border-left: 1px solid rgba(120, 150, 210, 0.12);
-  color: var(--text-soft);
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(81, 226, 255, 0.18);
+  background: rgba(81, 226, 255, 0.06);
+  color: #9fe8ff;
   font-size: 0.76rem;
+  line-height: 1;
+}
+
+.ticker-meta-brand {
+  border-color: rgba(81, 226, 255, 0.16);
+  background: rgba(81, 226, 255, 0.055);
+  color: #95dff8;
+}
+
+.ticker-meta-downloads {
+  border-color: rgba(81, 226, 255, 0.22);
+  background: rgba(81, 226, 255, 0.08);
+  color: #b5f2ff;
 }
 
 .ticker-label {

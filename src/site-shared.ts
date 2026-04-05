@@ -144,6 +144,9 @@ const renderHeaderSupportPanel = () => `
   </a>
 `
 
+const getTickerMetaClass = (meta: string) =>
+  /download/i.test(String(meta || '')) ? 'ticker-meta ticker-meta-downloads' : 'ticker-meta ticker-meta-brand'
+
 export const renderTicker = (items: TickerItem[]) =>
   repeatForTicker(items)
     .map(
@@ -151,7 +154,7 @@ export const renderTicker = (items: TickerItem[]) =>
         <a href="/downloads.html" class="ticker-item">
           <i class="fas ${item.icon} me-2 ${item.icon === 'fa-fire' ? 'text-danger' : ''}"></i>
           <span class="ticker-text">${item.title}</span>
-          <span class="ticker-meta">${item.meta}</span>
+          <span class="${getTickerMetaClass(item.meta)}">${item.meta}</span>
         </a>
       `,
     )
