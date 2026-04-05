@@ -31,7 +31,7 @@ const renderBrandHomeGrid = (content = downloadHomeCategories) =>
       )
 
 const getHomeCoreBrands = <T extends { brandId?: string }>(items: T[]) =>
-  ['huawei', 'honor']
+  ['huawei', 'honor', 'aos-firmware']
     .map((brandId) => items.find((item) => item.brandId === brandId))
     .filter((item): item is T => Boolean(item))
 
