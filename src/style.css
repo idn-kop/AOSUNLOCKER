@@ -458,14 +458,15 @@ a {
 }
 
 .header-support-panel {
-  display: flex;
-  align-items: center;
-  gap: 0.72rem;
-  flex: 0 0 226px;
-  max-width: 226px;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 0.38rem;
+  text-align: center;
+  flex: 0 0 232px;
+  max-width: 232px;
   min-width: 0;
-  padding-left: 0.95rem;
-  border-left: 1px solid rgba(120, 150, 210, 0.12);
+  padding-inline: 0.3rem;
   color: var(--text-main);
   transition: color 0.18s ease, transform 0.18s ease;
 }
@@ -502,7 +503,8 @@ a {
 .header-support-copy {
   min-width: 0;
   display: grid;
-  gap: 0.08rem;
+  justify-items: center;
+  gap: 0.1rem;
 }
 
 .header-support-label {
@@ -524,6 +526,7 @@ a {
   color: var(--text-soft);
   font-size: 0.74rem;
   line-height: 1.2;
+  max-width: 23ch;
 }
 
 .search-shell {

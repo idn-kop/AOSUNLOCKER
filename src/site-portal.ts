@@ -30,10 +30,28 @@ const renderBrandHomeGrid = (content = downloadHomeCategories) =>
         'Published brand folders will appear here automatically as soon as they are available.',
       )
 
-const getHomeCoreBrands = <T extends { brandId?: string }>(items: T[]) =>
-  ['huawei', 'honor', 'aos-firmware']
-    .map((brandId) => items.find((item) => item.brandId === brandId))
-    .filter((item): item is T => Boolean(item))
+const getOrderedHomeBrands = <T extends { brandId?: string }>(items: T[]) => {
+  const preferred = ['huawei', 'honor', 'aos-firmware']
+  const seen = new Set<string>()
+  const normalized = items.filter((item): item is T & { brandId: string } => Boolean(String(item.brandId || '').trim()))
+
+  const leadItems = preferred
+    .map((brandId) => normalized.find((item) => item.brandId === brandId))
+    .filter((item): item is T & { brandId: string } => Boolean(item))
+    .filter((item) => {
+      if (seen.has(item.brandId)) return false
+      seen.add(item.brandId)
+      return true
+    })
+
+  const extraItems = normalized.filter((item) => {
+    if (seen.has(item.brandId)) return false
+    seen.add(item.brandId)
+    return true
+  })
+
+  return [...leadItems, ...extraItems]
+}
 
 const renderRemoteServiceSection = () => {
   const groups = groupRemoteServiceEntries(remoteServiceQualcommEntries)
@@ -206,9 +224,9 @@ export const renderPage = async (pageKey: SitePageKey) => {
             page.key === 'home'
               ? `
                 <div class="downloads-home-head">
-                  <p class="eyebrow">Huawei & Honor Files</p>
+                  <p class="eyebrow">Download Folders</p>
                 </div>
-                <div class="downloads-home-shell" id="homeBrandMount">${renderBrandHomeGrid(getHomeCoreBrands(downloadHomeCategories))}</div>
+                <div class="downloads-home-shell" id="homeBrandMount">${renderBrandHomeGrid(getOrderedHomeBrands(downloadHomeCategories))}</div>
               `
               : `
                 <div class="section-head">
@@ -275,8 +293,8 @@ export const renderPage = async (pageKey: SitePageKey) => {
   const brandMount = document.querySelector<HTMLDivElement>('#homeBrandMount')
 
   if (brandMount) {
-    const cachedBrandCards = getHomeCoreBrands(peekBrandFolders()?.brands ?? downloadHomeCategories)
-    brandMount.innerHTML = renderBrandHomeGrid(cachedBrandCards.length ? cachedBrandCards : getHomeCoreBrands(downloadHomeCategories))
+    const cachedBrandCards = getOrderedHomeBrands(peekBrandFolders()?.brands ?? downloadHomeCategories)
+    brandMount.innerHTML = renderBrandHomeGrid(cachedBrandCards.length ? cachedBrandCards : getOrderedHomeBrands(downloadHomeCategories))
   }
 
   const brandPromise = loadBrandFolders()
@@ -284,7 +302,7 @@ export const renderPage = async (pageKey: SitePageKey) => {
   void brandPromise.then((brandResult) => {
     if (!brandMount?.isConnected) return
 
-    const brandCards = getHomeCoreBrands(brandResult.brands.length ? brandResult.brands : downloadHomeCategories)
+    const brandCards = getOrderedHomeBrands(brandResult.brands.length ? brandResult.brands : downloadHomeCategories)
     brandMount.innerHTML = renderBrandHomeGrid(brandCards)
   })
 
