@@ -424,8 +424,8 @@ export const pages: Record<SitePageKey, SitePage> = {
   home: {
     key: 'home',
     title: 'AOSUNLOCKER Huawei Lab',
-    eyebrow: 'Firmware, Tools, and Packages',
-    heroTitle: 'Huawei & Honor Download Center',
+    eyebrow: '',
+    heroTitle: 'Huawei & Honor Files',
     heroCopy: '',
     quickLabel: 'Huawei Focus',
     primaryEyebrow: 'Core Services',

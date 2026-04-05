@@ -150,6 +150,7 @@ export const renderPage = async (pageKey: SitePageKey) => {
   if (!app || !page) return
 
   document.title = page.title
+  const heroHasEyebrow = Boolean(page.eyebrow && page.eyebrow.trim())
   const heroHasCopy = Boolean(page.heroCopy && page.heroCopy.trim())
   const heroHeading =
     page.key === 'home'
@@ -163,7 +164,7 @@ export const renderPage = async (pageKey: SitePageKey) => {
         <div class="container py-5">
           <div class="hero-panel hero-panel-clean ${page.key === 'home' ? 'hero-panel-home' : ''}">
             <div class="hero-center ${page.key === 'home' ? 'hero-center-home' : ''}">
-              <p class="eyebrow">${page.eyebrow}</p>
+              ${heroHasEyebrow ? `<p class="eyebrow">${page.eyebrow}</p>` : ''}
               ${heroHeading}
               ${heroHasCopy ? `<p class="lead-copy">${page.heroCopy}</p>` : ''}
             </div>
@@ -194,9 +195,8 @@ export const renderPage = async (pageKey: SitePageKey) => {
             page.key === 'home'
               ? `
                 <div class="downloads-home-head">
-                  <p class="eyebrow">Download Center</p>
-                  <h2 class="section-title"><i class="fas fa-folder-open me-2 text-primary"></i>Choose Brand First</h2>
-                  <p class="downloads-home-copy">Start with a brand, then open the right solution folder before continuing to the file list and download page.</p>
+                  <h2 class="section-title">Browse Brands</h2>
+                  <p class="downloads-home-copy">Open a brand to view folders and files.</p>
                 </div>
                 <div class="downloads-home-shell" id="homeBrandMount">${renderDownloadEmptyState(
                   'Loading folders',
