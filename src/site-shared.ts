@@ -11,7 +11,6 @@ import type {
 } from './data-types'
 import type { SearchCatalogEntry } from './live-data'
 import { loadGlobalSearchCatalog, loadHomepageTickers, warmRouteDataFromHref } from './live-data'
-import { latestUploads as fallbackLatestUploads, topFiles as fallbackTopFiles } from './portal-data'
 
 const repeatForTicker = <T>(items: T[], minimum = 12) => {
   if (!items.length) return []
@@ -183,37 +182,22 @@ const renderSiteTickerResult = (latest: string, top: string) =>
       : '',
   )
 
-const renderSiteTickerFallback = () => {
-  const latest = fallbackLatestUploads.length ? renderTicker(fallbackLatestUploads) : ''
-  const top = fallbackTopFiles.length ? renderTicker(fallbackTopFiles) : ''
+const renderSiteTickerPlaceholder = (label: 'Latest' | 'Popular', icon: string, copy: string) => `
+  <section class="ticker-wrapper ${label === 'Latest' ? 'ticker-latest' : 'ticker-top'} ticker-static">
+    <span class="ticker-label"><i class="fas ${icon} me-2"></i>${label}</span>
+    <div class="ticker-content">
+      <div class="ticker-items ticker-items-static">
+        <span class="ticker-item ticker-item-placeholder">${copy}</span>
+      </div>
+    </div>
+  </section>
+`
 
-  if (!latest && !top) {
-    return renderSiteTickerSections(
-      `
-        <section class="ticker-wrapper ticker-latest ticker-static">
-          <span class="ticker-label"><i class="fas fa-clock me-2"></i>Latest</span>
-          <div class="ticker-content">
-            <div class="ticker-items ticker-items-static">
-              <span class="ticker-item ticker-item-placeholder">Waiting for latest update</span>
-            </div>
-          </div>
-        </section>
-      `,
-      `
-        <section class="ticker-wrapper ticker-top ticker-static">
-          <span class="ticker-label"><i class="fas fa-fire me-2"></i>Popular</span>
-          <div class="ticker-content">
-            <div class="ticker-items ticker-items-static">
-              <span class="ticker-item ticker-item-placeholder">Waiting for top file update</span>
-            </div>
-          </div>
-        </section>
-      `,
-    )
-  }
-
-  return renderSiteTickerResult(latest, top)
-}
+const renderSiteTickerFallback = () =>
+  renderSiteTickerSections(
+    renderSiteTickerPlaceholder('Latest', 'fa-clock', 'Waiting for latest update'),
+    renderSiteTickerPlaceholder('Popular', 'fa-fire', 'Waiting for top file update'),
+  )
 
 let siteTickerRequest: Promise<{ latest: TickerItem[]; top: TickerItem[] }> | null = null
 
@@ -232,9 +216,14 @@ const hydrateSiteTicker = () => {
   void siteTickerRequest.then((tickerResult) => {
     if (!tickerMount.isConnected) return
 
-    const latest = tickerResult.latest.length ? renderTicker(tickerResult.latest) : renderTicker(fallbackLatestUploads)
-    const top = tickerResult.top.length ? renderTicker(tickerResult.top) : renderTicker(fallbackTopFiles)
-    tickerMount.innerHTML = renderSiteTickerResult(latest, top)
+    tickerMount.innerHTML = renderSiteTickerSections(
+      tickerResult.latest.length
+        ? renderSiteTickerResult(renderTicker(tickerResult.latest), '')
+        : renderSiteTickerPlaceholder('Latest', 'fa-clock', 'Waiting for latest update'),
+      tickerResult.top.length
+        ? renderSiteTickerResult('', renderTicker(tickerResult.top))
+        : renderSiteTickerPlaceholder('Popular', 'fa-fire', 'Waiting for top file update'),
+    )
   })
 }
 
@@ -729,7 +718,7 @@ export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downlo
     </div>
   </nav>
 
-  <div id="siteTickerMount" data-ticker-mode="static"></div>
+  <div id="siteTickerMount" data-ticker-mode="live"></div>
 
   ${mainContent}
 
