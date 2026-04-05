@@ -458,6 +458,8 @@ export const renderSolutionFilesPage = async () => {
     }
   }
 
+  setupSearchAndScroll()
+
   if (!categoryId) {
     const categoryResult = await loadCategoriesByBrand(brandId)
     const categories = categoryResult.categories
