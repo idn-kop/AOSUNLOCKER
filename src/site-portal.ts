@@ -200,10 +200,6 @@ export const renderPage = async (pageKey: SitePageKey) => {
           ${
             page.key === 'home'
               ? `
-                <div class="downloads-home-head downloads-home-head-compact">
-                  <p class="eyebrow">Huawei & Honor Files</p>
-                  <h2 class="visually-hidden">Huawei & Honor Files</h2>
-                </div>
                 <div class="downloads-home-shell" id="homeBrandMount">${renderDownloadEmptyState(
                   'Loading folders',
                   'Preparing brand folders for this session.',
