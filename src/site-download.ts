@@ -293,7 +293,10 @@ export const renderDownloadPage = () => {
             </div>
 
             <div class="detail-actions">
-              <a class="download-button" href="#">Download File</a>
+              <a class="download-button" href="#">
+                <i class="fas fa-download" aria-hidden="true"></i>
+                <span class="download-button-label">Download File</span>
+              </a>
               <span class="file-category">${file.brand}</span>
             </div>
           </div>
@@ -830,7 +833,10 @@ export const renderDownloadFlowDetailPage = async () => {
               <span class="download-cta-pill"><i class="fas fa-gauge-high"></i>Download counter enabled</span>
               <span class="download-cta-pill"><i class="fas fa-headset"></i>Support available</span>
             </div>
-            <a class="download-big-button" id="downloadActionButton" data-file-id="${id}" href="${downloadHref || '#'}" ${downloadHref ? 'target="_blank" rel="noreferrer"' : ''}><i class="fas fa-download me-2"></i>${downloadLabel}</a>
+            <a class="download-big-button" id="downloadActionButton" data-file-id="${id}" href="${downloadHref || '#'}" ${downloadHref ? 'target="_blank" rel="noreferrer"' : ''}>
+              <i class="fas fa-download" aria-hidden="true"></i>
+              <span class="download-button-label">${downloadLabel}</span>
+            </a>
             <p class="download-cta-note">Direct access opens the linked file instantly. For paid access or manual assistance, use the support options below.</p>
             ${renderContactAdminPanel()}
           </div>
