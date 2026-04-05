@@ -446,9 +446,9 @@ a {
 .search-form {
   position: relative;
   display: block;
-  width: min(100%, 440px);
-  flex: 1 1 440px;
-  max-width: 440px;
+  width: min(100%, 520px);
+  flex: 1 1 520px;
+  max-width: 520px;
   z-index: 2;
 }
 
@@ -1421,7 +1421,7 @@ a {
 
 .section-soft-home {
   position: relative;
-  padding-top: 1.15rem !important;
+  padding-top: 0.72rem !important;
 }
 
 .section-soft-home::before {
@@ -2329,12 +2329,12 @@ h6 {
 }
 
 .downloads-home-head {
-  margin-bottom: 1.25rem;
-  max-width: 62ch;
+  margin-bottom: 0.95rem;
+  max-width: none;
 }
 
 .downloads-home-head .section-title {
-  margin-bottom: 0.75rem;
+  margin-bottom: 0;
 }
 
 .downloads-home-shell {
@@ -2457,6 +2457,7 @@ h6 {
 .model-folder-kicker {
   display: inline-flex;
   align-items: center;
+  gap: 0.42rem;
   width: fit-content;
   padding: 0.28rem 0.58rem;
   border-radius: 999px;
@@ -2467,6 +2468,12 @@ h6 {
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+.download-home-kicker i,
+.brand-download-kicker i,
+.model-folder-kicker i {
+  color: #9eb8ff;
 }
 
 .download-home-arrow,

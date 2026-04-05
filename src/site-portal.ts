@@ -156,44 +156,44 @@ export const renderPage = async (pageKey: SitePageKey) => {
     page.key === 'home'
       ? `<h2 class="hero-title-home">${page.heroTitle}</h2>`
       : `<h2><i class="fas fa-mobile-alt me-2 text-primary"></i>${page.heroTitle}</h2>`
-
-  app.innerHTML = renderSiteChrome(
-    `
-      <main id="overview">
-      <section class="hero-section ${page.key === 'home' ? 'hero-section-home' : ''}">
+  const heroSection =
+    page.key === 'home'
+      ? ''
+      : `
+      <section class="hero-section">
         <div class="container py-5">
-          <div class="hero-panel hero-panel-clean ${page.key === 'home' ? 'hero-panel-home' : ''}">
-            <div class="hero-center ${page.key === 'home' ? 'hero-center-home' : ''}">
+          <div class="hero-panel hero-panel-clean">
+            <div class="hero-center">
               ${heroHasEyebrow ? `<p class="eyebrow">${page.eyebrow}</p>` : ''}
               ${heroHeading}
               ${heroHasCopy ? `<p class="lead-copy">${page.heroCopy}</p>` : ''}
             </div>
-            ${
-              page.key === 'home'
-                ? ''
-                : `
-                    <div class="stats-strip">
-                      <div class="stats-row">
-                        ${stats
-                          .map(
-                            (item) => `
-                              <div class="stats-item">
-                                <article class="stat-card text-center p-4 bg-white rounded-4 border-${item.tone} border-2 searchable">
-                                  <i class="fas ${item.icon} text-${item.tone} mb-3"></i>
-                                  <h3 class="fw-bold mb-1 text-${item.tone}">${item.value}</h3>
-                                  <p class="text-muted mb-0">${item.label}</p>
-                                </article>
-                              </div>
-                            `,
-                          )
-                          .join('')}
+            <div class="stats-strip">
+              <div class="stats-row">
+                ${stats
+                  .map(
+                    (item) => `
+                      <div class="stats-item">
+                        <article class="stat-card text-center p-4 bg-white rounded-4 border-${item.tone} border-2 searchable">
+                          <i class="fas ${item.icon} text-${item.tone} mb-3"></i>
+                          <h3 class="fw-bold mb-1 text-${item.tone}">${item.value}</h3>
+                          <p class="text-muted mb-0">${item.label}</p>
+                        </article>
                       </div>
-                    </div>
-                  `
-            }
+                    `,
+                  )
+                  .join('')}
+              </div>
+            </div>
           </div>
         </div>
       </section>
+    `
+
+  app.innerHTML = renderSiteChrome(
+    `
+      <main id="overview">
+      ${heroSection}
 
       <section class="py-4 section-soft ${page.key === 'home' ? 'section-soft-home' : ''}">
         <div class="container">
@@ -201,8 +201,7 @@ export const renderPage = async (pageKey: SitePageKey) => {
             page.key === 'home'
               ? `
                 <div class="downloads-home-head">
-                  <h2 class="section-title">Browse Brands</h2>
-                  <p class="downloads-home-copy">Open a brand to view folders and files.</p>
+                  <h2 class="section-title"><i class="fas fa-folder-tree me-2 text-primary"></i>Huawei, Honor & AOS Folders</h2>
                 </div>
                 <div class="downloads-home-shell" id="homeBrandMount">${renderDownloadEmptyState(
                   'Loading folders',
