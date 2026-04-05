@@ -348,6 +348,8 @@ export const renderDownloadsHubPage = async () => {
     )
   }
 
+  setupSearchAndScroll()
+
   const brandResult = await loadBrandFolders()
   const brandCards = brandResult.brands
 
