@@ -622,8 +622,7 @@ export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downlo
           <div class="search-shell">
             <i class="fas fa-magnifying-glass search-shell-icon"></i>
             <div class="search-copy">
-              <span class="search-shell-label">Find file or model</span>
-              <input type="text" id="searchInput" aria-label="Search downloads" autocomplete="off" autocapitalize="none" spellcheck="false" inputmode="search" enterkeyhint="search" />
+              <input type="text" id="searchInput" aria-label="Search downloads" placeholder="Find file or model" autocomplete="off" autocapitalize="none" spellcheck="false" inputmode="search" enterkeyhint="search" />
             </div>
             <button class="search-submit-button" type="submit" aria-label="Search"><i class="fas fa-arrow-up-right-from-square"></i></button>
           </div>

@@ -570,16 +570,8 @@ a {
 .search-copy {
   flex: 1;
   min-width: 0;
-  display: grid;
-  gap: 0.08rem;
-}
-
-.search-shell-label {
-  color: #7d8590;
-  font-size: 0.58rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  display: flex;
+  align-items: center;
 }
 
 .search-form input {
@@ -590,10 +582,18 @@ a {
   color: var(--text-strong);
   font-size: 0.94rem;
   line-height: 1.25;
+  text-align: left;
 }
 
 .search-form input::placeholder {
   color: var(--text-soft);
+  text-align: center;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.search-form input:placeholder-shown {
+  text-align: center;
 }
 
 .search-submit-button {
@@ -1925,16 +1925,14 @@ a {
 
 .footer-bottom {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   gap: 1rem;
   margin-top: 2rem;
   padding-top: 1rem;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   color: var(--text-soft);
   font-size: 0.92rem;
-  text-align: center;
 }
 
 .footer-bottom-meta {
@@ -1946,7 +1944,7 @@ a {
 
 .footer-payment-stack {
   display: grid;
-  justify-items: center;
+  justify-items: end;
   gap: 0.55rem;
 }
 
@@ -1959,7 +1957,7 @@ a {
 }
 
 .footer-payment-strip {
-  justify-content: center;
+  justify-content: flex-end;
 }
 
 .footer-payment-badge {
@@ -1971,11 +1969,11 @@ a {
   min-height: 34px;
   padding: 0.35rem 0.7rem;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(120, 150, 210, 0.18);
+  background: rgba(10, 15, 24, 0.96);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    0 10px 22px rgba(1, 4, 9, 0.12);
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 10px 22px rgba(1, 4, 9, 0.22);
 }
 
 .footer-payment-badge img {
@@ -1986,7 +1984,7 @@ a {
 }
 
 .footer-payment-badge-tether {
-  color: #16a374;
+  color: #7ae3bd;
   font-weight: 800;
 }
 
@@ -3406,6 +3404,21 @@ h6 {
     justify-content: flex-start;
   }
 
+  .footer-bottom {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .footer-payment-stack {
+    justify-items: center;
+  }
+
+  .footer-payment-strip {
+    justify-content: center;
+  }
+
   .download-home-grid,
   .brand-download-grid,
   .model-folder-grid,
@@ -3553,15 +3566,6 @@ h6 {
 
   .search-shell-icon {
     font-size: 0.94rem;
-  }
-
-  .search-shell-label {
-    font-size: 0.54rem;
-    letter-spacing: 0.12em;
-  }
-
-  .search-copy {
-    gap: 0.14rem;
   }
 
   .search-form {
