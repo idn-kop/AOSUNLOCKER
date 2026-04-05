@@ -513,13 +513,17 @@ export const renderDownloadLoadingState = (title: string, copy: string) => `
 `
 
 export const renderFooterPayments = () => `
-  <div class="footer-bottom-meta footer-payment-strip" aria-label="Accepted payments">
-    <span class="footer-payment-badge">
-      <img src="/binance.webp" alt="Binance" loading="lazy" decoding="async" />
-    </span>
-    <span class="footer-payment-badge">
-      <img src="/tether.png" alt="Tether" loading="lazy" decoding="async" />
-    </span>
+  <div class="footer-payment-stack" aria-label="Accepted payments">
+    <span class="footer-payment-label">Accepted Payments</span>
+    <div class="footer-bottom-meta footer-payment-strip">
+      <span class="footer-payment-badge footer-payment-badge-binance">
+        <img src="/binance.webp" alt="Binance" loading="lazy" decoding="async" />
+      </span>
+      <span class="footer-payment-badge footer-payment-badge-tether">
+        <img src="/tether.png" alt="" aria-hidden="true" loading="lazy" decoding="async" />
+        <span>Tether</span>
+      </span>
+    </div>
   </div>
 `
 
@@ -618,7 +622,7 @@ export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downlo
           <div class="search-shell">
             <i class="fas fa-magnifying-glass search-shell-icon"></i>
             <div class="search-copy">
-              <span class="search-shell-label">Search</span>
+              <span class="search-shell-label">Find file or model</span>
               <input type="text" id="searchInput" aria-label="Search downloads" autocomplete="off" autocapitalize="none" spellcheck="false" inputmode="search" enterkeyhint="search" />
             </div>
             <button class="search-submit-button" type="submit" aria-label="Search"><i class="fas fa-arrow-up-right-from-square"></i></button>
