@@ -219,19 +219,14 @@ a {
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 1.35rem;
-  padding: 0.68rem 0.95rem;
-  border-radius: 24px;
-  border: 1px solid rgba(120, 150, 210, 0.12);
-  background:
-    radial-gradient(circle at top left, rgba(120, 150, 210, 0.07), transparent 26%),
-    radial-gradient(circle at top right, rgba(255, 123, 114, 0.06), transparent 30%),
-    linear-gradient(180deg, rgba(10, 16, 27, 0.98), rgba(6, 10, 18, 0.98));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 20px 38px rgba(1, 4, 9, 0.16);
-  overflow: hidden;
+  justify-content: space-between;
+  gap: 1.2rem;
+  padding: 0.34rem 0;
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
 }
 
 .middle-header-panel::after {
@@ -242,8 +237,8 @@ a {
   display: flex;
   align-items: center;
   gap: 14px;
-  flex: 0 1 320px;
-  max-width: 320px;
+  flex: 0 1 360px;
+  max-width: 360px;
   min-width: 0;
 }
 
@@ -303,9 +298,9 @@ a {
 }
 
 .logo-wordmark {
-  width: min(220px, 100%);
+  width: min(250px, 100%);
   max-width: 100%;
-  max-height: 70px;
+  max-height: 82px;
   height: auto;
   display: block;
   object-fit: contain;
@@ -314,7 +309,7 @@ a {
 
 .logo-wordmark-picture {
   display: block;
-  width: min(220px, 100%);
+  width: min(250px, 100%);
   max-width: 100%;
   border-radius: 22px;
   overflow: hidden;
@@ -451,9 +446,9 @@ a {
 .search-form {
   position: relative;
   display: block;
-  width: min(100%, 470px);
-  flex: 0 1 470px;
-  max-width: 470px;
+  width: min(100%, 420px);
+  flex: 0 1 420px;
+  max-width: 420px;
   z-index: 2;
 }
 
@@ -462,7 +457,7 @@ a {
   display: flex;
   align-items: center;
   gap: 0.72rem;
-  min-height: 54px;
+  min-height: 50px;
   padding: 0.42rem 0.42rem 0.42rem 0.78rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 18px;
@@ -536,10 +531,10 @@ a {
 }
 
 .search-form button {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border: none;
-  border-radius: 14px;
+  border-radius: 13px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3212,8 +3207,8 @@ h6 {
   }
 
   .middle-header-panel {
-    gap: 0.88rem;
-    padding: 0.82rem;
+    gap: 0.82rem;
+    padding: 0.2rem 0;
   }
 
   .middle-header-panel::after {
@@ -3351,13 +3346,13 @@ h6 {
   }
 
   .logo-wordmark {
-    width: min(184px, 70vw);
-    max-height: 62px;
+    width: min(208px, 72vw);
+    max-height: 70px;
     margin-inline: 0;
   }
 
   .logo-wordmark-picture {
-    width: min(184px, 70vw);
+    width: min(208px, 72vw);
     margin-inline: 0;
   }
 
@@ -3394,9 +3389,9 @@ h6 {
   }
 
   .search-form button {
-    width: 38px;
-    height: 38px;
-    flex: 0 0 38px;
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
     border-radius: 12px;
     font-size: 0.84rem;
   }

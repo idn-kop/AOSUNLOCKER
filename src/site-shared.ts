@@ -119,6 +119,20 @@ const globeSvg = `
 
 const primarySiteUrl = 'https://aosunlocker.com'
 
+const renderMiniSocialLinks = (extraClass = '') => `
+  <div class="mini-social-links ${extraClass}".trim() aria-label="AOSUNLOCKER social links">
+    <a class="mini-social-link mini-social-link-whatsapp" href="https://wa.me/6282234370999" target="_blank" rel="noreferrer" aria-label="WhatsApp admin" title="WhatsApp admin">
+      ${whatsappSvg}
+    </a>
+    <a class="mini-social-link mini-social-link-facebook" href="https://www.facebook.com/anggaaosunlocker" target="_blank" rel="noreferrer" aria-label="Facebook" title="Facebook">
+      ${facebookSvg}
+    </a>
+    <a class="mini-social-link mini-social-link-web" href="${primarySiteUrl}" target="_blank" rel="noreferrer" aria-label="Website" title="Website">
+      ${globeSvg}
+    </a>
+  </div>
+`
+
 export const renderTicker = (items: TickerItem[]) =>
   repeatForTicker(items)
     .map(
@@ -540,6 +554,21 @@ export const renderDownloadDetailSkeleton = () => `
 `
 
 export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downloadsActive = false) => `
+  <div class="top-bar">
+    <div class="container d-flex justify-content-between align-items-center flex-wrap">
+      <div class="d-flex flex-wrap">
+        <a href="/index.html"><i class="fas fa-house me-1"></i>Home</a>
+        <a href="/downloads.html"><i class="fas fa-folder-tree me-1"></i>Downloads</a>
+        <a href="/solution-files.html?brand=huawei"><i class="fas fa-mobile-alt me-1"></i>Huawei</a>
+        <a href="/solution-files.html?brand=honor"><i class="fas fa-download me-1"></i>Honor</a>
+      </div>
+      <div class="top-bar-actions">
+        <a class="support-link" href="https://wa.me/6282234370999" target="_blank" rel="noreferrer"><i class="fas fa-headset me-1"></i>WhatsApp Support</a>
+        ${renderMiniSocialLinks('mini-social-links-topbar')}
+      </div>
+    </div>
+  </div>
+
   <header class="middle-header">
     <div class="container">
       <div class="middle-header-panel">
