@@ -52,6 +52,36 @@ const renderAssetImage = ({
   />
 `
 
+const getBrandArtwork = (brandId?: string) => {
+  if (brandId === 'huawei') {
+    return {
+      src: '/huawei-solutions.webp',
+      alt: 'Huawei logo',
+      className: 'download-brand-logo',
+      width: 700,
+      height: 700,
+    }
+  }
+
+  if (brandId === 'honor') {
+    return {
+      src: '/honor-solutions.svg',
+      alt: 'Honor logo',
+      className: 'download-brand-logo',
+      width: 100,
+      height: 86,
+    }
+  }
+
+  return {
+    src: '/folder.svg',
+    alt: 'Folder icon',
+    className: 'download-brand-logo download-brand-logo-folder',
+    width: 100,
+    height: 86,
+  }
+}
+
 type NavKey = SitePageKey | 'remote'
 
 const navItems: Array<{ key: SitePageKey; label: string; href: string; icon: string }> = [
@@ -306,21 +336,21 @@ const renderLogoWordmark = () => `
 const getDownloadHomeKicker = (item: DownloadCategoryCard) => {
   if (item.kind === 'brand') {
     if (item.brandId === 'honor') {
-      return '<i class="fas fa-folder"></i>Honor Folder'
+      return 'Honor Files'
     }
 
     if (item.brandId === 'huawei') {
-      return '<i class="fas fa-folder"></i>Huawei Folder'
+      return 'Huawei Files'
     }
 
-    return '<i class="fas fa-folder-open"></i>Service Folder'
+    return 'Service Files'
   }
 
   if (item.kind === 'android') {
-    return '<i class="fab fa-android"></i>Android Access'
+    return 'Android Access'
   }
 
-  return '<i class="fas fa-folder-tree"></i>Folder Access'
+  return 'Folder Access'
 }
 
 export const renderDownloadHomeCard = (item: DownloadCategoryCard) => `
@@ -330,16 +360,16 @@ export const renderDownloadHomeCard = (item: DownloadCategoryCard) => `
         item.kind === 'android'
           ? '<i class="fab fa-android"></i>'
           : item.kind === 'brand'
-            ? renderAssetImage({
-                src: '/folder.svg',
-                alt: `${item.title} folder`,
-                className: 'download-brand-logo download-brand-logo-folder',
-                loading: 'lazy',
-                decoding: 'async',
-                fetchPriority: 'low',
-                width: 100,
-                height: 86,
-              })
+            ? `
+              <div class="download-brand-artwork">
+                ${renderAssetImage({
+                  ...getBrandArtwork(item.brandId),
+                  loading: 'lazy',
+                  decoding: 'async',
+                  fetchPriority: 'low',
+                })}
+              </div>
+            `
             : renderAssetImage({
                 src: '/folder.svg',
                 alt: 'Folder icon',
