@@ -110,6 +110,83 @@ function addBrand(payload) {
   };
 }
 
+function updateBrand(payload) {
+  ensureSchema_();
+
+  if (!payload) {
+    throw new Error('Missing brand payload.');
+  }
+
+  const originalBrandId = String(payload.originalBrandId || '').trim().toLowerCase();
+  const brandLabel = String(payload.brandLabel || '').trim();
+
+  if (!originalBrandId) throw new Error('Original brand ID is missing.');
+  if (!brandLabel) throw new Error('Brand label is required.');
+
+  const brandsSheet = getBrandsSheet_();
+  const values = brandsSheet.getDataRange().getValues();
+  const rowIndex = values.findIndex(function(row, index) {
+    if (index === 0) return false;
+    return String(row[0] || '').trim().toLowerCase() === originalBrandId;
+  });
+
+  if (rowIndex === -1) {
+    throw new Error('Brand row not found.');
+  }
+
+  brandsSheet.getRange(rowIndex + 1, 1, 1, 2).setValues([[originalBrandId, brandLabel]]);
+  syncSettingsBrandUpdate_(originalBrandId, originalBrandId, brandLabel);
+  syncDownloadsBrandUpdate_(originalBrandId, originalBrandId, brandLabel);
+  touchPublicCacheVersion_();
+
+  return {
+    ok: true,
+    message: 'Brand updated successfully.',
+    brands: getBrands_(),
+    categories: getCategories_(),
+    recentFiles: getRecentFiles_(),
+  };
+}
+
+function deleteBrand(brandId) {
+  ensureSchema_();
+
+  const targetId = String(brandId || '').trim().toLowerCase();
+  if (!targetId) {
+    throw new Error('Brand ID is missing.');
+  }
+
+  const brandsSheet = getBrandsSheet_();
+  const values = brandsSheet.getDataRange().getValues();
+  const rowIndex = values.findIndex(function(row, index) {
+    if (index === 0) return false;
+    return String(row[0] || '').trim().toLowerCase() === targetId;
+  });
+
+  if (rowIndex === -1) {
+    throw new Error('Brand row not found.');
+  }
+
+  const categoryCount = countCategoriesForBrand_(targetId);
+  const fileCount = countFilesForBrand_(targetId);
+  if (categoryCount || fileCount) {
+    throw new Error(
+      'This brand still has ' + categoryCount + ' categories and ' + fileCount + ' files. Remove or move them first.'
+    );
+  }
+
+  brandsSheet.deleteRow(rowIndex + 1);
+  touchPublicCacheVersion_();
+
+  return {
+    ok: true,
+    message: 'Brand deleted successfully.',
+    brands: getBrands_(),
+    categories: getCategories_(),
+    recentFiles: getRecentFiles_(),
+  };
+}
+
 function addCategory(payload) {
   ensureSchema_();
 
@@ -216,10 +293,10 @@ function deleteCategory(categoryId) {
     throw new Error('Category row not found.');
   }
 
-  const hasLinkedFiles = hasFilesForCategory_(targetId);
+  const linkedFileCount = countFilesForCategory_(targetId);
 
-  if (hasLinkedFiles) {
-    throw new Error('This category still has files. Move or remove those files first.');
+  if (linkedFileCount) {
+    throw new Error('This category still has ' + linkedFileCount + ' files. Move or remove them first.');
   }
 
   settingsSheet.deleteRow(rowIndex + 1);
@@ -529,19 +606,88 @@ function syncDownloadsCategoryUpdate_(originalCategoryId, nextCategoryId, catego
   }
 }
 
-function hasFilesForCategory_(categoryId) {
+function syncSettingsBrandUpdate_(originalBrandId, nextBrandId, brandLabel) {
+  const sheet = getSettingsSheet_();
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0] || [];
+  const brandIdIndex = headers.indexOf('brand_id') >= 0 ? headers.indexOf('brand_id') : 0;
+  const brandLabelIndex = headers.indexOf('brand_label') >= 0 ? headers.indexOf('brand_label') : 1;
+
+  for (var i = 1; i < values.length; i += 1) {
+    if (String(values[i][brandIdIndex] || '').trim().toLowerCase() !== originalBrandId) continue;
+
+    sheet.getRange(i + 1, brandIdIndex + 1).setValue(nextBrandId);
+    sheet.getRange(i + 1, brandLabelIndex + 1).setValue(brandLabel);
+  }
+}
+
+function syncDownloadsBrandUpdate_(originalBrandId, nextBrandId, brandLabel) {
+  const sheet = getDownloadsSheet_();
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0] || [];
+  const brandIdIndex = headers.indexOf('brand_id') >= 0 ? headers.indexOf('brand_id') : 1;
+  const brandLabelIndex = headers.indexOf('brand_label') >= 0 ? headers.indexOf('brand_label') : 2;
+  const updatedAtIndex = headers.indexOf('updated_at') >= 0 ? headers.indexOf('updated_at') : 17;
+
+  for (var i = 1; i < values.length; i += 1) {
+    if (String(values[i][brandIdIndex] || '').trim().toLowerCase() !== originalBrandId) continue;
+
+    sheet.getRange(i + 1, brandIdIndex + 1).setValue(nextBrandId);
+    sheet.getRange(i + 1, brandLabelIndex + 1).setValue(brandLabel);
+    if (updatedAtIndex >= 0) {
+      sheet.getRange(i + 1, updatedAtIndex + 1).setValue(new Date().toISOString());
+    }
+  }
+}
+
+function countCategoriesForBrand_(brandId) {
+  const sheet = getSettingsSheet_();
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0] || [];
+  const brandIdIndex = headers.indexOf('brand_id') >= 0 ? headers.indexOf('brand_id') : 0;
+
+  var count = 0;
+  for (var i = 1; i < values.length; i += 1) {
+    if (!String(values[i][2] || values[i][0] || '').trim()) continue;
+    if (String(values[i][brandIdIndex] || '').trim().toLowerCase() === brandId) {
+      count += 1;
+    }
+  }
+
+  return count;
+}
+
+function countFilesForCategory_(categoryId) {
   const sheet = getDownloadsSheet_();
   const values = sheet.getDataRange().getValues();
   const headers = values[0] || [];
   const categoryIdIndex = headers.indexOf('category_id') >= 0 ? headers.indexOf('category_id') : 3;
 
+  var count = 0;
   for (var i = 1; i < values.length; i += 1) {
     if (String(values[i][0] || '').trim() && String(values[i][categoryIdIndex] || '').trim() === categoryId) {
-      return true;
+      count += 1;
     }
   }
 
-  return false;
+  return count;
+}
+
+function countFilesForBrand_(brandId) {
+  const sheet = getDownloadsSheet_();
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0] || [];
+  const brandIdIndex = headers.indexOf('brand_id') >= 0 ? headers.indexOf('brand_id') : 1;
+
+  var count = 0;
+  for (var i = 1; i < values.length; i += 1) {
+    if (!String(values[i][0] || '').trim()) continue;
+    if (String(values[i][brandIdIndex] || '').trim().toLowerCase() === brandId) {
+      count += 1;
+    }
+  }
+
+  return count;
 }
 
 function getPublishedFiles_(categoryId) {

@@ -5,6 +5,8 @@
     editId: '',
     brands: [],
     categoryEditId: '',
+    brandEditId: '',
+    confirmResolver: null,
   };
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -18,6 +20,7 @@
     document.getElementById('categoryForm').addEventListener('submit', onCategorySubmit);
     document.getElementById('autofillButton').addEventListener('click', onAutofill);
     document.getElementById('cancelEditButton').addEventListener('click', resetFormState);
+    document.getElementById('cancelBrandEditButton').addEventListener('click', resetBrandFormState);
     document.getElementById('cancelCategoryEditButton').addEventListener('click', resetCategoryFormState);
     document.getElementById('brandId').addEventListener('change', renderCategories);
     document.getElementById('mobileAutofillShortcut').addEventListener('click', onAutofill);
@@ -25,6 +28,11 @@
     document.getElementById('mobileDriveFocusShortcut').addEventListener('click', () => focusField('driveUrl'));
     document.getElementById('mobileRecentShortcut').addEventListener('click', () => jumpToPanel('recentPanel'));
     document.getElementById('mobileSaveShortcut').addEventListener('click', () => document.getElementById('fileForm').requestSubmit());
+    document.getElementById('confirmCancelButton').addEventListener('click', () => closeConfirmDialog(false));
+    document.getElementById('confirmAcceptButton').addEventListener('click', () => closeConfirmDialog(true));
+    document.querySelectorAll('[data-confirm-close]').forEach((node) => {
+      node.addEventListener('click', () => closeConfirmDialog(false));
+    });
   });
 
   function bootstrap(data) {
@@ -35,6 +43,7 @@
     document.getElementById('sheetName').textContent = data.sheetName || 'Downloads';
     renderBrands();
     renderCategories();
+    renderBrandRows();
     renderRecentRows();
     renderCategoryRows();
     syncMobileSaveButton(false);
@@ -143,6 +152,38 @@
     });
   }
 
+  function renderBrandRows() {
+    const tbody = document.getElementById('brandRows');
+
+    if (!state.brands.length) {
+      tbody.innerHTML = '<tr><td colspan="3" class="muted">No brands yet.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = state.brands
+      .map((item, index) => `
+        <tr>
+          <td><strong>${escapeHtml(item.label)}</strong></td>
+          <td><code>${escapeHtml(item.id)}</code></td>
+          <td>
+            <div class="row-actions">
+              <button type="button" class="row-action" data-brand-edit-index="${index}">Edit</button>
+              <button type="button" class="row-action row-action-danger" data-brand-delete-index="${index}">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `)
+      .join('');
+
+    tbody.querySelectorAll('[data-brand-edit-index]').forEach((button) => {
+      button.addEventListener('click', () => startBrandEdit(Number(button.getAttribute('data-brand-edit-index'))));
+    });
+
+    tbody.querySelectorAll('[data-brand-delete-index]').forEach((button) => {
+      button.addEventListener('click', () => onDeleteBrand(Number(button.getAttribute('data-brand-delete-index'))));
+    });
+  }
+
   function renderCategoryRows() {
     const tbody = document.getElementById('categoryRows');
 
@@ -181,27 +222,36 @@
 
     const form = event.currentTarget;
     const formData = new FormData(form);
+    const originalBrandId = String(formData.get('originalBrandId') || '').trim();
     const brandLabel = String(formData.get('brandLabel') || '').trim();
     const brandId = String(formData.get('brandId') || '').trim() || slugify(brandLabel);
 
     hideFlash();
 
-    google.script.run
+    const runner = google.script.run
       .withSuccessHandler((response) => {
         state.brands = response.brands || state.brands;
         state.categories = response.categories || state.categories;
+        state.recentFiles = response.recentFiles || state.recentFiles;
         renderBrands();
         renderCategories();
+        renderBrandRows();
         renderCategoryRows();
+        renderRecentRows();
         resetFormState();
         resetCategoryFormState();
-        form.reset();
-        showSuccess(response.message || 'Brand added.');
+        resetBrandFormState();
+        showSuccess(response.message || 'Brand saved.');
       })
       .withFailureHandler((error) => {
         showError(error);
-      })
-      .addBrand({ brandId, brandLabel });
+      });
+
+    if (state.brandEditId) {
+      runner.updateBrand({ originalBrandId, brandId, brandLabel });
+    } else {
+      runner.addBrand({ brandId, brandLabel });
+    }
   }
 
   function onSubmit(event) {
@@ -269,6 +319,7 @@
         state.brands = response.brands || state.brands;
         renderBrands();
         renderCategories();
+        renderBrandRows();
         renderCategoryRows();
         form.reset();
         document.getElementById('categoryBrandId').value = state.brands[0] ? state.brands[0].id : 'huawei';
@@ -369,6 +420,33 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
+  function startBrandEdit(index) {
+    const item = state.brands[index];
+    if (!item) return;
+
+    state.brandEditId = item.id;
+    const form = document.getElementById('brandForm');
+    form.querySelector('[name="originalBrandId"]').value = item.id || '';
+    form.querySelector('[name="brandLabel"]').value = item.label || '';
+    form.querySelector('[name="brandId"]').value = item.id || '';
+    form.querySelector('[name="brandId"]').readOnly = true;
+    document.getElementById('brandIdNote').textContent = 'Brand ID stays locked to keep links stable. Edit the label only.';
+    document.getElementById('brandSaveButton').textContent = 'Update Brand';
+    document.getElementById('cancelBrandEditButton').classList.remove('hidden');
+    hideFlash();
+  }
+
+  function resetBrandFormState() {
+    state.brandEditId = '';
+    const form = document.getElementById('brandForm');
+    form.reset();
+    form.querySelector('[name="originalBrandId"]').value = '';
+    form.querySelector('[name="brandId"]').readOnly = false;
+    document.getElementById('brandIdNote').textContent = 'Leave empty to auto-generate the brand ID.';
+    document.getElementById('brandSaveButton').textContent = 'Add Brand';
+    document.getElementById('cancelBrandEditButton').classList.add('hidden');
+  }
+
   function resetFormState() {
     state.editId = '';
     const form = document.getElementById('fileForm');
@@ -414,11 +492,52 @@
     document.getElementById('categoryBrandId').value = state.brands[0] ? state.brands[0].id : 'huawei';
   }
 
-  function onDeleteCategory(index) {
+  async function onDeleteBrand(index) {
+    const item = state.brands[index];
+    if (!item) return;
+
+    const confirmed = await showConfirmDialog({
+      eyebrow: 'Delete Brand',
+      title: `Delete ${item.label}?`,
+      message: 'This works only when the brand has no linked folders or files.',
+      confirmLabel: 'Delete Brand',
+      danger: true,
+    });
+    if (!confirmed) return;
+
+    hideFlash();
+
+    google.script.run
+      .withSuccessHandler((response) => {
+        state.brands = response.brands || [];
+        state.categories = response.categories || [];
+        state.recentFiles = response.recentFiles || state.recentFiles;
+        renderBrands();
+        renderCategories();
+        renderBrandRows();
+        renderCategoryRows();
+        renderRecentRows();
+        resetBrandFormState();
+        resetCategoryFormState();
+        showSuccess(response.message || 'Brand deleted.');
+      })
+      .withFailureHandler((error) => {
+        showError(error);
+      })
+      .deleteBrand(item.id);
+  }
+
+  async function onDeleteCategory(index) {
     const item = state.categories[index];
     if (!item) return;
 
-    const confirmed = window.confirm(`Delete category "${item.label}" from ${item.brandLabel || capitalize(item.brandId || '')}?`);
+    const confirmed = await showConfirmDialog({
+      eyebrow: 'Delete Category',
+      title: `Delete ${item.label}?`,
+      message: `Remove category from ${item.brandLabel || capitalize(item.brandId || '')}. This only works when no files are linked.`,
+      confirmLabel: 'Delete Category',
+      danger: true,
+    });
     if (!confirmed) return;
 
     hideFlash();
@@ -439,11 +558,17 @@
       .deleteCategory(item.id);
   }
 
-  function onDeleteFile(index) {
+  async function onDeleteFile(index) {
     const item = state.recentFiles[index];
     if (!item) return;
 
-    const confirmed = window.confirm(`Delete file "${item.title}"?`);
+    const confirmed = await showConfirmDialog({
+      eyebrow: 'Delete File',
+      title: 'Delete this file?',
+      message: item.title || 'This file will be removed from admin and public data.',
+      confirmLabel: 'Delete File',
+      danger: true,
+    });
     if (!confirmed) return;
 
     hideFlash();
@@ -461,6 +586,40 @@
       .deleteDownloadFile(item.id);
   }
 
+  function showConfirmDialog(options) {
+    const modal = document.getElementById('confirmModal');
+    const eyebrow = document.getElementById('confirmEyebrow');
+    const title = document.getElementById('confirmTitle');
+    const message = document.getElementById('confirmMessage');
+    const acceptButton = document.getElementById('confirmAcceptButton');
+
+    eyebrow.textContent = options && options.eyebrow ? options.eyebrow : 'Confirm Action';
+    title.textContent = options && options.title ? options.title : 'Continue?';
+    message.textContent = options && options.message ? options.message : 'Please confirm this action.';
+    acceptButton.textContent = options && options.confirmLabel ? options.confirmLabel : 'Confirm';
+    acceptButton.classList.toggle('danger', Boolean(options && options.danger));
+
+    modal.classList.remove('hidden');
+    modal.setAttribute('aria-hidden', 'false');
+
+    return new Promise((resolve) => {
+      state.confirmResolver = resolve;
+    });
+  }
+
+  function closeConfirmDialog(accepted) {
+    const modal = document.getElementById('confirmModal');
+    const resolver = state.confirmResolver;
+
+    modal.classList.add('hidden');
+    modal.setAttribute('aria-hidden', 'true');
+    state.confirmResolver = null;
+
+    if (resolver) {
+      resolver(Boolean(accepted));
+    }
+  }
+
   function showSuccess(message) {
     const flash = document.getElementById('flash');
     flash.classList.remove('hidden');
@@ -468,6 +627,7 @@
     flash.style.background = 'rgba(46, 160, 67, 0.14)';
     flash.style.borderColor = 'rgba(46, 160, 67, 0.35)';
     flash.style.color = '#7ee787';
+    flash.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
   function showError(error) {
@@ -477,6 +637,7 @@
     flash.style.background = 'rgba(248, 81, 73, 0.12)';
     flash.style.borderColor = 'rgba(248, 81, 73, 0.35)';
     flash.style.color = '#ffb4ad';
+    flash.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
   function hideFlash() {
