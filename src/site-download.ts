@@ -33,6 +33,7 @@ import {
   peekBrandFolders,
   peekCategoriesByBrand,
   peekFilesByCategory,
+  syncLiveCacheVersion,
 } from './live-data'
 import type { BrandId } from './data-types'
 
@@ -345,6 +346,8 @@ export const renderDownloadsHubPage = async () => {
   const app = document.querySelector<HTMLDivElement>('#app')
   if (!app) return
 
+  await syncLiveCacheVersion()
+
   document.title = 'Downloads | AOSUNLOCKER Huawei Lab'
 
   const cachedBrandResult = peekBrandFolders()
@@ -380,6 +383,8 @@ export const renderDownloadsHubPage = async () => {
 export const renderSolutionFilesPage = async () => {
   const app = document.querySelector<HTMLDivElement>('#app')
   if (!app) return
+
+  await syncLiveCacheVersion()
 
   const params = new URLSearchParams(window.location.search)
   const brandId = (params.get('brand') || 'huawei') as BrandId
@@ -727,6 +732,8 @@ export const renderAnaAn00ListPage = () => {
 export const renderDownloadFlowDetailPage = async () => {
   const app = document.querySelector<HTMLDivElement>('#app')
   if (!app) return
+
+  await syncLiveCacheVersion()
 
   const params = new URLSearchParams(window.location.search)
   const id = params.get('file') ?? 'ana-an00-harmony3-remove-id'

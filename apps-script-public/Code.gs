@@ -29,6 +29,13 @@ function doGet(e) {
     return jsonOutput_(refreshPublicCache_(requestedVersion));
   }
 
+  if (view === 'status') {
+    return jsonOutput_({
+      ok: true,
+      cacheVersion: getCacheVersion_(),
+    });
+  }
+
   if (view === 'categories') {
     const brandId = String((e && e.parameter && e.parameter.brand) || '').trim();
     return jsonOutput_({

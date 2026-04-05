@@ -51,6 +51,11 @@ type PublicFileResponse = {
   file?: PublicFileRecord | null
 }
 
+type PublicStatusResponse = {
+  ok?: boolean
+  cacheVersion?: string
+}
+
 type IncrementResponse = {
   ok?: boolean
   downloads?: string
@@ -73,6 +78,7 @@ const brandLabelMap: Record<BrandId, string> = {
 const LIVE_CACHE_PREFIX = 'aosunlocker-live-cache:'
 const LIVE_CACHE_TTL = 1000 * 60 * 15
 const LIVE_FETCH_TIMEOUT = 1000 * 10
+const LIVE_VERSION_STORAGE_KEY = 'aosunlocker-live-cache-version'
 const inFlightRequests = new Map<string, Promise<unknown>>()
 
 const getAppsScriptUrl = () => window.AOSUNLOCKER_CONFIG?.appsScriptUrl?.trim() ?? ''
@@ -160,6 +166,99 @@ const writeCache = <T>(key: string, value: T) => {
   } catch {
     // ignore storage failures
   }
+}
+
+const readVersionMarker = () => {
+  const stores = [window.sessionStorage, window.localStorage]
+
+  for (const store of stores) {
+    try {
+      const raw = store.getItem(LIVE_VERSION_STORAGE_KEY)
+      if (raw) return raw
+    } catch {
+      // ignore storage failures
+    }
+  }
+
+  return ''
+}
+
+const writeVersionMarker = (value: string) => {
+  const nextValue = String(value || '').trim()
+  if (!nextValue) return
+
+  for (const store of [window.sessionStorage, window.localStorage]) {
+    try {
+      store.setItem(LIVE_VERSION_STORAGE_KEY, nextValue)
+    } catch {
+      // ignore storage failures
+    }
+  }
+}
+
+const clearLiveCache = () => {
+  for (const store of [window.sessionStorage, window.localStorage]) {
+    try {
+      const keys: string[] = []
+
+      for (let index = 0; index < store.length; index += 1) {
+        const key = store.key(index)
+        if (key?.startsWith(LIVE_CACHE_PREFIX)) {
+          keys.push(key)
+        }
+      }
+
+      keys.forEach((key) => store.removeItem(key))
+    } catch {
+      // ignore storage failures
+    }
+  }
+}
+
+const loadPublicCacheVersion = async () => {
+  const url = buildApiUrl('status')
+  if (!url) return ''
+
+  const inFlightKey = `status:${url}`
+  const existingRequest = inFlightRequests.get(inFlightKey) as Promise<string> | undefined
+  if (existingRequest) return existingRequest
+
+  const request = (async () => {
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), LIVE_FETCH_TIMEOUT)
+
+    try {
+      const response = await fetch(url, {
+        signal: controller.signal,
+        cache: 'no-store',
+      })
+      if (!response.ok) throw new Error('Status request failed.')
+
+      const data = (await response.json()) as PublicStatusResponse
+      return String(data.cacheVersion || '').trim()
+    } catch {
+      return ''
+    } finally {
+      window.clearTimeout(timeout)
+      inFlightRequests.delete(inFlightKey)
+    }
+  })()
+
+  inFlightRequests.set(inFlightKey, request)
+  return request
+}
+
+export const syncLiveCacheVersion = async () => {
+  const nextVersion = await loadPublicCacheVersion()
+  if (!nextVersion) return false
+
+  const currentVersion = readVersionMarker()
+  if (currentVersion && currentVersion !== nextVersion) {
+    clearLiveCache()
+  }
+
+  writeVersionMarker(nextVersion)
+  return currentVersion !== nextVersion
 }
 
 const fetchJsonCached = async <T>(

@@ -1,5 +1,5 @@
 import { downloadHomeCategories } from './download-data'
-import { loadBrandFolders, peekBrandFolders } from './live-data'
+import { loadBrandFolders, peekBrandFolders, syncLiveCacheVersion } from './live-data'
 import { pageLinks, pages, remoteServiceQualcommEntries, stats } from './portal-data'
 import {
   renderDownloadHomeCard,
@@ -171,6 +171,10 @@ export const renderPage = async (pageKey: SitePageKey) => {
   const page = pages[pageKey]
   const app = document.querySelector<HTMLDivElement>('#app')
   if (!app || !page) return
+
+  if (page.key === 'home') {
+    await syncLiveCacheVersion()
+  }
 
   document.title = page.title
   const heroHasEyebrow = Boolean(page.eyebrow && page.eyebrow.trim())

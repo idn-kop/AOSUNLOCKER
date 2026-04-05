@@ -320,22 +320,46 @@ function deleteDownloadFile(fileId) {
 
   const sheet = getDownloadsSheet_();
   const values = sheet.getDataRange().getValues();
-  const rowIndex = values.findIndex(function(row, index) {
-    return index > 0 && String(row[0] || '').trim() === targetId;
-  });
+  const rowIndexes = values.reduce(function(indexes, row, index) {
+    if (index > 0 && String(row[0] || '').trim() === targetId) {
+      indexes.push(index);
+    }
+    return indexes;
+  }, []);
 
-  if (rowIndex === -1) {
+  if (!rowIndexes.length) {
     throw new Error('File row was not found.');
   }
 
-  sheet.deleteRow(rowIndex + 1);
+  rowIndexes
+    .slice()
+    .sort(function(left, right) {
+      return right - left;
+    })
+    .forEach(function(rowIndex) {
+      sheet.deleteRow(rowIndex + 1);
+    });
+
   touchPublicCacheVersion_();
 
   return {
     ok: true,
-    message: 'File deleted successfully.',
+    message: rowIndexes.length > 1
+      ? 'File deleted successfully. Removed ' + rowIndexes.length + ' duplicate rows with the same file ID.'
+      : 'File deleted successfully.',
     recentFiles: getRecentFiles_(),
   };
+}
+
+function hasDownloadIdConflict_(values, fileId, currentRowIndex) {
+  const targetId = String(fileId || '').trim();
+  if (!targetId) return false;
+
+  return values.some(function(row, index) {
+    if (index === 0) return false;
+    if (typeof currentRowIndex === 'number' && index === currentRowIndex) return false;
+    return String(row[0] || '').trim() === targetId;
+  });
 }
 
 function handleApiGet_(e) {
@@ -418,6 +442,11 @@ function addDownloadFile(payload) {
   ];
 
   const sheet = getDownloadsSheet_();
+  const values = sheet.getDataRange().getValues();
+  if (hasDownloadIdConflict_(values, clean.id)) {
+    throw new Error('A file with the same generated ID already exists. Edit the existing file instead of adding a duplicate.');
+  }
+
   sheet.appendRow(row);
   touchPublicCacheVersion_();
 
@@ -446,6 +475,10 @@ function updateDownloadFile(payload) {
 
   if (rowIndex === -1) {
     throw new Error('File row was not found.');
+  }
+
+  if (hasDownloadIdConflict_(values, clean.id, rowIndex)) {
+    throw new Error('Another file already uses this generated ID. Change the title or category, or edit the matching file instead.');
   }
 
   const existing = values[rowIndex];
@@ -1116,35 +1149,41 @@ function touchPublicCacheVersion_() {
 }
 
 function refreshPublicCacheEndpoint_(version, updatedAt) {
-  const baseUrl = getPublicRefreshUrl_();
-  if (!baseUrl) return;
+  getPublicRefreshUrls_().forEach(function(baseUrl) {
+    const separator = baseUrl.indexOf('?') >= 0 ? '&' : '?';
+    const url = baseUrl +
+      separator +
+      'view=refresh&version=' + encodeURIComponent(String(version || '').trim()) +
+      '&updatedAt=' + encodeURIComponent(String(updatedAt || '').trim());
 
-  const separator = baseUrl.indexOf('?') >= 0 ? '&' : '?';
-  const url = baseUrl +
-    separator +
-    'view=refresh&version=' + encodeURIComponent(String(version || '').trim()) +
-    '&updatedAt=' + encodeURIComponent(String(updatedAt || '').trim());
+    try {
+      const response = UrlFetchApp.fetch(url, {
+        followRedirects: true,
+        muteHttpExceptions: true,
+      });
 
-  try {
-    const response = UrlFetchApp.fetch(url, {
-      followRedirects: true,
-      muteHttpExceptions: true,
-    });
-
-    if (response.getResponseCode() >= 400) {
-      Logger.log('Public cache refresh returned HTTP ' + response.getResponseCode());
+      if (response.getResponseCode() >= 400) {
+        Logger.log('Public cache refresh returned HTTP ' + response.getResponseCode() + ' for ' + baseUrl);
+      }
+    } catch (error) {
+      Logger.log('Public cache refresh failed for ' + baseUrl + ': ' + error.message);
     }
-  } catch (error) {
-    Logger.log('Public cache refresh failed: ' + error.message);
-  }
+  });
 }
 
-function getPublicRefreshUrl_() {
+function getPublicRefreshUrls_() {
   const configured = String(
     PropertiesService.getScriptProperties().getProperty(PUBLIC_REFRESH_URL_PROPERTY) || ''
   ).trim();
+  const urls = [configured, DEFAULT_PUBLIC_REFRESH_URL]
+    .map(function(url) {
+      return String(url || '').trim();
+    })
+    .filter(Boolean);
 
-  return configured || DEFAULT_PUBLIC_REFRESH_URL;
+  return urls.filter(function(url, index) {
+    return urls.indexOf(url) === index;
+  });
 }
 
 function getOrCreateSheet_(spreadsheet, name) {

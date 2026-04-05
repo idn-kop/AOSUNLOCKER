@@ -1,15 +1,17 @@
 import './bootstrap-lite.css'
 import './style.css'
 import { startIconHydration } from './icons'
-import { loadBrandFolders, loadHomepageTickers } from './live-data'
+import { loadBrandFolders, loadHomepageTickers, syncLiveCacheVersion } from './live-data'
 
 startIconHydration()
 
 let liveWarmTimer: number | null = null
 
 const warmPrimaryLiveData = () => {
-  void loadBrandFolders()
-  void loadHomepageTickers()
+  void syncLiveCacheVersion().finally(() => {
+    void loadBrandFolders()
+    void loadHomepageTickers()
+  })
 }
 
 const schedulePrimaryLiveWarm = (delay = 140) => {
