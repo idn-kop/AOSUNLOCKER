@@ -8,7 +8,7 @@ const META_HEADERS = ['key', 'value'];
 const PUBLIC_CACHE_VERSION_KEY = 'public_cache_version';
 const LAST_ADMIN_UPDATE_KEY = 'last_admin_update';
 const PUBLIC_REFRESH_URL_PROPERTY = 'AOSUNLOCKER_PUBLIC_REFRESH_URL';
-const DEFAULT_PUBLIC_REFRESH_URL = 'https://script.google.com/macros/s/AKfycbyihbk4zf7wShGfRLyZ8Lo4faZS0jHJkIPV-kIE9mu6uw_BTuZ995b93m7ewb09h8Ts/exec';
+const DEFAULT_PUBLIC_REFRESH_URL = 'https://script.google.com/macros/s/AKfycbwB6f90X9fcw6DUd1qpPFy5DOQf0TmogbC6kTY2EqigrHlMfYiP83rD5Xk7pwYt-wZC/exec';
 
 const DOWNLOADS_HEADERS = [
   'id',
