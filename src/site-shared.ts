@@ -608,7 +608,7 @@ export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downlo
             <i class="fas fa-magnifying-glass search-shell-icon"></i>
             <div class="search-copy">
               <span class="search-shell-label">Search</span>
-              <input type="text" id="searchInput" aria-label="Search downloads" placeholder="Search files, models, or solutions..." />
+              <input type="text" id="searchInput" aria-label="Search downloads" placeholder="Search files, models, or solutions..." autocomplete="off" autocapitalize="none" spellcheck="false" inputmode="search" enterkeyhint="search" />
             </div>
             <button type="submit" aria-label="Search"><i class="fas fa-arrow-up-right-from-square"></i></button>
           </div>
@@ -862,6 +862,19 @@ export const setupSearchAndScroll = () => {
       .replace(/[\s_-]+/g, ' ')
       .trim()
 
+  const cleanupSearchText = (value: string) =>
+    String(value || '')
+      .replace(/\s+[^a-z0-9\s]{1,3}\s+/gi, ' | ')
+      .replace(/[_]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+
+  const trimSearchText = (value: string, maxLength: number) => {
+    const cleaned = cleanupSearchText(value)
+    if (cleaned.length <= maxLength) return cleaned
+    return `${cleaned.slice(0, Math.max(0, maxLength - 3)).trim()}...`
+  }
+
   const getSearchScore = (query: string, title: string, keywords: string) => {
     const normalizedTitle = normalizeSearchValue(title)
     const normalizedKeywords = normalizeSearchValue(keywords)
@@ -878,8 +891,8 @@ export const setupSearchAndScroll = () => {
   const getCardLabel = (card: HTMLElement) => {
     const heading = card.querySelector<HTMLElement>('h1, h2, h3, h4, strong')
     const paragraph = card.querySelector<HTMLElement>('p')
-    const title = heading?.textContent?.trim() || card.dataset.searchTitle || 'Result'
-    const meta = paragraph?.textContent?.trim() || ''
+    const title = cleanupSearchText(heading?.textContent?.trim() || card.dataset.searchTitle || 'Result')
+    const meta = cleanupSearchText(paragraph?.textContent?.trim() || '')
     return {
       title,
       meta: meta.length > 88 ? `${meta.slice(0, 88).trim()}...` : meta,
@@ -1009,7 +1022,7 @@ export const setupSearchAndScroll = () => {
       uniqueResults.push(result)
     })
 
-    return uniqueResults.slice(0, 6)
+    return uniqueResults.slice(0, 5)
   }
 
   const renderDropdown = async (value: string) => {
@@ -1041,12 +1054,14 @@ export const setupSearchAndScroll = () => {
     searchDropdown.hidden = false
     searchDropdown.innerHTML = matches
       .map((result, index) => {
+        const displayTitle = trimSearchText(result.title, 68)
+        const displayMeta = result.meta ? trimSearchText(result.meta, 74) : ''
         return `
           <button class="search-result-item" type="button" data-search-index="${index}">
             <span class="search-result-icon"><i class="fas ${result.icon}"></i></span>
             <span class="search-result-copy">
-              <strong>${escapeHtml(result.title)}</strong>
-              ${result.meta ? `<span>${escapeHtml(result.meta)}</span>` : ''}
+              <strong>${escapeHtml(displayTitle)}</strong>
+              ${displayMeta ? `<span>${escapeHtml(displayMeta)}</span>` : ''}
             </span>
           </button>
         `

@@ -450,6 +450,7 @@ a {
   flex: 1 1 440px;
   max-width: 440px;
   z-index: 2;
+  text-transform: none;
 }
 
 .header-support-panel {
@@ -630,6 +631,9 @@ a {
   display: grid;
   gap: 0.45rem;
   padding: 0.7rem;
+  max-height: min(360px, calc(100vh - 180px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
   border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background:
@@ -646,7 +650,7 @@ a {
 .search-result-item,
 .search-dropdown-empty {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.8rem;
   width: 100%;
   padding: 0.85rem 0.95rem;
@@ -659,6 +663,9 @@ a {
   color: var(--text-main);
   cursor: pointer;
   text-align: left;
+  font: inherit;
+  appearance: none;
+  -webkit-appearance: none;
   transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
 }
 
@@ -681,22 +688,31 @@ a {
 }
 
 .search-result-copy {
+  flex: 1 1 auto;
   min-width: 0;
   display: grid;
   gap: 0.15rem;
 }
 
 .search-result-copy strong {
+  display: block;
   color: var(--text-strong);
   font-size: 0.96rem;
-  line-height: 1.3;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .search-result-copy span,
 .search-dropdown-empty span {
+  display: block;
   color: var(--text-soft);
   font-size: 0.88rem;
   line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .search-dropdown-empty {
@@ -1437,6 +1453,39 @@ a {
 
 .section-soft-home .container {
   position: relative;
+}
+
+@media (min-width: 992px) {
+  main > section + section {
+    position: relative;
+  }
+
+  main > section + section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: min(1180px, calc(100% - 48px));
+    height: 1px;
+    transform: translateX(-50%);
+    background: linear-gradient(90deg, rgba(120, 150, 210, 0), rgba(154, 165, 184, 0.22), rgba(120, 150, 210, 0));
+    pointer-events: none;
+  }
+
+  .section-soft-home + #focus .section-head > div {
+    max-width: none;
+  }
+
+  .section-soft-home + #focus .section-title {
+    gap: 0.62rem;
+    font-size: clamp(1.88rem, 2.4vw, 3rem);
+    white-space: nowrap;
+    text-wrap: nowrap;
+  }
+
+  .section-soft-home + #focus .section-title i.site-icon {
+    flex: 0 0 auto;
+  }
 }
 
 .remote-service-section {
@@ -3484,6 +3533,30 @@ h6 {
     padding: 0.55rem;
     border-radius: 16px;
     top: calc(100% + 8px);
+    max-height: min(300px, calc(100vh - 240px));
+  }
+
+  .search-result-item,
+  .search-dropdown-empty {
+    gap: 0.68rem;
+    padding: 0.76rem 0.82rem;
+    border-radius: 14px;
+  }
+
+  .search-result-icon {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    border-radius: 11px;
+  }
+
+  .search-result-copy strong {
+    font-size: 0.9rem;
+  }
+
+  .search-result-copy span,
+  .search-dropdown-empty span {
+    font-size: 0.8rem;
   }
 
   .hero-center {

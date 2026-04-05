@@ -429,7 +429,7 @@ export const pages: Record<SitePageKey, SitePage> = {
     heroCopy: '',
     quickLabel: 'Huawei Focus',
     primaryEyebrow: 'Core Services',
-    primaryTitle: 'Huawei and Honor Service Access',
+    primaryTitle: 'Huawei & Honor Service Access',
     primaryItems: homeFocusCards,
     packageEyebrow: 'Latest Packages',
     packageTitle: 'Featured Huawei and Honor Packages',
