@@ -133,6 +133,17 @@ const renderMiniSocialLinks = (extraClass = '') => `
   </div>
 `
 
+const renderHeaderSupportPanel = () => `
+  <a class="header-support-panel" href="https://wa.me/6282234370999" target="_blank" rel="noreferrer" aria-label="Direct support via WhatsApp">
+    <span class="header-support-icon"><i class="fas fa-headset"></i></span>
+    <span class="header-support-copy">
+      <span class="header-support-label">Direct Support</span>
+      <strong>WhatsApp & Remote</strong>
+      <span class="header-support-meta">Fast reply for file and service requests</span>
+    </span>
+  </a>
+`
+
 export const renderTicker = (items: TickerItem[]) =>
   repeatForTicker(items)
     .map(
@@ -595,6 +606,7 @@ export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downlo
           </div>
           <div class="search-dropdown" id="searchDropdown" hidden></div>
         </form>
+        ${renderHeaderSupportPanel()}
       </div>
     </div>
   </header>
