@@ -610,7 +610,7 @@ export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downlo
               <span class="search-shell-label">Search</span>
               <input type="text" id="searchInput" aria-label="Search downloads" placeholder="Search files, models, or solutions..." autocomplete="off" autocapitalize="none" spellcheck="false" inputmode="search" enterkeyhint="search" />
             </div>
-            <button type="submit" aria-label="Search"><i class="fas fa-arrow-up-right-from-square"></i></button>
+            <button class="search-submit-button" type="submit" aria-label="Search"><i class="fas fa-arrow-up-right-from-square"></i></button>
           </div>
           <div class="search-dropdown" id="searchDropdown" hidden></div>
         </form>
