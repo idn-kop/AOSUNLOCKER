@@ -246,6 +246,13 @@
   .integrity-issues {
     display: grid;
     gap: 12px;
+    max-height: 360px;
+    overflow: auto;
+    padding-right: 4px;
+  }
+
+  .integrity-issues.hidden {
+    display: none;
   }
 
   .integrity-issue {
@@ -554,6 +561,11 @@
 
     .integrity-summary {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .integrity-issues {
+      max-height: 300px;
+      padding-right: 0;
     }
 
     .mobile-quick-strip {

@@ -9,6 +9,7 @@
     confirmResolver: null,
     integrity: null,
     integrityLoading: false,
+    integrityExpanded: false,
   };
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -31,6 +32,7 @@
     document.getElementById('mobileRecentShortcut').addEventListener('click', () => jumpToPanel('recentPanel'));
     document.getElementById('mobileSaveShortcut').addEventListener('click', () => document.getElementById('fileForm').requestSubmit());
     document.getElementById('integrityScanButton').addEventListener('click', () => refreshIntegrityScan(false));
+    document.getElementById('integrityToggleButton').addEventListener('click', toggleIntegrityDetails);
     document.getElementById('confirmCancelButton').addEventListener('click', () => closeConfirmDialog(false));
     document.getElementById('confirmAcceptButton').addEventListener('click', () => closeConfirmDialog(true));
     document.querySelectorAll('[data-confirm-close]').forEach((node) => {
@@ -623,17 +625,26 @@
       .runIntegrityScan();
   }
 
+  function toggleIntegrityDetails() {
+    if (!state.integrity || !Array.isArray(state.integrity.issues) || !state.integrity.issues.length) return;
+    state.integrityExpanded = !state.integrityExpanded;
+    renderIntegrityPanel();
+  }
+
   function renderIntegrityPanel(error) {
     const badge = document.getElementById('integrityStatusBadge');
     const summary = document.getElementById('integritySummary');
     const issues = document.getElementById('integrityIssues');
     const button = document.getElementById('integrityScanButton');
+    const toggleButton = document.getElementById('integrityToggleButton');
     const report = state.integrity;
     const summaryData = report && report.summary ? report.summary : null;
     const issueItems = report && Array.isArray(report.issues) ? report.issues : [];
+    const totalIssues = summaryData ? Number(summaryData.totalIssues || issueItems.length || 0) : issueItems.length;
 
     button.disabled = state.integrityLoading;
     button.textContent = state.integrityLoading ? 'Scanning...' : 'Run Scan';
+    toggleButton.disabled = state.integrityLoading;
 
     badge.className = 'integrity-status';
 
@@ -658,12 +669,16 @@
 
     if (!report && !error) {
       summary.innerHTML = '<div class="integrity-empty">Run a scan to verify the current sheet structure.</div>';
+      issues.classList.add('hidden');
       issues.innerHTML = '';
+      toggleButton.classList.add('hidden');
       return;
     }
 
     if (error) {
       summary.innerHTML = '<div class="integrity-empty">The integrity scan could not finish. Try again after checking your sheet connection.</div>';
+      toggleButton.classList.add('hidden');
+      issues.classList.remove('hidden');
       issues.innerHTML = `
         <article class="integrity-issue critical">
           <div class="integrity-issue-top">
@@ -675,6 +690,9 @@
       `;
       return;
     }
+
+    toggleButton.classList.toggle('hidden', !totalIssues);
+    toggleButton.textContent = state.integrityExpanded ? 'Hide Details' : `Show Details (${totalIssues})`;
 
     summary.innerHTML = `
       <article class="integrity-summary-card">
@@ -697,21 +715,23 @@
         <span class="integrity-summary-label">Warnings</span>
         <strong class="integrity-summary-value">${escapeHtml(summaryData.warning || 0)}</strong>
       </article>
-      <div class="integrity-scan-meta">Checked ${escapeHtml(formatDateTime(report.checkedAt))}</div>
+      <div class="integrity-scan-meta">Checked ${escapeHtml(formatDateTime(report.checkedAt))}${totalIssues ? escapeHtml(` • ${state.integrityExpanded ? 'Detailed issues are open below.' : 'Open details only when you need to review the findings.'}`) : ''}</div>
     `;
 
     if (!issueItems.length) {
-      issues.innerHTML = `
-        <article class="integrity-issue">
-          <div class="integrity-issue-top">
-            <strong>No issues found</strong>
-            <span class="integrity-issue-level">Clean</span>
-          </div>
-          <p class="muted">Brands, folders, and files look aligned for the public website.</p>
-        </article>
-      `;
+      issues.classList.add('hidden');
+      issues.innerHTML = '';
+      toggleButton.classList.add('hidden');
       return;
     }
+
+    if (!state.integrityExpanded) {
+      issues.classList.add('hidden');
+      issues.innerHTML = '';
+      return;
+    }
+
+    issues.classList.remove('hidden');
 
     issues.innerHTML = issueItems
       .map((item) => {
@@ -726,7 +746,17 @@
           </article>
         `;
       })
-      .join('');
+      .join('') + (totalIssues > issueItems.length
+        ? `
+          <article class="integrity-issue">
+            <div class="integrity-issue-top">
+              <strong>Additional findings exist</strong>
+              <span class="integrity-issue-level warning">Notice</span>
+            </div>
+            <p class="muted">This panel shows the first ${issueItems.length} findings to keep the admin page compact. Fix the current issues, then scan again for the next batch.</p>
+          </article>
+        `
+        : '');
   }
 
   function formatDateTime(value) {
