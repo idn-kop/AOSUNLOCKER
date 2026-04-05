@@ -52,36 +52,6 @@ const renderAssetImage = ({
   />
 `
 
-const getBrandArtwork = (brandId?: string) => {
-  if (brandId === 'huawei') {
-    return {
-      src: '/huawei-solutions.webp',
-      alt: 'Huawei logo',
-      className: 'download-brand-logo',
-      width: 700,
-      height: 700,
-    }
-  }
-
-  if (brandId === 'honor') {
-    return {
-      src: '/honor-solutions.svg',
-      alt: 'Honor logo',
-      className: 'download-brand-logo',
-      width: 100,
-      height: 86,
-    }
-  }
-
-  return {
-    src: '/folder.svg',
-    alt: 'Folder icon',
-    className: 'download-brand-logo download-brand-logo-folder',
-    width: 100,
-    height: 86,
-  }
-}
-
 type NavKey = SitePageKey | 'remote'
 
 const navItems: Array<{ key: SitePageKey; label: string; href: string; icon: string }> = [
@@ -131,6 +101,17 @@ const renderMiniSocialLinks = (extraClass = '') => `
       ${globeSvg}
     </a>
   </div>
+`
+
+const renderHeaderSupportPanel = () => `
+  <a class="header-support-panel" href="https://wa.me/6282234370999" target="_blank" rel="noreferrer" aria-label="Direct support via WhatsApp">
+    <span class="header-support-icon"><i class="fas fa-headset"></i></span>
+    <span class="header-support-copy">
+      <span class="header-support-label">Direct Support</span>
+      <strong>WhatsApp & Remote</strong>
+      <span class="header-support-meta">Fast reply for file and service requests</span>
+    </span>
+  </a>
 `
 
 export const renderTicker = (items: TickerItem[]) =>
@@ -349,16 +330,16 @@ export const renderDownloadHomeCard = (item: DownloadCategoryCard) => `
         item.kind === 'android'
           ? '<i class="fab fa-android"></i>'
           : item.kind === 'brand'
-            ? `
-              <div class="download-brand-artwork">
-                ${renderAssetImage({
-                  ...getBrandArtwork(item.brandId),
-                  loading: 'lazy',
-                  decoding: 'async',
-                  fetchPriority: 'low',
-                })}
-              </div>
-            `
+            ? renderAssetImage({
+                src: '/folder.svg',
+                alt: `${item.title} folder`,
+                className: 'download-brand-logo download-brand-logo-folder',
+                loading: 'lazy',
+                decoding: 'async',
+                fetchPriority: 'low',
+                width: 100,
+                height: 86,
+              })
             : renderAssetImage({
                 src: '/folder.svg',
                 alt: 'Folder icon',
@@ -571,7 +552,6 @@ export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downlo
         <a href="/solution-files.html?brand=honor"><i class="fas fa-download me-1"></i>Honor</a>
       </div>
       <div class="top-bar-actions">
-        <a class="support-link" href="https://wa.me/6282234370999" target="_blank" rel="noreferrer"><i class="fas fa-headset me-1"></i>WhatsApp Support</a>
         ${renderMiniSocialLinks('mini-social-links-topbar')}
       </div>
     </div>
@@ -603,6 +583,7 @@ export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downlo
           </div>
           <div class="search-dropdown" id="searchDropdown" hidden></div>
         </form>
+        ${renderHeaderSupportPanel()}
       </div>
     </div>
   </header>

@@ -446,9 +446,9 @@ a {
 .search-form {
   position: relative;
   display: block;
-  width: min(100%, 520px);
-  flex: 1 1 520px;
-  max-width: 520px;
+  width: min(100%, 440px);
+  flex: 1 1 440px;
+  max-width: 440px;
   z-index: 2;
 }
 
@@ -2331,6 +2331,12 @@ h6 {
 .downloads-home-head {
   margin-bottom: 0.95rem;
   max-width: none;
+  display: grid;
+  gap: 0.42rem;
+}
+
+.downloads-home-head .eyebrow {
+  margin-bottom: 0;
 }
 
 .downloads-home-head .section-title {

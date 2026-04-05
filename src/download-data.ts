@@ -21,13 +21,6 @@ export const downloadHomeCategories: DownloadCategoryCard[] = [
     kind: 'brand',
     brandId: 'honor',
   },
-  {
-    title: 'AOS FIRMWARE',
-    description: 'Open AOS firmware folders, requested packages, and shared service resources.',
-    href: '/solution-files.html?brand=aos-firmware',
-    kind: 'brand',
-    brandId: 'aos-firmware',
-  },
 ]
 
 export const solutionCategories: SolutionCategory[] = [
