@@ -2919,7 +2919,7 @@ h6 {
 
 .download-list-row {
   display: grid;
-  grid-template-columns: 88px minmax(0, 1fr) 140px;
+  grid-template-columns: 88px minmax(0, 1fr) 150px;
   gap: 1rem;
   align-items: center;
   padding: 0.95rem 1rem;
@@ -3024,7 +3024,8 @@ h6 {
 
 .download-list-action {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: center;
 }
 
 .download-small-button,
@@ -3032,19 +3033,19 @@ h6 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.42rem;
-  border-radius: 0.82rem;
-  border: 1px solid rgba(255, 123, 114, 0.22);
+  gap: 0.38rem;
+  border-radius: 0.56rem;
+  border: 1px solid rgba(255, 123, 114, 0.18);
   background:
-    linear-gradient(180deg, rgba(255, 123, 114, 0.98), rgba(229, 83, 75, 0.92)),
+    linear-gradient(180deg, rgba(255, 123, 114, 0.96), rgba(229, 83, 75, 0.88)),
     rgba(255, 255, 255, 0.02);
   color: white;
-  font-weight: 700;
+  font-weight: 650;
   line-height: 1;
   letter-spacing: 0;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    0 10px 22px rgba(229, 83, 75, 0.18);
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 8px 16px rgba(229, 83, 75, 0.12);
   transition:
     transform 0.18s ease,
     box-shadow 0.18s ease,
@@ -3053,12 +3054,12 @@ h6 {
 }
 
 .download-small-button {
-  min-width: 112px;
-  padding: 0.62rem 0.86rem;
-  font-size: 0.93rem;
+  min-width: 120px;
+  min-height: 38px;
+  padding: 0.52rem 0.92rem;
+  font-size: 0.88rem;
 }
 
-.download-small-button i,
 .download-big-button i,
 .download-link i,
 .download-button i {
@@ -3073,6 +3074,15 @@ h6 {
   font-size: 0.72rem;
 }
 
+.download-small-button i {
+  margin-right: 0 !important;
+  background: transparent;
+  box-shadow: none;
+  width: auto;
+  height: auto;
+  font-size: 0.78rem;
+}
+
 .download-small-button:hover,
 .download-big-button:hover,
 .download-link:hover,
@@ -3080,9 +3090,9 @@ h6 {
   color: #fff;
   border-color: rgba(255, 123, 114, 0.28);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    0 14px 28px rgba(229, 83, 75, 0.24);
-  filter: saturate(1.04);
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 10px 20px rgba(229, 83, 75, 0.16);
+  filter: saturate(1.02);
   transform: translateY(-1px);
 }
 
