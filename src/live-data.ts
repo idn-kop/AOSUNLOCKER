@@ -1,4 +1,4 @@
-import { downloadHomeCategories, solutionCategories, solutionFilesByCategory } from './download-data'
+import { anaAn00Files, downloadHomeCategories, huaweiUpdateFolders, solutionCategories, solutionFilesByCategory } from './download-data'
 import type { BrandId, DownloadListFile, SolutionCategory, TickerItem } from './data-types'
 
 declare global {
@@ -54,6 +54,14 @@ type PublicFileResponse = {
 type IncrementResponse = {
   ok?: boolean
   downloads?: string
+}
+
+export type SearchCatalogEntry = {
+  title: string
+  meta: string
+  href: string
+  keywords: string
+  icon: string
 }
 
 const brandLabelMap: Record<BrandId, string> = {
@@ -278,6 +286,84 @@ const dedupeFiles = (files: PublicFileRecord[]) => {
   return Array.from(uniqueFiles.values())
 }
 
+const dedupeDownloadFiles = (files: DownloadListFile[]) => {
+  const uniqueFiles = new Map<string, DownloadListFile>()
+
+  files.forEach((file) => {
+    const key = String(file.id || '').trim()
+    if (!key || uniqueFiles.has(key)) return
+    uniqueFiles.set(key, file)
+  })
+
+  return Array.from(uniqueFiles.values())
+}
+
+const toBrandSearchLabel = (brandId?: string) => {
+  const normalized = String(brandId || '').trim()
+  if (!normalized) return 'Catalog'
+  return brandLabelMap[normalized as BrandId] || toDisplayLabel(normalized)
+}
+
+const buildSearchMeta = (parts: Array<string | undefined>) =>
+  parts
+    .map((part) => String(part || '').trim())
+    .filter(Boolean)
+    .join(' • ')
+
+const localSearchCatalog = (() => {
+  const entries: SearchCatalogEntry[] = []
+
+  downloadHomeCategories.forEach((item) => {
+    entries.push({
+      title: item.title,
+      meta: 'Brand folder',
+      href: item.href,
+      keywords: `${item.title} ${item.description} ${item.brandId || ''}`.trim(),
+      icon: 'fa-folder-tree',
+    })
+  })
+
+  solutionCategories.forEach((category) => {
+    entries.push({
+      title: category.title,
+      meta: buildSearchMeta([category.brandLabel, 'Solution folder']),
+      href: `/solution-files.html?brand=${category.brandId}&category=${category.id}`,
+      keywords: `${category.title} ${category.description} ${category.brandLabel} ${category.brandId}`.trim(),
+      icon: 'fa-folder-open',
+    })
+  })
+
+  huaweiUpdateFolders.forEach((model) => {
+    entries.push({
+      title: model.title,
+      meta: buildSearchMeta(['Model folder', 'Huawei']),
+      href: model.href,
+      keywords: `${model.title} ${model.subtitle} huawei model folder firmware`.trim(),
+      icon: 'fa-mobile-screen',
+    })
+  })
+
+  dedupeDownloadFiles([...Object.values(solutionFilesByCategory).flat(), ...anaAn00Files]).forEach((file) => {
+    const brandLabel = toBrandSearchLabel(file.brandId)
+    entries.push({
+      title: file.title,
+      meta: buildSearchMeta([brandLabel, file.size ? `Size ${file.size}` : '', file.downloads ? `${file.downloads} downloads` : 'File']),
+      href: `/download.html?file=${encodeURIComponent(file.id)}`,
+      keywords: `${file.title} ${file.subtitle} ${file.summary} ${brandLabel} ${file.brandId || ''}`.trim(),
+      icon: 'fa-file-archive',
+    })
+  })
+
+  const uniqueEntries = new Map<string, SearchCatalogEntry>()
+  entries.forEach((entry) => {
+    const key = entry.href || `${entry.title}:${entry.meta}`
+    if (!key || uniqueEntries.has(key)) return
+    uniqueEntries.set(key, entry)
+  })
+
+  return Array.from(uniqueEntries.values())
+})()
+
 const toTickerTitle = (file: PublicFileRecord) => String(file.title || '').trim()
 
 const toTickerBrandMeta = (file: PublicFileRecord) =>
@@ -501,6 +587,47 @@ export const loadHomepageTickers = async (): Promise<{ latest: TickerItem[]; top
   } catch (error) {
     console.warn('Homepage tickers could not be loaded.', error)
     return { latest: [], top: [] }
+  }
+}
+
+export const loadGlobalSearchCatalog = async (): Promise<SearchCatalogEntry[]> => {
+  const url = buildApiUrl('files')
+  if (!url) {
+    return localSearchCatalog
+  }
+
+  try {
+    const data = await fetchJsonCached<PublicFilesResponse>('homepage-tickers', url)
+    const liveEntries = dedupeFiles(data.files ?? [])
+      .filter((file) => String(file.id || '').trim() && toTickerTitle(file))
+      .map((file) => {
+        const brandLabel = String(file.brandLabel || toBrandSearchLabel(file.brandId))
+        const href = `/download.html?file=${encodeURIComponent(String(file.id || '').trim())}`
+
+        return {
+          title: toTickerTitle(file),
+          meta: buildSearchMeta([
+            brandLabel,
+            String(file.size || '').trim() ? `Size ${String(file.size || '').trim()}` : '',
+            String(file.downloads || '').trim() ? `${String(file.downloads || '').trim()} downloads` : 'File',
+          ]),
+          href,
+          keywords: `${String(file.title || '')} ${String(file.subtitle || '')} ${String(file.summary || '')} ${brandLabel} ${String(file.brandId || '')} ${String(file.categoryLabel || '')}`.trim(),
+          icon: 'fa-file-archive',
+        } satisfies SearchCatalogEntry
+      })
+
+    const mergedEntries = new Map<string, SearchCatalogEntry>()
+    ;[...localSearchCatalog, ...liveEntries].forEach((entry) => {
+      const key = entry.href || `${entry.title}:${entry.meta}`
+      if (!key) return
+      mergedEntries.set(key, entry)
+    })
+
+    return Array.from(mergedEntries.values())
+  } catch (error) {
+    console.warn('Search catalog could not be loaded from live API.', error)
+    return localSearchCatalog
   }
 }
 

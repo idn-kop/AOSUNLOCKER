@@ -9,7 +9,8 @@ import type {
   SitePageKey,
   TickerItem,
 } from './data-types'
-import { loadHomepageTickers, warmRouteDataFromHref } from './live-data'
+import type { SearchCatalogEntry } from './live-data'
+import { loadGlobalSearchCatalog, loadHomepageTickers, warmRouteDataFromHref } from './live-data'
 import { latestUploads as fallbackLatestUploads, topFiles as fallbackTopFiles } from './portal-data'
 
 const repeatForTicker = <T>(items: T[], minimum = 12) => {
@@ -832,7 +833,47 @@ export const setupSearchAndScroll = () => {
   const warmedHrefs = new Set<string>()
   const warmedElements = new WeakSet<HTMLAnchorElement>()
   const canHover = window.matchMedia('(hover: hover)').matches
+  type SearchResult = {
+    title: string
+    meta: string
+    icon: string
+    href?: string
+    card?: HTMLElement
+    score: number
+    priority: number
+  }
   let searchRenderFrame = 0
+  let searchRequestId = 0
+  let latestRenderedResults: SearchResult[] = []
+  let searchCatalog: SearchCatalogEntry[] | null = null
+  let searchCatalogRequest: Promise<SearchCatalogEntry[]> | null = null
+
+  const escapeHtml = (value: string) =>
+    value
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;')
+
+  const normalizeSearchValue = (value: string) =>
+    String(value || '')
+      .toLowerCase()
+      .replace(/[\s_-]+/g, ' ')
+      .trim()
+
+  const getSearchScore = (query: string, title: string, keywords: string) => {
+    const normalizedTitle = normalizeSearchValue(title)
+    const normalizedKeywords = normalizeSearchValue(keywords)
+
+    if (!query || !normalizedKeywords) return Number.POSITIVE_INFINITY
+    if (normalizedTitle === query) return 0
+    if (normalizedTitle.startsWith(query)) return 1
+    if (normalizedTitle.includes(query)) return 2
+    if (normalizedTitle.split(' ').some((word) => word.startsWith(query))) return 3
+    if (normalizedKeywords.includes(query)) return 4
+    return Number.POSITIVE_INFINITY
+  }
 
   const getCardLabel = (card: HTMLElement) => {
     const heading = card.querySelector<HTMLElement>('h1, h2, h3, h4, strong')
@@ -849,6 +890,32 @@ export const setupSearchAndScroll = () => {
     if (!searchDropdown) return
     searchDropdown.hidden = true
     searchDropdown.innerHTML = ''
+    latestRenderedResults = []
+  }
+
+  const ensureSearchCatalog = () => {
+    if (searchCatalog) {
+      return Promise.resolve(searchCatalog)
+    }
+
+    if (searchCatalogRequest) {
+      return searchCatalogRequest
+    }
+
+    searchCatalogRequest = loadGlobalSearchCatalog()
+      .then((entries) => {
+        searchCatalog = entries
+        return entries
+      })
+      .catch((error) => {
+        console.warn('Search catalog could not be prepared.', error)
+        return []
+      })
+      .finally(() => {
+        searchCatalogRequest = null
+      })
+
+    return searchCatalogRequest
   }
 
   const scheduleDropdownRender = (value: string) => {
@@ -858,7 +925,7 @@ export const setupSearchAndScroll = () => {
 
     searchRenderFrame = window.requestAnimationFrame(() => {
       searchRenderFrame = 0
-      renderDropdown(value)
+      void renderDropdown(value)
     })
   }
 
@@ -869,25 +936,103 @@ export const setupSearchAndScroll = () => {
     closeDropdown()
   }
 
-  const renderDropdown = (value: string) => {
+  const openSearchResult = (result: { href?: string; card?: HTMLElement }) => {
+    if (result.href) {
+      closeDropdown()
+      warmRouteDataFromHref(result.href, 'navigation')
+      window.location.assign(result.href)
+      return
+    }
+
+    if (result.card) {
+      focusCard(result.card)
+    }
+  }
+
+  const getDomSearchResults = (query: string): SearchResult[] =>
+    cards.flatMap((card) => {
+        const { title, meta } = getCardLabel(card)
+        const fullText = String(card.textContent || '').trim()
+        const score = getSearchScore(query, title, `${title} ${meta} ${fullText}`)
+        if (!Number.isFinite(score)) return []
+
+        const href =
+          (card instanceof HTMLAnchorElement ? card.getAttribute('href') : null) ||
+          card.querySelector<HTMLAnchorElement>('a[href]')?.getAttribute('href') ||
+          ''
+
+        return [{
+          title,
+          meta,
+          icon: href ? 'fa-folder-tree' : 'fa-bolt',
+          href: href && !href.startsWith('#') ? href : undefined,
+          card: href ? undefined : card,
+          score,
+          priority: href ? 1 : 2,
+        }]
+      })
+
+  const getCatalogSearchResults = async (query: string) => {
+    if (query.length < 2) return []
+
+    const entries = await ensureSearchCatalog()
+    return entries.flatMap((entry) => {
+        const score = getSearchScore(query, entry.title, `${entry.title} ${entry.meta} ${entry.keywords}`)
+        if (!Number.isFinite(score)) return []
+
+        return [{
+          title: entry.title,
+          meta: entry.meta,
+          icon: entry.icon,
+          href: entry.href,
+          score,
+          priority: 0,
+        }]
+      })
+  }
+
+  const getSearchResults = async (value: string) => {
+    const query = normalizeSearchValue(value)
+    if (!query) return []
+
+    const [catalogResults, domResults] = await Promise.all([getCatalogSearchResults(query), Promise.resolve(getDomSearchResults(query))])
+    const merged: SearchResult[] = [...catalogResults, ...domResults].sort(
+      (left, right) => left.score - right.score || left.priority - right.priority || left.title.length - right.title.length,
+    )
+    const uniqueResults: SearchResult[] = []
+    const seen = new Set<string>()
+
+    merged.forEach((result) => {
+      const key = result.href ? `href:${result.href}` : `title:${result.title}:${result.meta}`
+      if (seen.has(key)) return
+      seen.add(key)
+      uniqueResults.push(result)
+    })
+
+    return uniqueResults.slice(0, 6)
+  }
+
+  const renderDropdown = async (value: string) => {
     if (!searchDropdown) return
 
-    const query = value.trim().toLowerCase()
+    const query = value.trim()
     if (!query) {
       closeDropdown()
       return
     }
 
-    const matches = cards
-      .filter((card) => card.textContent?.toLowerCase().includes(query))
-      .slice(0, 5)
+    const requestId = ++searchRequestId
+    const matches = await getSearchResults(query)
+    if (requestId !== searchRequestId) return
+
+    latestRenderedResults = matches
 
     if (!matches.length) {
       searchDropdown.hidden = false
       searchDropdown.innerHTML = `
         <div class="search-dropdown-empty">
           <i class="fas fa-magnifying-glass"></i>
-          <span>No matching results for "${value.trim()}"</span>
+          <span>No matching results for "${escapeHtml(value.trim())}"</span>
         </div>
       `
       return
@@ -895,14 +1040,13 @@ export const setupSearchAndScroll = () => {
 
     searchDropdown.hidden = false
     searchDropdown.innerHTML = matches
-      .map((card, index) => {
-        const { title, meta } = getCardLabel(card)
+      .map((result, index) => {
         return `
           <button class="search-result-item" type="button" data-search-index="${index}">
-            <span class="search-result-icon"><i class="fas fa-bolt"></i></span>
+            <span class="search-result-icon"><i class="fas ${result.icon}"></i></span>
             <span class="search-result-copy">
-              <strong>${title}</strong>
-              ${meta ? `<span>${meta}</span>` : ''}
+              <strong>${escapeHtml(result.title)}</strong>
+              ${result.meta ? `<span>${escapeHtml(result.meta)}</span>` : ''}
             </span>
           </button>
         `
@@ -912,17 +1056,17 @@ export const setupSearchAndScroll = () => {
     searchDropdown.querySelectorAll<HTMLButtonElement>('[data-search-index]').forEach((button) => {
       button.addEventListener('click', () => {
         const index = Number(button.dataset.searchIndex)
-        const target = matches[index]
+        const target = latestRenderedResults[index]
         if (target) {
-          focusCard(target)
+          openSearchResult(target)
         }
       })
     })
   }
 
-  searchForm?.addEventListener('submit', (event) => {
+  searchForm?.addEventListener('submit', async (event) => {
     event.preventDefault()
-    const value = searchInput?.value.trim().toLowerCase() ?? ''
+    const value = searchInput?.value.trim() ?? ''
 
     cards.forEach((card) => card.classList.remove('is-highlighted'))
     if (!value) {
@@ -930,12 +1074,11 @@ export const setupSearchAndScroll = () => {
       return
     }
 
-    const found = cards.find((card) => card.textContent?.toLowerCase().includes(value))
-    if (found) {
-      focusCard(found)
+    const matches = await getSearchResults(value)
+    if (matches[0]) {
+      openSearchResult(matches[0])
     } else {
-      renderDropdown(value)
-      window.alert('No matching result was found in this Huawei-focused catalog.')
+      await renderDropdown(value)
     }
   })
 
@@ -944,8 +1087,13 @@ export const setupSearchAndScroll = () => {
   })
 
   searchInput?.addEventListener('focus', () => {
+    void ensureSearchCatalog()
     scheduleDropdownRender(searchInput.value)
   })
+
+  window.setTimeout(() => {
+    void ensureSearchCatalog()
+  }, 900)
 
   document.addEventListener('click', (event) => {
     const target = event.target as Node | null
