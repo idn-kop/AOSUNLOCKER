@@ -168,23 +168,29 @@ export const renderPage = async (pageKey: SitePageKey) => {
               ${heroHeading}
               ${heroHasCopy ? `<p class="lead-copy">${page.heroCopy}</p>` : ''}
             </div>
-            <div class="stats-strip ${page.key === 'home' ? 'stats-strip-home' : ''}">
-              <div class="stats-row ${page.key === 'home' ? 'stats-row-home' : ''}">
-                ${stats
-                  .map(
-                    (item) => `
-                      <div class="stats-item">
-                        <article class="stat-card text-center p-4 bg-white rounded-4 border-${item.tone} border-2 searchable">
-                          <i class="fas ${item.icon} text-${item.tone} mb-3"></i>
-                          <h3 class="fw-bold mb-1 text-${item.tone}">${item.value}</h3>
-                          <p class="text-muted mb-0">${item.label}</p>
-                        </article>
+            ${
+              page.key === 'home'
+                ? ''
+                : `
+                    <div class="stats-strip">
+                      <div class="stats-row">
+                        ${stats
+                          .map(
+                            (item) => `
+                              <div class="stats-item">
+                                <article class="stat-card text-center p-4 bg-white rounded-4 border-${item.tone} border-2 searchable">
+                                  <i class="fas ${item.icon} text-${item.tone} mb-3"></i>
+                                  <h3 class="fw-bold mb-1 text-${item.tone}">${item.value}</h3>
+                                  <p class="text-muted mb-0">${item.label}</p>
+                                </article>
+                              </div>
+                            `,
+                          )
+                          .join('')}
                       </div>
-                    `,
-                  )
-                  .join('')}
-              </div>
-            </div>
+                    </div>
+                  `
+            }
           </div>
         </div>
       </section>
