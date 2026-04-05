@@ -38,6 +38,7 @@
     document.getElementById('mobileSaveShortcut').addEventListener('click', () => document.getElementById('fileForm').requestSubmit());
     document.getElementById('fileFinderInput').addEventListener('input', onFileFinderInput);
     document.getElementById('fileFinderClearButton').addEventListener('click', clearFileFinder);
+    document.getElementById('integrityFixButton').addEventListener('click', onFixFolderWarnings);
     document.getElementById('integrityScanButton').addEventListener('click', () => refreshIntegrityScan(false));
     document.getElementById('integrityToggleButton').addEventListener('click', toggleIntegrityDetails);
     document.getElementById('confirmCancelButton').addEventListener('click', () => closeConfirmDialog(false));
@@ -751,6 +752,52 @@
       .runIntegrityScan();
   }
 
+  async function onFixFolderWarnings() {
+    const report = state.integrity;
+    const summary = report && report.summary ? report.summary : null;
+    const fixableRows = summary ? Number(summary.fixableCategoryRows || 0) : 0;
+    if (!fixableRows) {
+      showSuccess('No incomplete folder rows were found.');
+      return;
+    }
+
+    const confirmed = await showConfirmDialog({
+      eyebrow: 'Auto Fix Folders',
+      title: 'Delete incomplete folder rows?',
+      message: `This will remove ${fixableRows} broken folder row${fixableRows === 1 ? '' : 's'} from Settings. Valid categories and files stay untouched.`,
+      confirmLabel: 'Fix Now',
+      danger: true,
+    });
+    if (!confirmed) return;
+
+    hideFlash();
+    state.integrityLoading = true;
+    renderIntegrityPanel();
+
+    google.script.run
+      .withSuccessHandler((response) => {
+        state.integrityLoading = false;
+        state.brands = response.brands || state.brands;
+        state.categories = response.categories || state.categories;
+        state.recentFiles = response.recentFiles || state.recentFiles;
+        state.integrity = response.report || null;
+        renderBrands();
+        renderCategories();
+        renderBrandRows();
+        renderCategoryRows();
+        renderRecentRows();
+        renderIntegrityPanel();
+        resetCategoryFormState();
+        showSuccess(response.message || 'Folder warnings fixed.');
+      })
+      .withFailureHandler((error) => {
+        state.integrityLoading = false;
+        renderIntegrityPanel(error);
+        showError(error);
+      })
+      .repairIncompleteCategoryRows();
+  }
+
   function toggleIntegrityDetails() {
     if (!state.integrity || !Array.isArray(state.integrity.issues) || !state.integrity.issues.length) return;
     state.integrityExpanded = !state.integrityExpanded;
@@ -762,14 +809,17 @@
     const summary = document.getElementById('integritySummary');
     const issues = document.getElementById('integrityIssues');
     const button = document.getElementById('integrityScanButton');
+    const fixButton = document.getElementById('integrityFixButton');
     const toggleButton = document.getElementById('integrityToggleButton');
     const report = state.integrity;
     const summaryData = report && report.summary ? report.summary : null;
     const issueItems = report && Array.isArray(report.issues) ? report.issues : [];
     const totalIssues = summaryData ? Number(summaryData.totalIssues || issueItems.length || 0) : issueItems.length;
+    const fixableCategoryRows = summaryData ? Number(summaryData.fixableCategoryRows || 0) : 0;
 
     button.disabled = state.integrityLoading;
     button.textContent = state.integrityLoading ? 'Scanning...' : 'Run Scan';
+    fixButton.disabled = state.integrityLoading;
     toggleButton.disabled = state.integrityLoading;
 
     badge.className = 'integrity-status';
@@ -797,12 +847,14 @@
       summary.innerHTML = '<div class="integrity-empty">Run a scan to verify the current sheet structure.</div>';
       issues.classList.add('hidden');
       issues.innerHTML = '';
+      fixButton.classList.add('hidden');
       toggleButton.classList.add('hidden');
       return;
     }
 
     if (error) {
       summary.innerHTML = '<div class="integrity-empty">The integrity scan could not finish. Try again after checking your sheet connection.</div>';
+      fixButton.classList.add('hidden');
       toggleButton.classList.add('hidden');
       issues.classList.remove('hidden');
       issues.innerHTML = `
@@ -817,6 +869,10 @@
       return;
     }
 
+    fixButton.classList.toggle('hidden', !fixableCategoryRows);
+    fixButton.textContent = fixableCategoryRows
+      ? `Fix Folder Warnings (${fixableCategoryRows})`
+      : 'Fix Folder Warnings';
     toggleButton.classList.toggle('hidden', !totalIssues);
     toggleButton.textContent = state.integrityExpanded ? 'Hide Details' : `Show Details (${totalIssues})`;
 

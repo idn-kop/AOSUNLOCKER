@@ -93,11 +93,19 @@ function runIntegrityScan() {
   const hasBrandColumns = categoryHeaders.indexOf('brand_id') >= 0;
 
   const issues = [];
-  const addIssue = function(level, title, detail) {
+  let fixableCategoryRows = 0;
+  const addIssue = function(level, title, detail, meta) {
+    const safeMeta = meta || {};
+    if (safeMeta.fixableCategoryRow) {
+      fixableCategoryRows += 1;
+    }
+
     issues.push({
       level: level === 'critical' ? 'critical' : 'warning',
       title: String(title || '').trim() || 'Integrity issue',
       detail: String(detail || '').trim() || 'Please review this row.',
+      code: String(safeMeta.code || '').trim(),
+      fixableCategoryRow: Boolean(safeMeta.fixableCategoryRow),
     });
   };
 
@@ -153,7 +161,12 @@ function runIntegrityScan() {
     if (!brandId && !categoryId && !categoryLabel) return;
 
     if (!brandId || !categoryId || !categoryLabel) {
-      addIssue('warning', 'Incomplete category row', 'Category row ' + rowNumber + ' is missing brand, ID, or label.');
+      addIssue(
+        'warning',
+        'Incomplete category row',
+        'Category row ' + rowNumber + ' is missing brand, ID, or label.',
+        { code: 'incomplete_category_row', fixableCategoryRow: true },
+      );
       return;
     }
 
@@ -310,9 +323,79 @@ function runIntegrityScan() {
       }).length,
       critical: criticalCount,
       warning: warningCount,
+      fixableCategoryRows: fixableCategoryRows,
       totalIssues: sortedIssues.length,
     },
     issues: sortedIssues.slice(0, 18),
+  };
+}
+
+function repairIncompleteCategoryRows() {
+  ensureSchema_();
+
+  const settingsSheet = getSettingsSheet_();
+  const values = settingsSheet.getDataRange().getValues();
+  if (!values.length) {
+    return {
+      ok: true,
+      removed: 0,
+      message: 'Settings sheet is already clean.',
+      brands: getBrands_(),
+      categories: getCategories_(),
+      recentFiles: getRecentFiles_(),
+      report: runIntegrityScan(),
+    };
+  }
+
+  const rowIndexes = [];
+  values.slice(1).forEach(function(row, index) {
+    const brandId = String(row[0] || '').trim();
+    const brandLabel = String(row[1] || '').trim();
+    const categoryId = String(row[2] || '').trim();
+    const categoryLabel = String(row[3] || '').trim();
+    const filledCount = [brandId, brandLabel, categoryId, categoryLabel].filter(function(item) {
+      return Boolean(item);
+    }).length;
+
+    if (filledCount > 0 && filledCount < 4) {
+      rowIndexes.push(index + 2);
+    }
+  });
+
+  if (!rowIndexes.length) {
+    return {
+      ok: true,
+      removed: 0,
+      message: 'No incomplete folder rows were found.',
+      brands: getBrands_(),
+      categories: getCategories_(),
+      recentFiles: getRecentFiles_(),
+      report: runIntegrityScan(),
+    };
+  }
+
+  rowIndexes
+    .slice()
+    .sort(function(left, right) {
+      return right - left;
+    })
+    .forEach(function(rowIndex) {
+      settingsSheet.deleteRow(rowIndex);
+    });
+
+  ensureSchema_();
+  touchPublicCacheVersion_();
+
+  return {
+    ok: true,
+    removed: rowIndexes.length,
+    message: rowIndexes.length === 1
+      ? 'Removed 1 incomplete folder row.'
+      : 'Removed ' + rowIndexes.length + ' incomplete folder rows.',
+    brands: getBrands_(),
+    categories: getCategories_(),
+    recentFiles: getRecentFiles_(),
+    report: runIntegrityScan(),
   };
 }
 
