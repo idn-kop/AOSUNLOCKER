@@ -34,6 +34,7 @@ import {
   peekCategoriesByBrand,
   peekFilesByCategory,
   syncLiveCacheVersion,
+  warmBrandCategoryData,
 } from './live-data'
 import type { BrandId } from './data-types'
 
@@ -346,11 +347,12 @@ export const renderDownloadsHubPage = async () => {
   const app = document.querySelector<HTMLDivElement>('#app')
   if (!app) return
 
-  await syncLiveCacheVersion()
+  const versionSyncPromise = syncLiveCacheVersion()
 
   document.title = 'Downloads | AOSUNLOCKER Huawei Lab'
 
   const cachedBrandResult = peekBrandFolders()
+  warmBrandCategoryData(cachedBrandResult.brands.map((item) => item.brandId))
 
   if (cachedBrandResult) {
     const brandCards = cachedBrandResult.brands
@@ -369,8 +371,10 @@ export const renderDownloadsHubPage = async () => {
 
   setupSearchAndScroll()
 
+  await versionSyncPromise
   const brandResult = await loadBrandFolders()
   const brandCards = brandResult.brands
+  warmBrandCategoryData(brandCards.map((item) => item.brandId))
 
   app.innerHTML = renderSiteChrome(
     renderDownloadsHubStage(renderBrandHubGrid(brandCards)),
@@ -384,7 +388,7 @@ export const renderSolutionFilesPage = async () => {
   const app = document.querySelector<HTMLDivElement>('#app')
   if (!app) return
 
-  await syncLiveCacheVersion()
+  const versionSyncPromise = syncLiveCacheVersion()
 
   const params = new URLSearchParams(window.location.search)
   const brandId = (params.get('brand') || 'huawei') as BrandId
@@ -486,6 +490,8 @@ export const renderSolutionFilesPage = async () => {
   }
 
   setupSearchAndScroll()
+
+  await versionSyncPromise
 
   if (!categoryId) {
     const categoryResult = await loadCategoriesByBrand(brandId)
@@ -733,7 +739,7 @@ export const renderDownloadFlowDetailPage = async () => {
   const app = document.querySelector<HTMLDivElement>('#app')
   if (!app) return
 
-  await syncLiveCacheVersion()
+  const versionSyncPromise = syncLiveCacheVersion()
 
   const params = new URLSearchParams(window.location.search)
   const id = params.get('file') ?? 'ana-an00-harmony3-remove-id'
@@ -760,6 +766,7 @@ export const renderDownloadFlowDetailPage = async () => {
     true,
   )
 
+  await versionSyncPromise
   const liveResult = await loadFileById(id)
   const liveCurrent = liveResult.file
   const isMissingLiveFile = liveResult.source === 'live' && !liveCurrent

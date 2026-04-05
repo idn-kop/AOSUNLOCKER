@@ -663,6 +663,22 @@ export const loadBrandFolders = async () => {
   }
 }
 
+export const warmBrandCategoryData = (brandIds: BrandId[]) => {
+  const uniqueBrandIds = Array.from(
+    new Set(
+      brandIds
+        .map((brandId) => String(brandId || '').trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  ).slice(0, 6) as BrandId[]
+
+  uniqueBrandIds.forEach((brandId, index) => {
+    window.setTimeout(() => {
+      void loadCategoriesByBrand(brandId)
+    }, 60 + index * 110)
+  })
+}
+
 export const loadHomepageTickers = async (): Promise<{ latest: TickerItem[]; top: TickerItem[] }> => {
   const url = buildApiUrl('files')
   if (!url) {

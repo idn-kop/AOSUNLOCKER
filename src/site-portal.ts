@@ -1,5 +1,5 @@
 import { downloadHomeCategories } from './download-data'
-import { loadBrandFolders, peekBrandFolders, syncLiveCacheVersion } from './live-data'
+import { loadBrandFolders, peekBrandFolders, syncLiveCacheVersion, warmBrandCategoryData } from './live-data'
 import { pageLinks, pages, remoteServiceQualcommEntries, stats } from './portal-data'
 import {
   renderDownloadHomeCard,
@@ -172,8 +172,10 @@ export const renderPage = async (pageKey: SitePageKey) => {
   const app = document.querySelector<HTMLDivElement>('#app')
   if (!app || !page) return
 
+  const versionSyncPromise = page.key === 'home' ? syncLiveCacheVersion() : Promise.resolve(false)
+
   if (page.key === 'home') {
-    await syncLiveCacheVersion()
+    // keep rendering immediate from cache/local content while version sync runs in the background
   }
 
   document.title = page.title
@@ -299,8 +301,10 @@ export const renderPage = async (pageKey: SitePageKey) => {
   if (brandMount) {
     const cachedBrandCards = getOrderedHomeBrands(peekBrandFolders()?.brands ?? downloadHomeCategories)
     brandMount.innerHTML = renderBrandHomeGrid(cachedBrandCards.length ? cachedBrandCards : getOrderedHomeBrands(downloadHomeCategories))
+    warmBrandCategoryData(cachedBrandCards.map((item) => item.brandId).filter(Boolean))
   }
 
+  await versionSyncPromise
   const brandPromise = loadBrandFolders()
 
   void brandPromise.then((brandResult) => {
@@ -308,6 +312,7 @@ export const renderPage = async (pageKey: SitePageKey) => {
 
     const brandCards = getOrderedHomeBrands(brandResult.brands.length ? brandResult.brands : downloadHomeCategories)
     brandMount.innerHTML = renderBrandHomeGrid(brandCards)
+    warmBrandCategoryData(brandCards.map((item) => item.brandId).filter(Boolean))
   })
 
   await brandPromise
