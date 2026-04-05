@@ -447,7 +447,10 @@ export const renderDownloadListRow = (item: DownloadListFile) => `
       </div>
     </div>
     <div class="download-list-action">
-      <a class="download-small-button" href="/download.html?file=${item.id}"><i class="fas fa-download me-2"></i>Download</a>
+      <a class="download-small-button" href="/download.html?file=${item.id}">
+        <i class="fas fa-download" aria-hidden="true"></i>
+        <span class="download-button-label">Download</span>
+      </a>
     </div>
   </article>
 `
@@ -481,7 +484,10 @@ export const renderDownloadGridCard = (item: DownloadListFile) => `
       ${item.date ? `<span>Date: ${item.date}</span>` : ''}
       <span>Size: ${item.size}</span>
     </div>
-    <a class="download-small-button" href="/download.html?file=${item.id}"><i class="fas fa-download me-2"></i>Open</a>
+    <a class="download-small-button" href="/download.html?file=${item.id}">
+      <i class="fas fa-download" aria-hidden="true"></i>
+      <span class="download-button-label">Download</span>
+    </a>
   </article>
 `
 
