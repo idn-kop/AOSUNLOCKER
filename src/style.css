@@ -470,6 +470,12 @@ a {
   transition: color 0.18s ease, transform 0.18s ease;
 }
 
+.header-utility-stack {
+  display: grid;
+  gap: 0.55rem;
+  justify-items: stretch;
+}
+
 .header-support-panel:hover {
   color: var(--text-strong);
   transform: translateY(-1px);
@@ -518,6 +524,38 @@ a {
   color: var(--text-soft);
   font-size: 0.74rem;
   line-height: 1.2;
+}
+
+.member-portal-link {
+  display: grid;
+  gap: 0.12rem;
+  padding: 0.68rem 0.92rem;
+  border-radius: 16px;
+  border: 1px solid rgba(120, 150, 210, 0.12);
+  background: rgba(8, 13, 22, 0.74);
+  color: var(--text-main);
+  transition: border-color 0.18s ease, transform 0.18s ease, background 0.18s ease;
+}
+
+.member-portal-link:hover {
+  color: var(--text-strong);
+  transform: translateY(-1px);
+  border-color: rgba(247, 191, 127, 0.26);
+  background: rgba(12, 18, 29, 0.9);
+}
+
+.member-portal-link-label {
+  color: #f7bf7f;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.member-portal-link-copy {
+  color: var(--text-soft);
+  font-size: 0.78rem;
+  line-height: 1.3;
 }
 
 .search-shell {
@@ -586,10 +624,11 @@ a {
 }
 
 .search-form input::placeholder {
-  color: var(--text-soft);
+  color: rgba(173, 186, 204, 0.84);
   text-align: center;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  font-weight: 500;
 }
 
 .search-form input:placeholder-shown {
@@ -3171,6 +3210,11 @@ h6 {
   gap: 0.12rem;
 }
 
+.member-portal-link-inline {
+  min-height: 100%;
+  justify-content: center;
+}
+
 .contact-card-copy strong {
   color: var(--text-strong);
   font-size: 1rem;
@@ -3393,6 +3437,10 @@ h6 {
   }
 
   .header-support-panel {
+    display: none;
+  }
+
+  .member-portal-link-header {
     display: none;
   }
 

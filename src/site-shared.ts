@@ -145,6 +145,13 @@ const renderHeaderSupportPanel = () => `
   </a>
 `
 
+const renderMemberPortalLink = (extraClass = '') => `
+  <a class="member-portal-link ${extraClass}".trim() href="https://aosunlock.my.id" target="_blank" rel="noreferrer">
+    <span class="member-portal-link-label">Member Portal</span>
+    <span class="member-portal-link-copy">Login-based full archive access</span>
+  </a>
+`
+
 export const renderTicker = (items: TickerItem[]) =>
   repeatForTicker(items)
     .map(
@@ -622,13 +629,16 @@ export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downlo
           <div class="search-shell">
             <i class="fas fa-magnifying-glass search-shell-icon"></i>
             <div class="search-copy">
-              <input type="text" id="searchInput" aria-label="Search downloads" placeholder="Find file or model" autocomplete="off" autocapitalize="none" spellcheck="false" inputmode="search" enterkeyhint="search" />
+              <input type="text" id="searchInput" aria-label="Search downloads" placeholder="Search files or model names" autocomplete="off" autocapitalize="none" spellcheck="false" inputmode="search" enterkeyhint="search" />
             </div>
             <button class="search-submit-button" type="submit" aria-label="Search"><i class="fas fa-arrow-up-right-from-square"></i></button>
           </div>
           <div class="search-dropdown" id="searchDropdown" hidden></div>
         </form>
-        ${renderHeaderSupportPanel()}
+        <div class="header-utility-stack">
+          ${renderHeaderSupportPanel()}
+          ${renderMemberPortalLink('member-portal-link-header')}
+        </div>
       </div>
     </div>
   </header>
@@ -820,6 +830,7 @@ export const renderContactAdminPanel = () => `
           <span>aosunlocker.com</span>
         </span>
       </a>
+      ${renderMemberPortalLink('member-portal-link-inline')}
     </div>
   </section>
 `
