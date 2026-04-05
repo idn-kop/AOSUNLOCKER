@@ -599,20 +599,26 @@ export const loadGlobalSearchCatalog = async (): Promise<SearchCatalogEntry[]> =
   try {
     const data = await fetchJsonCached<PublicFilesResponse>('homepage-tickers', url)
     const liveEntries = dedupeFiles(data.files ?? [])
-      .filter((file) => String(file.id || '').trim() && toTickerTitle(file))
+      .filter((file) => {
+        const fileId = String(file.id || '').trim()
+        const displayTitle = String(file.title || file.subtitle || fileId).trim()
+        return Boolean(fileId && displayTitle)
+      })
       .map((file) => {
+        const fileId = String(file.id || '').trim()
+        const displayTitle = String(file.title || file.subtitle || fileId).trim()
         const brandLabel = String(file.brandLabel || toBrandSearchLabel(file.brandId))
-        const href = `/download.html?file=${encodeURIComponent(String(file.id || '').trim())}`
+        const href = `/download.html?file=${encodeURIComponent(fileId)}`
 
         return {
-          title: toTickerTitle(file),
+          title: displayTitle,
           meta: buildSearchMeta([
             brandLabel,
             String(file.size || '').trim() ? `Size ${String(file.size || '').trim()}` : '',
             String(file.downloads || '').trim() ? `${String(file.downloads || '').trim()} downloads` : 'File',
           ]),
           href,
-          keywords: `${String(file.title || '')} ${String(file.subtitle || '')} ${String(file.summary || '')} ${brandLabel} ${String(file.brandId || '')} ${String(file.categoryLabel || '')}`.trim(),
+          keywords: `${fileId} ${String(file.title || '')} ${String(file.subtitle || '')} ${String(file.summary || '')} ${brandLabel} ${String(file.brandId || '')} ${String(file.categoryLabel || '')}`.trim(),
           icon: 'fa-file-archive',
         } satisfies SearchCatalogEntry
       })

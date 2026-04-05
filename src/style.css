@@ -649,8 +649,9 @@ a {
 
 .search-result-item,
 .search-dropdown-empty {
-  display: flex;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: center;
   gap: 0.8rem;
   width: 100%;
   padding: 0.85rem 0.95rem;
@@ -716,6 +717,7 @@ a {
 }
 
 .search-dropdown-empty {
+  grid-template-columns: 20px minmax(0, 1fr);
   justify-content: center;
   color: var(--text-soft);
 }
@@ -3548,6 +3550,15 @@ h6 {
     height: 34px;
     flex: 0 0 34px;
     border-radius: 11px;
+  }
+
+  .search-result-item,
+  .search-dropdown-empty {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .search-dropdown-empty {
+    grid-template-columns: 18px minmax(0, 1fr);
   }
 
   .search-result-copy strong {

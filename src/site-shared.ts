@@ -864,7 +864,9 @@ export const setupSearchAndScroll = () => {
 
   const cleanupSearchText = (value: string) =>
     String(value || '')
-      .replace(/\s+[^a-z0-9\s]{1,3}\s+/gi, ' | ')
+      .replace(/[^\x20-\x7E]+/g, ' | ')
+      .replace(/[\[\]{}()]+/g, ' ')
+      .replace(/[|•·]+/g, ' | ')
       .replace(/[_]+/g, ' ')
       .replace(/\s+/g, ' ')
       .trim()
@@ -965,6 +967,8 @@ export const setupSearchAndScroll = () => {
   const getDomSearchResults = (query: string): SearchResult[] =>
     cards.flatMap((card) => {
         const { title, meta } = getCardLabel(card)
+        if (!title) return []
+
         const fullText = String(card.textContent || '').trim()
         const score = getSearchScore(query, title, `${title} ${meta} ${fullText}`)
         if (!Number.isFinite(score)) return []
@@ -974,14 +978,16 @@ export const setupSearchAndScroll = () => {
           card.querySelector<HTMLAnchorElement>('a[href]')?.getAttribute('href') ||
           ''
 
+        if (!href || href.startsWith('#')) return []
+
         return [{
           title,
           meta,
-          icon: href ? 'fa-folder-tree' : 'fa-bolt',
-          href: href && !href.startsWith('#') ? href : undefined,
-          card: href ? undefined : card,
+          icon: 'fa-folder-tree',
+          href,
+          card: undefined,
           score,
-          priority: href ? 1 : 2,
+          priority: 1,
         }]
       })
 
@@ -1009,7 +1015,8 @@ export const setupSearchAndScroll = () => {
     if (!query) return []
 
     const [catalogResults, domResults] = await Promise.all([getCatalogSearchResults(query), Promise.resolve(getDomSearchResults(query))])
-    const merged: SearchResult[] = [...catalogResults, ...domResults].sort(
+    const mergedSource = catalogResults.length ? catalogResults : domResults
+    const merged: SearchResult[] = mergedSource.sort(
       (left, right) => left.score - right.score || left.priority - right.priority || left.title.length - right.title.length,
     )
     const uniqueResults: SearchResult[] = []
