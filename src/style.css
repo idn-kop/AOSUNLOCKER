@@ -3143,12 +3143,18 @@ h6 {
   margin: 0;
   font-size: clamp(2rem, 3.5vw, 3.5rem);
   line-height: 1.2;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  text-wrap: pretty;
 }
 
 .download-detail-subtitle {
   margin: 1rem auto 0;
   max-width: 72ch;
   color: var(--text-soft);
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .download-detail-table {
@@ -4256,6 +4262,29 @@ h6 {
 
   .download-detail-table div {
     grid-template-columns: 1fr;
+  }
+
+  .download-stage-card {
+    padding: 0.95rem;
+    border-radius: 1.35rem;
+  }
+
+  .download-detail-panel {
+    padding: 1rem 0.9rem;
+    border-radius: 1.15rem;
+  }
+
+  .download-detail-panel h1 {
+    font-size: clamp(1.55rem, 9.6vw, 2.45rem);
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+  }
+
+  .download-detail-subtitle {
+    max-width: 28ch;
+    margin-top: 0.85rem;
+    font-size: 0.96rem;
+    line-height: 1.5;
   }
 
   .download-detail-table strong,
