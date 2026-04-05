@@ -1100,14 +1100,15 @@ a {
 }
 
 .hero-panel-home .hero-center h2 {
-  max-width: 16ch;
+  max-width: none;
   margin-inline: 0;
-  font-size: clamp(2.48rem, 3.95vw, 3.95rem);
+  font-size: clamp(2.34rem, 3.55vw, 3.8rem);
   line-height: 0.96;
 }
 
 .hero-title-home {
-  text-wrap: pretty;
+  white-space: nowrap;
+  text-wrap: nowrap;
 }
 
 .hero-panel-home .lead-copy {
@@ -3397,6 +3398,11 @@ h6 {
     max-width: 10.4ch;
     font-size: clamp(1.98rem, 8.9vw, 2.58rem);
     line-height: 0.98;
+  }
+
+  .hero-title-home {
+    white-space: normal;
+    text-wrap: pretty;
   }
 
   .stats-row-home {
