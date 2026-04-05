@@ -3350,17 +3350,19 @@ h6 {
     background:
       linear-gradient(180deg, rgba(9, 11, 16, 0.98), rgba(9, 11, 16, 0.92)),
       rgba(9, 11, 16, 0.92);
-    box-shadow: 0 14px 32px rgba(1, 4, 9, 0.16);
-    padding: 10px 0 12px;
+    box-shadow: 0 10px 24px rgba(1, 4, 9, 0.12);
+    padding: 8px 0 10px;
   }
 
   .logo-note {
     display: inline-flex;
-    justify-content: flex-start;
-    width: fit-content;
-    max-width: 100%;
-    font-size: 0.74rem;
+    justify-content: center;
+    width: auto;
+    max-width: 30ch;
+    font-size: 0.7rem;
     gap: 0.35rem;
+    line-height: 1.38;
+    text-align: center;
   }
 
   .eyebrow {
@@ -3386,28 +3388,33 @@ h6 {
   }
 
   .middle-header-panel {
-    gap: 0.8rem;
-    padding: 0.82rem 0.88rem;
-    border-radius: 22px;
+    align-items: center;
+    gap: 0.68rem;
+    padding: 0.68rem 0.82rem 0.74rem;
+    border-radius: 20px;
   }
 
   .logo-block {
     width: 100%;
-    justify-content: flex-start;
+    justify-content: center;
     max-width: none;
   }
 
   .logo-wordmark-wrap {
     width: 100%;
-    align-items: flex-start;
-    gap: 0.34rem;
+    align-items: center;
+    gap: 0.4rem;
+    text-align: center;
   }
 
   .logo-meta-row {
-    gap: 0.28rem 0.42rem;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.42rem;
   }
 
   .logo-capability-row {
+    justify-content: center;
     gap: 0.3rem;
   }
 
@@ -3417,20 +3424,20 @@ h6 {
   }
 
   .logo-wordmark {
-    width: min(208px, 72vw);
-    max-height: 70px;
-    margin-inline: 0;
+    width: min(194px, 62vw);
+    max-height: 64px;
+    margin-inline: auto;
   }
 
   .logo-wordmark-picture {
-    width: min(208px, 72vw);
-    margin-inline: 0;
+    width: min(194px, 62vw);
+    margin-inline: auto;
   }
 
   .search-shell {
-    min-height: 48px;
+    min-height: 46px;
     gap: 0.48rem;
-    padding: 0.36rem 0.36rem 0.36rem 0.66rem;
+    padding: 0.34rem 0.34rem 0.34rem 0.62rem;
     border-radius: 17px;
   }
 
@@ -3453,6 +3460,12 @@ h6 {
 
   .search-copy {
     gap: 0.14rem;
+  }
+
+  .search-form {
+    width: min(100%, 332px);
+    max-width: 332px;
+    margin-inline: auto;
   }
 
   .search-form input {
@@ -3537,7 +3550,7 @@ h6 {
 
   .mobile-menu-shell {
     display: block;
-    padding: 0.72rem 0 0.3rem;
+    padding: 0.58rem 0 0.28rem;
     background: linear-gradient(180deg, rgba(22, 27, 34, 0.12), rgba(13, 17, 23, 0));
   }
 
@@ -3547,11 +3560,11 @@ h6 {
 
   .mobile-menu-summary {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
-    gap: 0.9rem;
-    padding: 0.98rem 1rem;
-    border-radius: 20px;
+    gap: 0.82rem;
+    padding: 0.92rem 0.94rem;
+    border-radius: 18px;
     border: 1px solid rgba(255, 255, 255, 0.06);
     background:
       radial-gradient(circle at top left, rgba(255, 123, 114, 0.08), transparent 28%),
@@ -3559,7 +3572,7 @@ h6 {
     color: var(--text-strong);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.03),
-      0 18px 34px rgba(1, 4, 9, 0.16);
+      0 12px 24px rgba(1, 4, 9, 0.12);
     cursor: pointer;
   }
 
