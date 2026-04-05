@@ -546,19 +546,21 @@ export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downlo
         <div class="logo-block">
           <div class="logo-wordmark-wrap">
             ${renderLogoWordmark()}
-            <div class="logo-capability-row" aria-label="Portal capabilities">
-              <span class="logo-capability-chip"><i class="fas fa-circle-check"></i>Verified files</span>
-              <span class="logo-capability-chip"><i class="fas fa-headset"></i>Fast support</span>
+            <div class="logo-meta-row">
+              <div class="logo-note">Huawei, Honor, Kirin, HarmonyOS, Qualcomm</div>
+              <div class="logo-capability-row" aria-label="Portal capabilities">
+                <span class="logo-capability-chip"><i class="fas fa-circle-check"></i>Verified files</span>
+                <span class="logo-capability-chip"><i class="fas fa-headset"></i>Fast support</span>
+              </div>
             </div>
-            <div class="logo-note">Huawei, Honor, Kirin, HarmonyOS, Qualcomm</div>
           </div>
         </div>
         <form class="search-form" id="searchForm">
           <div class="search-shell">
             <i class="fas fa-magnifying-glass search-shell-icon"></i>
             <div class="search-copy">
-              <span class="search-shell-label">Smart Search</span>
-              <input type="text" id="searchInput" aria-label="Search downloads" placeholder="Search models, fixes, firmware, or solution files..." />
+              <span class="search-shell-label">Search</span>
+              <input type="text" id="searchInput" aria-label="Search downloads" placeholder="Search files, models, or solutions..." />
             </div>
             <button type="submit" aria-label="Search"><i class="fas fa-arrow-up-right-from-square"></i></button>
           </div>

@@ -205,7 +205,7 @@ a {
 }
 
 .middle-header {
-  padding: 10px 0 12px;
+  padding: 8px 0 10px;
   background: transparent;
   border-bottom: 0;
 }
@@ -219,10 +219,10 @@ a {
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1.15rem;
-  padding: 0.82rem 1.1rem;
-  border-radius: 28px;
+  justify-content: center;
+  gap: 1.35rem;
+  padding: 0.68rem 0.95rem;
+  border-radius: 24px;
   border: 1px solid rgba(120, 150, 210, 0.12);
   background:
     radial-gradient(circle at top left, rgba(120, 150, 210, 0.07), transparent 26%),
@@ -235,19 +235,15 @@ a {
 }
 
 .middle-header-panel::after {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 52%;
-  width: 1px;
-  background: linear-gradient(180deg, rgba(120, 150, 210, 0), rgba(120, 150, 210, 0.12), rgba(120, 150, 210, 0));
-  opacity: 0.55;
+  display: none;
 }
 
 .logo-block {
   display: flex;
   align-items: center;
   gap: 14px;
-  flex: 1 1 0;
+  flex: 0 1 320px;
+  max-width: 320px;
   min-width: 0;
 }
 
@@ -273,14 +269,22 @@ a {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.48rem;
+  gap: 0.32rem;
+  min-width: 0;
+}
+
+.logo-meta-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.34rem 0.55rem;
   min-width: 0;
 }
 
 .logo-capability-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.42rem;
+  gap: 0.34rem;
   max-width: 100%;
 }
 
@@ -288,20 +292,20 @@ a {
   display: inline-flex;
   align-items: center;
   gap: 0.42rem;
-  padding: 0.34rem 0.64rem 0.34rem 0.42rem;
+  padding: 0.26rem 0.5rem 0.26rem 0.34rem;
   border-radius: 999px;
   border: 1px solid rgba(120, 150, 210, 0.12);
   background: rgba(120, 150, 210, 0.04);
   color: #cdd8e6;
-  font-size: 0.71rem;
+  font-size: 0.64rem;
   font-weight: 700;
   letter-spacing: 0.03em;
 }
 
 .logo-wordmark {
-  width: min(300px, 100%);
+  width: min(220px, 100%);
   max-width: 100%;
-  max-height: 96px;
+  max-height: 70px;
   height: auto;
   display: block;
   object-fit: contain;
@@ -310,7 +314,7 @@ a {
 
 .logo-wordmark-picture {
   display: block;
-  width: min(300px, 100%);
+  width: min(220px, 100%);
   max-width: 100%;
   border-radius: 22px;
   overflow: hidden;
@@ -359,10 +363,10 @@ a {
   background: transparent;
   border: 0;
   color: #8ea0b8;
-  font-size: 0.78rem;
+  font-size: 0.7rem;
   font-weight: 600;
   text-align: left;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
 }
 
 .mini-social-links {
@@ -447,8 +451,9 @@ a {
 .search-form {
   position: relative;
   display: block;
-  width: min(100%, 560px);
-  flex: 0 1 560px;
+  width: min(100%, 470px);
+  flex: 0 1 470px;
+  max-width: 470px;
   z-index: 2;
 }
 
@@ -456,11 +461,11 @@ a {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 0.95rem;
-  min-height: 68px;
-  padding: 0.7rem 0.72rem 0.7rem 1rem;
+  gap: 0.72rem;
+  min-height: 54px;
+  padding: 0.42rem 0.42rem 0.42rem 0.78rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 22px;
+  border-radius: 18px;
   background:
     radial-gradient(circle at top left, rgba(255, 255, 255, 0.05), transparent 26%),
     linear-gradient(180deg, rgba(14, 19, 26, 0.98), rgba(10, 14, 19, 0.98));
@@ -474,7 +479,7 @@ a {
   content: '';
   position: absolute;
   inset: 1px;
-  border-radius: 21px;
+  border-radius: 17px;
   pointer-events: none;
   border: 1px solid rgba(255, 255, 255, 0.025);
 }
@@ -489,15 +494,15 @@ a {
 }
 
 .search-shell-icon {
-  width: 44px;
-  height: 44px;
-  flex: 0 0 44px;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 14px;
+  border-radius: 11px;
   color: #ffb3ad;
-  font-size: 1rem;
+  font-size: 0.84rem;
   background: rgba(255, 123, 114, 0.12);
 }
 
@@ -505,14 +510,14 @@ a {
   flex: 1;
   min-width: 0;
   display: grid;
-  gap: 0.22rem;
+  gap: 0.08rem;
 }
 
 .search-shell-label {
   color: #7d8590;
-  font-size: 0.72rem;
+  font-size: 0.58rem;
   font-weight: 800;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
@@ -522,8 +527,8 @@ a {
   padding: 0;
   background: transparent;
   color: var(--text-strong);
-  font-size: 1.02rem;
-  line-height: 1.35;
+  font-size: 0.94rem;
+  line-height: 1.25;
 }
 
 .search-form input::placeholder {
@@ -531,10 +536,10 @@ a {
 }
 
 .search-form button {
-  width: 54px;
-  height: 54px;
+  width: 44px;
+  height: 44px;
   border: none;
-  border-radius: 16px;
+  border-radius: 14px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1035,7 +1040,7 @@ a {
 
 .hero-section-home {
   position: relative;
-  padding-top: 1.2rem;
+  padding-top: 0.78rem;
 }
 
 .hero-section-home::before {
@@ -1076,8 +1081,8 @@ a {
   position: relative;
   grid-template-columns: 1fr;
   align-items: stretch;
-  gap: 0.72rem;
-  padding: 1.05rem 1.2rem 0.9rem;
+  gap: 0.58rem;
+  padding: 0.92rem 1.04rem 0.82rem;
   background:
     radial-gradient(circle at top left, rgba(110, 146, 215, 0.14), transparent 28%),
     radial-gradient(circle at bottom right, rgba(247, 191, 127, 0.06), transparent 24%),
@@ -3207,8 +3212,8 @@ h6 {
   }
 
   .middle-header-panel {
-    gap: 1rem;
-    padding: 1rem;
+    gap: 0.88rem;
+    padding: 0.82rem;
   }
 
   .middle-header-panel::after {
@@ -3323,55 +3328,60 @@ h6 {
   .logo-block {
     width: 100%;
     justify-content: flex-start;
+    max-width: none;
   }
 
   .logo-wordmark-wrap {
     width: 100%;
     align-items: flex-start;
-    gap: 0.45rem;
+    gap: 0.34rem;
+  }
+
+  .logo-meta-row {
+    gap: 0.28rem 0.42rem;
   }
 
   .logo-capability-row {
-    gap: 0.38rem;
+    gap: 0.3rem;
   }
 
   .logo-capability-chip {
-    padding: 0.34rem 0.56rem 0.34rem 0.42rem;
-    font-size: 0.66rem;
+    padding: 0.24rem 0.48rem 0.24rem 0.32rem;
+    font-size: 0.61rem;
   }
 
   .logo-wordmark {
-    width: min(225px, 76vw);
-    max-height: 92px;
+    width: min(184px, 70vw);
+    max-height: 62px;
     margin-inline: 0;
   }
 
   .logo-wordmark-picture {
-    width: min(225px, 76vw);
+    width: min(184px, 70vw);
     margin-inline: 0;
   }
 
   .search-shell {
-    min-height: 56px;
-    gap: 0.55rem;
-    padding: 0.55rem 0.55rem 0.55rem 0.75rem;
-    border-radius: 20px;
+    min-height: 48px;
+    gap: 0.48rem;
+    padding: 0.36rem 0.36rem 0.36rem 0.66rem;
+    border-radius: 17px;
   }
 
   .search-shell::after {
-    border-radius: 19px;
+    border-radius: 16px;
   }
 
   .search-shell-icon {
-    width: 40px;
-    height: 40px;
-    flex: 0 0 40px;
-    border-radius: 12px;
-    font-size: 0.92rem;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+    border-radius: 10px;
+    font-size: 0.78rem;
   }
 
   .search-shell-label {
-    font-size: 0.62rem;
+    font-size: 0.54rem;
     letter-spacing: 0.12em;
   }
 
@@ -3380,15 +3390,15 @@ h6 {
   }
 
   .search-form input {
-    font-size: 0.96rem;
+    font-size: 0.88rem;
   }
 
   .search-form button {
-    width: 44px;
-    height: 44px;
-    flex: 0 0 44px;
-    border-radius: 14px;
-    font-size: 0.96rem;
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    border-radius: 12px;
+    font-size: 0.84rem;
   }
 
   .search-dropdown {
@@ -3408,7 +3418,7 @@ h6 {
   }
 
   .hero-panel-home {
-    padding: 1.04rem 0.96rem 0.96rem;
+    padding: 0.82rem 0.84rem 0.78rem;
   }
 
   .hero-panel-home .hero-center h2 {
