@@ -50,7 +50,7 @@ a {
 }
 
 .admin-shell {
-  width: min(1360px, calc(100% - 32px));
+  width: min(1480px, calc(100% - 32px));
   margin: 0 auto;
   padding: 28px 0 40px;
 }
@@ -100,11 +100,14 @@ a {
 
 .admin-pill-row,
 .admin-stat-grid,
-.admin-panel-grid,
+.admin-workbench,
 .admin-toolbar-row,
 .admin-filter-row,
 .admin-action-row,
-.admin-inline-row {
+.admin-inline-row,
+.admin-tab-row,
+.admin-catalog-grid,
+.admin-tools-grid {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
@@ -151,6 +154,14 @@ a {
   margin-top: 18px;
 }
 
+.admin-card-topline {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
 .admin-stat-card {
   min-width: 150px;
   flex: 1 1 150px;
@@ -167,7 +178,10 @@ a {
   margin-top: 10px;
 }
 
-.admin-panel-grid {
+.admin-workbench {
+  display: grid;
+  grid-template-columns: minmax(340px, 0.82fr) minmax(0, 1.18fr);
+  gap: 18px;
   align-items: start;
 }
 
@@ -183,6 +197,27 @@ a {
 
 .admin-data-card {
   flex: 1 1 520px;
+}
+
+.admin-composer-column {
+  position: sticky;
+  top: 18px;
+  align-self: start;
+}
+
+.admin-content-column {
+  display: grid;
+  gap: 18px;
+}
+
+.admin-switcher-card,
+.admin-composer-card {
+  overflow: hidden;
+}
+
+.admin-composer-panel[hidden],
+.admin-workspace-panel[hidden] {
+  display: none !important;
 }
 
 .admin-section-title {
@@ -203,6 +238,10 @@ a {
 
 .admin-form-grid[data-columns='1'] {
   grid-template-columns: minmax(0, 1fr);
+}
+
+.admin-span-2 {
+  grid-column: span 2;
 }
 
 .admin-field {
@@ -398,8 +437,122 @@ a {
   gap: 10px;
 }
 
+.admin-tab-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--admin-line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--admin-muted);
+  cursor: pointer;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    color 140ms ease,
+    transform 140ms ease;
+}
+
+.admin-tab-button:hover {
+  transform: translateY(-1px);
+}
+
+.admin-tab-button.is-active {
+  border-color: rgba(255, 155, 84, 0.45);
+  background: rgba(255, 155, 84, 0.16);
+  color: var(--admin-text);
+}
+
+.admin-subpanel {
+  min-width: 0;
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid var(--admin-line);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.admin-subpanel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-subpanel-title {
+  margin: 0;
+  font-size: 18px;
+}
+
+.admin-catalog-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.7fr) minmax(0, 1.3fr);
+  gap: 16px;
+}
+
+.admin-tools-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.admin-scroll-panel {
+  max-height: 420px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.admin-scroll-panel-tall,
+.admin-table-shell-tall {
+  max-height: 66vh;
+}
+
+.admin-disclosure {
+  border: 1px solid var(--admin-line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 0 16px 16px;
+}
+
+.admin-disclosure-summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 15px 0;
+  font-weight: 800;
+  color: var(--admin-text);
+}
+
+.admin-disclosure-summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-disclosure-summary::after {
+  content: '+';
+  float: right;
+  color: var(--admin-accent);
+  font-size: 20px;
+  line-height: 1;
+}
+
+.admin-disclosure[open] .admin-disclosure-summary::after {
+  content: '−';
+}
+
+.admin-disclosure-content {
+  display: grid;
+  gap: 14px;
+  padding-top: 8px;
+}
+
 .admin-table-shell {
   overflow: auto;
+  max-height: 60vh;
   border: 1px solid var(--admin-line);
   border-radius: 18px;
 }
@@ -455,11 +608,22 @@ a {
     grid-template-columns: 1fr;
   }
 
+  .admin-workbench,
+  .admin-catalog-grid,
+  .admin-tools-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-composer-column {
+    position: static;
+  }
+
   .admin-form-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .admin-field[data-span='2'] {
+  .admin-field[data-span='2'],
+  .admin-span-2 {
     grid-column: auto;
   }
 }
@@ -479,6 +643,10 @@ a {
 
   .admin-title {
     font-size: 30px;
+  }
+
+  .admin-tab-button {
+    flex: 1 1 120px;
   }
 
   .admin-table {

@@ -94,6 +94,8 @@ type IntegrityResponse = {
   }>
 }
 
+type ComposerMode = 'brand' | 'category' | 'file'
+type WorkspaceMode = 'catalog' | 'files' | 'tools'
 type BannerTone = 'neutral' | 'success' | 'warning' | 'error'
 
 const TOKEN_STORAGE_KEY = 'aosunlocker-admin-token'
@@ -119,6 +121,9 @@ const state = {
   editingBrandId: '',
   editingCategoryId: '',
   editingFileId: '',
+  activeComposer: 'file' as ComposerMode,
+  activeWorkspace: 'files' as WorkspaceMode,
+  fileAdvancedOpen: false,
 }
 
 const byId = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null
@@ -197,6 +202,60 @@ const getKnownFiles = () => {
   })
 
   return Array.from(registry.values())
+}
+
+const syncViewModes = () => {
+  document.querySelectorAll<HTMLElement>('[data-composer-panel]').forEach((panel) => {
+    panel.hidden = panel.dataset.composerPanel !== state.activeComposer
+  })
+
+  document.querySelectorAll<HTMLElement>('[data-workspace-panel]').forEach((panel) => {
+    panel.hidden = panel.dataset.workspacePanel !== state.activeWorkspace
+  })
+
+  document.querySelectorAll<HTMLButtonElement>('[data-composer-mode]').forEach((button) => {
+    const isActive = button.dataset.composerMode === state.activeComposer
+    button.classList.toggle('is-active', isActive)
+    button.setAttribute('aria-pressed', String(isActive))
+  })
+
+  document.querySelectorAll<HTMLButtonElement>('[data-workspace-mode]').forEach((button) => {
+    const isActive = button.dataset.workspaceMode === state.activeWorkspace
+    button.classList.toggle('is-active', isActive)
+    button.setAttribute('aria-pressed', String(isActive))
+  })
+
+  const details = byId<HTMLDetailsElement>('fileAdvancedDetails')
+  if (details) {
+    details.open = state.fileAdvancedOpen
+  }
+}
+
+const revealComposer = (
+  mode: ComposerMode,
+  options: {
+    scroll?: boolean
+    fileAdvancedOpen?: boolean
+  } = {},
+) => {
+  state.activeComposer = mode
+  if (typeof options.fileAdvancedOpen === 'boolean') {
+    state.fileAdvancedOpen = options.fileAdvancedOpen
+  }
+  syncViewModes()
+
+  if (options.scroll && window.innerWidth < 1080) {
+    byId<HTMLElement>('adminComposerCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+}
+
+const revealWorkspace = (mode: WorkspaceMode, options: { scroll?: boolean } = {}) => {
+  state.activeWorkspace = mode
+  syncViewModes()
+
+  if (options.scroll && window.innerWidth < 1080) {
+    byId<HTMLElement>('adminWorkspaceCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 }
 
 const setBanner = (message: string, tone: BannerTone = 'neutral') => {
@@ -331,143 +390,204 @@ const renderShell = () => {
         </article>
       </section>
 
-      <section class="admin-panel-grid">
-        <div class="admin-stack">
-          <article class="admin-card admin-form-card">
-            <p class="admin-eyebrow">Brand</p>
-            <h2 class="admin-section-title" id="brandFormTitle">Create Brand</h2>
-            <p class="admin-section-copy">Brand is the root folder family shown on the public download hub.</p>
-            <form id="brandForm" class="admin-form-grid" data-columns="1">
-              <label class="admin-field">
-                <span class="admin-label">Brand ID</span>
-                <input id="brandId" class="admin-input" type="text" placeholder="huawei" />
-              </label>
-              <label class="admin-field">
-                <span class="admin-label">Brand label</span>
-                <input id="brandLabel" class="admin-input" type="text" placeholder="Huawei" />
-              </label>
-              <div class="admin-action-row">
-                <button id="brandSubmitButton" class="admin-button admin-button-primary" type="submit">Save Brand</button>
-                <button id="brandResetButton" class="admin-button admin-button-secondary" type="button">Reset</button>
+      <section class="admin-workbench">
+        <aside class="admin-composer-column">
+          <article id="adminComposerCard" class="admin-card admin-form-card admin-composer-card">
+            <div class="admin-card-topline">
+              <div>
+                <p class="admin-eyebrow">Quick Create</p>
+                <h2 class="admin-section-title">Single-action editor</h2>
               </div>
-            </form>
+              <div class="admin-tab-row">
+                <button class="admin-tab-button" type="button" data-composer-mode="brand">Brand</button>
+                <button class="admin-tab-button" type="button" data-composer-mode="category">Folder</button>
+                <button class="admin-tab-button" type="button" data-composer-mode="file">File</button>
+              </div>
+            </div>
+            <p class="admin-section-copy">Pick one task at a time. Edit actions from the lists on the right will load into this editor automatically.</p>
+
+            <section class="admin-composer-panel" data-composer-panel="brand">
+              <p class="admin-eyebrow">Brand</p>
+              <h2 class="admin-section-title" id="brandFormTitle">Create Brand</h2>
+              <p class="admin-section-copy">Use this only for a new root family such as Huawei, Honor, or Solution.</p>
+              <form id="brandForm" class="admin-form-grid" data-columns="1">
+                <label class="admin-field">
+                  <span class="admin-label">Brand ID</span>
+                  <input id="brandId" class="admin-input" type="text" placeholder="huawei" />
+                </label>
+                <label class="admin-field">
+                  <span class="admin-label">Brand label</span>
+                  <input id="brandLabel" class="admin-input" type="text" placeholder="Huawei" />
+                </label>
+                <div class="admin-action-row">
+                  <button id="brandSubmitButton" class="admin-button admin-button-primary" type="submit">Save Brand</button>
+                  <button id="brandResetButton" class="admin-button admin-button-secondary" type="button">Reset</button>
+                </div>
+              </form>
+            </section>
+
+            <section class="admin-composer-panel" data-composer-panel="category" hidden>
+              <p class="admin-eyebrow">Folder</p>
+              <h2 class="admin-section-title" id="categoryFormTitle">Create Folder / Subfolder</h2>
+              <p class="admin-section-copy">Select a brand, then choose an optional parent folder only if this should become a subfolder.</p>
+              <form id="categoryForm" class="admin-form-grid">
+                <label class="admin-field">
+                  <span class="admin-label">Folder ID</span>
+                  <input id="categoryId" class="admin-input" type="text" placeholder="auto-generated if blank" />
+                </label>
+                <label class="admin-field">
+                  <span class="admin-label">Folder label</span>
+                  <input id="categoryLabel" class="admin-input" type="text" placeholder="Removed ID" />
+                </label>
+                <label class="admin-field">
+                  <span class="admin-label">Brand</span>
+                  <select id="categoryBrand" class="admin-select"></select>
+                </label>
+                <label class="admin-field">
+                  <span class="admin-label">Parent folder</span>
+                  <select id="parentCategory" class="admin-select"></select>
+                </label>
+                <div class="admin-action-row admin-span-2">
+                  <button id="categorySubmitButton" class="admin-button admin-button-primary" type="submit">Save Folder</button>
+                  <button id="categoryResetButton" class="admin-button admin-button-secondary" type="button">Reset</button>
+                </div>
+              </form>
+            </section>
+
+            <section class="admin-composer-panel" data-composer-panel="file" hidden>
+              <p class="admin-eyebrow">File</p>
+              <h2 class="admin-section-title" id="fileFormTitle">Create File</h2>
+              <p class="admin-section-copy">Main fields stay visible. Open advanced details only when you need subtitles, notes, size, price, or counters.</p>
+              <form id="fileForm" class="admin-form-grid">
+                <label class="admin-field">
+                  <span class="admin-label">File ID</span>
+                  <input id="fileId" class="admin-input" type="text" placeholder="auto-generated if blank" />
+                </label>
+                <label class="admin-field">
+                  <span class="admin-label">Title</span>
+                  <input id="fileTitle" class="admin-input" type="text" placeholder="Huawei Mate50..." />
+                </label>
+                <label class="admin-field">
+                  <span class="admin-label">Brand</span>
+                  <select id="fileBrand" class="admin-select"></select>
+                </label>
+                <label class="admin-field">
+                  <span class="admin-label">Folder</span>
+                  <select id="fileCategory" class="admin-select"></select>
+                </label>
+                <label class="admin-field admin-span-2">
+                  <span class="admin-label">Drive URL</span>
+                  <input id="fileDriveUrl" class="admin-input" type="url" placeholder="https://drive.google.com/file/d/..." />
+                </label>
+                <label class="admin-field">
+                  <span class="admin-label">Status</span>
+                  <select id="fileStatus" class="admin-select">
+                    <option value="draft">draft</option>
+                    <option value="published">published</option>
+                  </select>
+                </label>
+                <details id="fileAdvancedDetails" class="admin-disclosure admin-span-2">
+                  <summary class="admin-disclosure-summary">Advanced file details</summary>
+                  <div class="admin-disclosure-content admin-form-grid">
+                    <label class="admin-field admin-span-2">
+                      <span class="admin-label">Subtitle</span>
+                      <input id="fileSubtitle" class="admin-input" type="text" placeholder="Short subtitle for the download list" />
+                    </label>
+                    <label class="admin-field admin-span-2">
+                      <span class="admin-label">Summary</span>
+                      <textarea id="fileSummary" class="admin-textarea" placeholder="Short summary, notes, or package context"></textarea>
+                    </label>
+                    <label class="admin-field">
+                      <span class="admin-label">Date label</span>
+                      <input id="fileDate" class="admin-input" type="text" placeholder="07-04-2026" />
+                    </label>
+                    <label class="admin-field">
+                      <span class="admin-label">Size label</span>
+                      <input id="fileSize" class="admin-input" type="text" placeholder="7.91 GB" />
+                    </label>
+                    <label class="admin-field">
+                      <span class="admin-label">Price</span>
+                      <input id="filePrice" class="admin-input" type="text" placeholder="free" />
+                    </label>
+                    <label class="admin-field">
+                      <span class="admin-label">Featured</span>
+                      <select id="fileFeaturedSelect" class="admin-select">
+                        <option value="false">No</option>
+                        <option value="true">Yes</option>
+                      </select>
+                    </label>
+                    <label class="admin-field">
+                      <span class="admin-label">Visits</span>
+                      <input id="fileVisits" class="admin-input" type="number" min="0" step="1" placeholder="0" />
+                    </label>
+                    <label class="admin-field">
+                      <span class="admin-label">Downloads</span>
+                      <input id="fileDownloads" class="admin-input" type="number" min="0" step="1" placeholder="0" />
+                    </label>
+                  </div>
+                </details>
+                <div class="admin-action-row admin-span-2">
+                  <button id="fileSubmitButton" class="admin-button admin-button-primary" type="submit">Save File</button>
+                  <button id="fileResetButton" class="admin-button admin-button-secondary" type="button">Reset</button>
+                </div>
+              </form>
+            </section>
+          </article>
+        </aside>
+
+        <div class="admin-content-column">
+          <article id="adminWorkspaceCard" class="admin-card admin-data-card admin-switcher-card">
+            <div class="admin-card-topline">
+              <div>
+                <p class="admin-eyebrow">Workspace</p>
+                <h2 class="admin-section-title">Focus one area at a time</h2>
+              </div>
+              <div class="admin-tab-row">
+                <button class="admin-tab-button" type="button" data-workspace-mode="catalog">Catalog</button>
+                <button class="admin-tab-button" type="button" data-workspace-mode="files">Files</button>
+                <button class="admin-tab-button" type="button" data-workspace-mode="tools">Tools</button>
+              </div>
+            </div>
+            <p class="admin-section-copy">Use Catalog for brands and folders, Files for download links, and Tools for search plus integrity checks.</p>
           </article>
 
-          <article class="admin-card admin-form-card">
-            <p class="admin-eyebrow">Folder</p>
-            <h2 class="admin-section-title" id="categoryFormTitle">Create Folder / Subfolder</h2>
-            <p class="admin-section-copy">Choose a brand first, then optionally attach the folder under a parent to make a subfolder.</p>
-            <form id="categoryForm" class="admin-form-grid">
-              <label class="admin-field">
-                <span class="admin-label">Folder ID</span>
-                <input id="categoryId" class="admin-input" type="text" placeholder="auto-generated if blank" />
-              </label>
-              <label class="admin-field">
-                <span class="admin-label">Folder label</span>
-                <input id="categoryLabel" class="admin-input" type="text" placeholder="Removed ID" />
-              </label>
-              <label class="admin-field">
-                <span class="admin-label">Brand</span>
-                <select id="categoryBrand" class="admin-select"></select>
-              </label>
-              <label class="admin-field">
-                <span class="admin-label">Parent folder</span>
-                <select id="parentCategory" class="admin-select"></select>
-              </label>
-              <div class="admin-action-row">
-                <button id="categorySubmitButton" class="admin-button admin-button-primary" type="submit">Save Folder</button>
-                <button id="categoryResetButton" class="admin-button admin-button-secondary" type="button">Reset</button>
-              </div>
-            </form>
-          </article>
-
-          <article class="admin-card admin-form-card">
-            <p class="admin-eyebrow">File</p>
-            <h2 class="admin-section-title" id="fileFormTitle">Create File</h2>
-            <p class="admin-section-copy">Every file is tied to one folder. Publish only when the link is ready for visitors.</p>
-            <form id="fileForm" class="admin-form-grid">
-              <label class="admin-field">
-                <span class="admin-label">File ID</span>
-                <input id="fileId" class="admin-input" type="text" placeholder="auto-generated if blank" />
-              </label>
-              <label class="admin-field">
-                <span class="admin-label">Title</span>
-                <input id="fileTitle" class="admin-input" type="text" placeholder="Huawei Mate50..." />
-              </label>
-              <label class="admin-field">
-                <span class="admin-label">Brand</span>
-                <select id="fileBrand" class="admin-select"></select>
-              </label>
-              <label class="admin-field">
-                <span class="admin-label">Folder</span>
-                <select id="fileCategory" class="admin-select"></select>
-              </label>
-              <label class="admin-field" data-span="2">
-                <span class="admin-label">Subtitle</span>
-                <input id="fileSubtitle" class="admin-input" type="text" placeholder="Short subtitle for the download list" />
-              </label>
-              <label class="admin-field" data-span="2">
-                <span class="admin-label">Summary</span>
-                <textarea id="fileSummary" class="admin-textarea" placeholder="Short summary, notes, or package context"></textarea>
-              </label>
-              <label class="admin-field" data-span="2">
-                <span class="admin-label">Drive URL</span>
-                <input id="fileDriveUrl" class="admin-input" type="url" placeholder="https://drive.google.com/file/d/..." />
-              </label>
-              <label class="admin-field">
-                <span class="admin-label">Date label</span>
-                <input id="fileDate" class="admin-input" type="text" placeholder="07-04-2026" />
-              </label>
-              <label class="admin-field">
-                <span class="admin-label">Size label</span>
-                <input id="fileSize" class="admin-input" type="text" placeholder="7.91 GB" />
-              </label>
-              <label class="admin-field">
-                <span class="admin-label">Price</span>
-                <input id="filePrice" class="admin-input" type="text" placeholder="free" />
-              </label>
-              <label class="admin-field">
-                <span class="admin-label">Status</span>
-                <select id="fileStatus" class="admin-select">
-                  <option value="draft">draft</option>
-                  <option value="published">published</option>
-                </select>
-              </label>
-              <label class="admin-field">
-                <span class="admin-label">Visits</span>
-                <input id="fileVisits" class="admin-input" type="number" min="0" step="1" placeholder="0" />
-              </label>
-              <label class="admin-field">
-                <span class="admin-label">Downloads</span>
-                <input id="fileDownloads" class="admin-input" type="number" min="0" step="1" placeholder="0" />
-              </label>
-              <label class="admin-field">
-                <span class="admin-label">Featured</span>
-                <select id="fileFeaturedSelect" class="admin-select">
-                  <option value="false">No</option>
-                  <option value="true">Yes</option>
-                </select>
-              </label>
-              <div class="admin-action-row">
-                <button id="fileSubmitButton" class="admin-button admin-button-primary" type="submit">Save File</button>
-                <button id="fileResetButton" class="admin-button admin-button-secondary" type="button">Reset</button>
-              </div>
-            </form>
-          </article>
-        </div>
-
-        <div class="admin-stack">
-          <article class="admin-card admin-data-card">
+          <article class="admin-card admin-data-card admin-workspace-panel" data-workspace-panel="catalog">
             <p class="admin-eyebrow">Catalog</p>
-            <h2 class="admin-section-title">Brands and Folders</h2>
-            <p class="admin-section-copy">Edit here when a folder ends up in the wrong place or a parent-child relation needs cleanup.</p>
-            <div id="brandList" class="admin-list"></div>
-            <div id="categoryList" class="admin-list"></div>
+            <h2 class="admin-section-title">Brands and folders</h2>
+            <p class="admin-section-copy">Edit actions here load straight into the quick editor on the left, so you do not need to hunt for the right form.</p>
+            <div class="admin-catalog-grid">
+              <section class="admin-subpanel">
+                <div class="admin-subpanel-head">
+                  <div>
+                    <h3 class="admin-subpanel-title">Brands</h3>
+                    <p class="admin-muted">Root groups for the public download hub.</p>
+                  </div>
+                  <button class="admin-button admin-button-secondary" type="button" data-composer-mode="brand" data-composer-reset="true">New Brand</button>
+                </div>
+                <div class="admin-scroll-panel">
+                  <div id="brandList" class="admin-list"></div>
+                </div>
+              </section>
+
+              <section class="admin-subpanel">
+                <div class="admin-subpanel-head">
+                  <div>
+                    <h3 class="admin-subpanel-title">Folders / Subfolders</h3>
+                    <p class="admin-muted">Keep parent-child structure clean here.</p>
+                  </div>
+                  <button class="admin-button admin-button-secondary" type="button" data-composer-mode="category" data-composer-reset="true">New Folder</button>
+                </div>
+                <div class="admin-scroll-panel admin-scroll-panel-tall">
+                  <div id="categoryList" class="admin-list"></div>
+                </div>
+              </section>
+            </div>
           </article>
 
-          <article class="admin-card admin-data-card">
+          <article class="admin-card admin-data-card admin-workspace-panel" data-workspace-panel="files" hidden>
             <p class="admin-eyebrow">Files</p>
-            <h2 class="admin-section-title">Published and Draft Files</h2>
+            <h2 class="admin-section-title">Published and draft files</h2>
+            <p class="admin-section-copy">Filter the list, open a link, or send an item into the editor without leaving this view.</p>
             <div class="admin-filter-row">
               <label class="admin-field">
                 <span class="admin-label">Filter brand</span>
@@ -488,8 +608,10 @@ const renderShell = () => {
             </div>
             <div class="admin-action-row">
               <button id="reloadFilesButton" class="admin-button admin-button-secondary" type="button">Reload Files</button>
+              <button class="admin-button admin-button-secondary" type="button" data-composer-mode="file" data-composer-reset="true">New File</button>
+              <button class="admin-button admin-button-ghost" type="button" data-workspace-mode="catalog">Open Catalog</button>
             </div>
-            <div class="admin-table-shell">
+            <div class="admin-table-shell admin-table-shell-tall">
               <table class="admin-table">
                 <thead>
                   <tr>
@@ -505,28 +627,44 @@ const renderShell = () => {
             </div>
           </article>
 
-          <article class="admin-card admin-data-card">
+          <article class="admin-card admin-data-card admin-workspace-panel" data-workspace-panel="tools" hidden>
             <p class="admin-eyebrow">Tools</p>
-            <h2 class="admin-section-title">Search and Integrity</h2>
-            <p class="admin-section-copy">Search finds files fast. Integrity scan is your quick check to catch broken folder links before visitors do.</p>
+            <h2 class="admin-section-title">Search and integrity</h2>
+            <p class="admin-section-copy">Search finds a file fast. Integrity scan checks category chains and file links before visitors see problems.</p>
             <form id="searchForm" class="admin-form-grid">
-              <label class="admin-field" data-span="2">
+              <label class="admin-field admin-span-2">
                 <span class="admin-label">Search query</span>
                 <input id="searchQuery" class="admin-input" type="text" placeholder="file title, category, brand, link..." />
               </label>
-              <div class="admin-action-row">
+              <div class="admin-action-row admin-span-2">
                 <button id="searchSubmitButton" class="admin-button admin-button-primary" type="submit">Run Search</button>
                 <button id="refreshCacheButton" class="admin-button admin-button-secondary" type="button">Refresh Public Cache</button>
                 <button id="runIntegrityButton" class="admin-button admin-button-secondary" type="button">Run Integrity Scan</button>
               </div>
             </form>
-            <div class="admin-stack">
-              <section>
-                <p class="admin-muted" id="searchSummary">Search results will appear here.</p>
-                <div id="searchResults" class="admin-search-list"></div>
+            <div class="admin-tools-grid">
+              <section class="admin-subpanel">
+                <div class="admin-subpanel-head">
+                  <div>
+                    <h3 class="admin-subpanel-title">Search results</h3>
+                    <p class="admin-muted" id="searchSummary">Search results will appear here.</p>
+                  </div>
+                </div>
+                <div class="admin-scroll-panel">
+                  <div id="searchResults" class="admin-search-list"></div>
+                </div>
               </section>
-              <section>
-                <div id="integrityResults" class="admin-issue-list"></div>
+
+              <section class="admin-subpanel">
+                <div class="admin-subpanel-head">
+                  <div>
+                    <h3 class="admin-subpanel-title">Integrity</h3>
+                    <p class="admin-muted">Run scans after edits to confirm the structure is still healthy.</p>
+                  </div>
+                </div>
+                <div class="admin-scroll-panel">
+                  <div id="integrityResults" class="admin-issue-list"></div>
+                </div>
               </section>
             </div>
           </article>
@@ -902,6 +1040,7 @@ const resetBrandForm = () => {
   setInputValue('brandId', '')
   setInputValue('brandLabel', '')
   setBrandFormMode(false)
+  syncViewModes()
 }
 
 const resetCategoryForm = () => {
@@ -913,6 +1052,7 @@ const resetCategoryForm = () => {
   syncCategoryParentOptions()
   setInputValue('parentCategory', '')
   setCategoryFormMode(false)
+  syncViewModes()
 }
 
 const resetFileForm = () => {
@@ -935,6 +1075,8 @@ const resetFileForm = () => {
   setInputValue('fileCategory', getCategoriesForBrand(firstBrandId)[0]?.id || '')
   setInputValue('fileFeaturedSelect', 'false')
   setFileFormMode(false)
+  state.fileAdvancedOpen = false
+  syncViewModes()
 }
 
 const populateBrandForm = (brand: AdminBrand) => {
@@ -942,6 +1084,7 @@ const populateBrandForm = (brand: AdminBrand) => {
   setInputValue('brandId', brand.id)
   setInputValue('brandLabel', brand.label)
   setBrandFormMode(true)
+  revealComposer('brand', { scroll: true })
 }
 
 const populateCategoryForm = (category: AdminCategory) => {
@@ -952,6 +1095,7 @@ const populateCategoryForm = (category: AdminCategory) => {
   syncCategoryParentOptions()
   setInputValue('parentCategory', category.parentCategoryId || '')
   setCategoryFormMode(true)
+  revealComposer('category', { scroll: true })
 }
 
 const populateFileForm = (file: AdminFile) => {
@@ -972,6 +1116,7 @@ const populateFileForm = (file: AdminFile) => {
   setInputValue('fileCategory', file.categoryId)
   setInputValue('fileFeaturedSelect', String(Boolean(file.featured)))
   setFileFormMode(true)
+  revealComposer('file', { scroll: true, fileAdvancedOpen: true })
 }
 
 const ensureFormsStillValid = () => {
@@ -1256,6 +1401,28 @@ const restoreButton = (buttonId: string, label: string) => {
 }
 
 const bindStaticEvents = () => {
+  app.addEventListener('click', (event) => {
+    const target = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-composer-mode], button[data-workspace-mode]')
+    if (!target) return
+
+    const composerMode = target.dataset.composerMode as ComposerMode | undefined
+    if (composerMode) {
+      if (target.dataset.composerReset === 'true') {
+        if (composerMode === 'brand') resetBrandForm()
+        if (composerMode === 'category') resetCategoryForm()
+        if (composerMode === 'file') resetFileForm()
+      }
+
+      revealComposer(composerMode, { scroll: target.dataset.composerReset === 'true' })
+      return
+    }
+
+    const workspaceMode = target.dataset.workspaceMode as WorkspaceMode | undefined
+    if (workspaceMode) {
+      revealWorkspace(workspaceMode)
+    }
+  })
+
   byId<HTMLFormElement>('connectionForm')?.addEventListener('submit', async (event) => {
     event.preventDefault()
 
@@ -1337,6 +1504,10 @@ const bindStaticEvents = () => {
     syncFileCategoryOptions()
   })
 
+  byId<HTMLDetailsElement>('fileAdvancedDetails')?.addEventListener('toggle', (event) => {
+    state.fileAdvancedOpen = (event.currentTarget as HTMLDetailsElement).open
+  })
+
   byId<HTMLButtonElement>('reloadFilesButton')?.addEventListener('click', async () => {
     try {
       const release = setButtonBusy(byId<HTMLButtonElement>('reloadFilesButton'), 'Reloading...')
@@ -1404,7 +1575,6 @@ const bindStaticEvents = () => {
         const brand = getBrandById(brandId)
         if (brand) {
           populateBrandForm(brand)
-          window.scrollTo({ top: 0, behavior: 'smooth' })
         }
       }
 
@@ -1428,7 +1598,6 @@ const bindStaticEvents = () => {
         const category = getCategoryById(categoryId)
         if (category) {
           populateCategoryForm(category)
-          window.scrollTo({ top: 220, behavior: 'smooth' })
         }
       }
 
@@ -1452,7 +1621,6 @@ const bindStaticEvents = () => {
         const file = getKnownFiles().find((item) => item.id === fileId)
         if (file) {
           populateFileForm(file)
-          window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })
         }
       }
 
@@ -1474,7 +1642,6 @@ const bindStaticEvents = () => {
       const file = getKnownFiles().find((item) => item.id === fileId)
       if (file) {
         populateFileForm(file)
-        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })
       }
     }
   })
@@ -1485,6 +1652,7 @@ const bootstrapAdmin = async () => {
   state.token = window.localStorage.getItem(TOKEN_STORAGE_KEY) || ''
 
   renderShell()
+  syncViewModes()
   renderBanner()
   renderStats()
   renderBrandList()
@@ -1498,6 +1666,7 @@ const bootstrapAdmin = async () => {
   resetCategoryForm()
   resetFileForm()
   bindStaticEvents()
+  syncViewModes()
 
   if (!state.token) {
     setBanner('Admin token belum diisi. Paste token lalu klik Connect Panel.', 'warning')
