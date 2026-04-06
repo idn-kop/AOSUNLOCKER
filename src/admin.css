@@ -745,6 +745,7 @@ a {
   display: grid;
   place-items: center;
   padding: 18px;
+  pointer-events: none;
 }
 
 .admin-editor-overlay[hidden] {
@@ -754,16 +755,19 @@ a {
 .admin-editor-backdrop {
   position: absolute;
   inset: 0;
+  z-index: 0;
   border: 0;
   background: rgba(5, 10, 17, 0.72);
+  pointer-events: auto;
 }
 
 .admin-editor-card {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   width: min(980px, calc(100vw - 28px));
   max-height: calc(100vh - 28px);
   overflow: auto;
+  pointer-events: auto;
 }
 
 .admin-overlay-actions {
@@ -784,6 +788,7 @@ a {
   display: grid;
   place-items: center;
   padding: 18px;
+  pointer-events: none;
 }
 
 .admin-confirm-overlay[hidden] {
@@ -792,10 +797,11 @@ a {
 
 .admin-confirm-card {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   width: min(460px, calc(100vw - 28px));
   display: grid;
   gap: 12px;
+  pointer-events: auto;
 }
 
 .admin-workspace-panel[hidden],
