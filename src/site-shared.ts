@@ -80,11 +80,11 @@ const getBrandArtwork = (brandId?: string) => {
 
   if (isSolutionBrand(brandId)) {
     return {
-      src: '/solution-logo.svg',
+      src: '/SOLUTION.png',
       alt: 'Solution logo',
       className: 'download-brand-logo download-brand-logo-solution',
-      width: 320,
-      height: 320,
+      width: 512,
+      height: 512,
     }
   }
 
