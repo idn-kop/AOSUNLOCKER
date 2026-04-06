@@ -52,6 +52,11 @@ const renderAssetImage = ({
   />
 `
 
+const isSolutionBrand = (brandId?: string) => {
+  const normalized = String(brandId || '').trim().toLowerCase()
+  return normalized === 'aos-firmware' || normalized === 'solution'
+}
+
 const getBrandArtwork = (brandId?: string) => {
   if (brandId === 'huawei') {
     return {
@@ -73,7 +78,7 @@ const getBrandArtwork = (brandId?: string) => {
     }
   }
 
-  if (brandId === 'aos-firmware') {
+  if (isSolutionBrand(brandId)) {
     return {
       src: '/solution-logo.svg',
       alt: 'Solution logo',

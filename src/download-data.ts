@@ -22,11 +22,11 @@ export const downloadHomeCategories: DownloadCategoryCard[] = [
     brandId: 'honor',
   },
   {
-    title: 'AOS FIRMWARE',
-    description: 'Open AOS firmware folders, service categories, and download files.',
-    href: '/solution-files.html?brand=aos-firmware',
+    title: 'SOLUTION',
+    description: 'Open SOLUTION folders, service categories, and download files.',
+    href: '/solution-files.html?brand=solution',
     kind: 'brand',
-    brandId: 'aos-firmware',
+    brandId: 'solution',
   },
 ]
 

@@ -73,6 +73,7 @@ const brandLabelMap: Record<BrandId, string> = {
   huawei: 'Huawei',
   honor: 'Honor',
   'aos-firmware': 'AOS Firmware',
+  solution: 'SOLUTION',
 }
 
 const LIVE_CACHE_PREFIX = 'aosunlocker-live-cache:'

@@ -2718,7 +2718,8 @@ h6 {
     0 10px 20px rgba(30, 78, 179, 0.1);
 }
 
-.download-home-icon-brand-aos-firmware {
+.download-home-icon-brand-aos-firmware,
+.download-home-icon-brand-solution {
   background:
     radial-gradient(circle at 32% 18%, rgba(197, 123, 255, 0.2), rgba(255, 255, 255, 0) 34%),
     radial-gradient(circle at 78% 82%, rgba(51, 214, 255, 0.16), rgba(255, 255, 255, 0) 32%),
@@ -2737,7 +2738,8 @@ h6 {
   filter: drop-shadow(0 8px 16px rgba(23, 62, 153, 0.16));
 }
 
-.download-home-icon-brand-aos-firmware .download-brand-logo {
+.download-home-icon-brand-aos-firmware .download-brand-logo,
+.download-home-icon-brand-solution .download-brand-logo {
   filter: drop-shadow(0 10px 18px rgba(55, 152, 255, 0.18));
 }
 
