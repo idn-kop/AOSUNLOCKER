@@ -358,8 +358,8 @@ const renderLogoWordmark = () => `
       loading: 'eager',
       decoding: 'async',
       fetchPriority: 'high',
-      width: 960,
-      height: 540,
+      width: 597,
+      height: 413,
     })}
   </span>
 `

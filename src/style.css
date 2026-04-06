@@ -3626,17 +3626,17 @@ h6 {
       linear-gradient(180deg, rgba(9, 11, 16, 0.98), rgba(9, 11, 16, 0.92)),
       rgba(9, 11, 16, 0.92);
     box-shadow: 0 10px 24px rgba(1, 4, 9, 0.12);
-    padding: 8px 0 10px;
+    padding: 4px 0 6px;
   }
 
   .logo-note {
     display: inline-flex;
     justify-content: center;
     width: auto;
-    max-width: 30ch;
-    font-size: 0.7rem;
-    gap: 0.35rem;
-    line-height: 1.38;
+    max-width: 28ch;
+    font-size: 0.68rem;
+    gap: 0.3rem;
+    line-height: 1.28;
     text-align: center;
   }
 
@@ -3664,9 +3664,9 @@ h6 {
 
   .middle-header-panel {
     align-items: center;
-    gap: 0.68rem;
-    padding: 0.68rem 0.82rem 0.74rem;
-    border-radius: 20px;
+    gap: 0.42rem;
+    padding: 0.42rem 0.72rem 0.48rem;
+    border-radius: 18px;
   }
 
   .logo-block {
@@ -3678,41 +3678,41 @@ h6 {
   .logo-wordmark-wrap {
     width: 100%;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.2rem;
     text-align: center;
   }
 
   .logo-meta-row {
     flex-direction: column;
     align-items: center;
-    gap: 0.42rem;
+    gap: 0.22rem;
   }
 
   .logo-capability-row {
     justify-content: center;
-    gap: 0.3rem;
+    gap: 0.24rem;
   }
 
   .logo-capability-chip {
-    padding: 0.24rem 0.48rem 0.24rem 0.32rem;
-    font-size: 0.61rem;
+    padding: 0.2rem 0.42rem 0.2rem 0.28rem;
+    font-size: 0.58rem;
   }
 
   .logo-wordmark {
-    width: min(194px, 62vw);
-    max-height: 64px;
+    width: min(232px, 76vw);
+    max-height: 78px;
     margin-inline: auto;
   }
 
   .logo-wordmark-picture {
-    width: min(194px, 62vw);
+    width: min(232px, 76vw);
     margin-inline: auto;
   }
 
   .search-shell {
-    min-height: 46px;
-    gap: 0.48rem;
-    padding: 0.34rem 0.34rem 0.34rem 0.62rem;
+    min-height: 44px;
+    gap: 0.44rem;
+    padding: 0.28rem 0.3rem 0.28rem 0.56rem;
     border-radius: 17px;
   }
 
@@ -3725,8 +3725,8 @@ h6 {
   }
 
   .search-form {
-    width: min(100%, 332px);
-    max-width: 332px;
+    width: min(100%, 340px);
+    max-width: 340px;
     margin-inline: auto;
   }
 
@@ -3845,7 +3845,7 @@ h6 {
 
   .mobile-menu-shell {
     display: block;
-    padding: 0.58rem 0 0.28rem;
+    padding: 0.34rem 0 0.18rem;
     background: linear-gradient(180deg, rgba(22, 27, 34, 0.12), rgba(13, 17, 23, 0));
   }
 
