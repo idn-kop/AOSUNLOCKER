@@ -144,7 +144,38 @@ const decorateSolutionCategories = (categories: SolutionCategory[]): SolutionCat
     parentCategoryId: String(item.parentCategoryId || '').trim(),
   }))
 
-  const categoryMap = new Map(normalized.map((item) => [item.id, item]))
+  const inferParentCategoryId = (item: SolutionCategory) => {
+    const explicitParentId = String(item.parentCategoryId || '').trim()
+    if (explicitParentId) return explicitParentId
+
+    const itemId = String(item.id || '').trim()
+    const brandId = String(item.brandId || '').trim()
+    if (!itemId) return ''
+
+    const candidates = normalized
+      .filter((candidate) => {
+        const candidateId = String(candidate.id || '').trim()
+        return (
+          candidateId &&
+          candidateId !== itemId &&
+          String(candidate.brandId || '').trim() === brandId &&
+          itemId.startsWith(`${candidateId}-`)
+        )
+      })
+      .sort((left, right) => String(right.id || '').length - String(left.id || '').length)
+
+    return String(candidates[0]?.id || '').trim()
+  }
+
+  const categoryMap = new Map(
+    normalized.map((item) => [
+      item.id,
+      {
+        ...item,
+        parentCategoryId: inferParentCategoryId(item),
+      },
+    ]),
+  )
   const childCounts = new Map<string, number>()
 
   normalized.forEach((item) => {
