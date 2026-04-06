@@ -125,8 +125,9 @@ const state = {
   focusBrandId: '',
   focusCategoryId: '',
   activeComposer: 'category' as ComposerMode,
-  activeWorkspace: 'dashboard' as WorkspaceMode,
+  activeWorkspace: 'catalog' as WorkspaceMode,
   fileAdvancedOpen: false,
+  editorOpen: false,
 }
 
 const byId = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null
@@ -239,6 +240,32 @@ const countIndexedFilesForCategory = (categoryId: string) => {
   return state.fileIndex.filter((file) => acceptedIds.has(file.categoryId)).length
 }
 
+const sortFilesByRecent = (files: AdminFile[]) =>
+  [...files].sort((left, right) => {
+    const leftTime = new Date(left.updatedAt || left.createdAt || 0).getTime()
+    const rightTime = new Date(right.updatedAt || right.createdAt || 0).getTime()
+    return rightTime - leftTime
+  })
+
+const getActiveBrand = () => {
+  const brands = getBootstrapBrands()
+  return getBrandById(state.focusBrandId) || brands[0] || null
+}
+
+const getInspectorFiles = () => {
+  const registry = sortFilesByRecent(getKnownFiles())
+
+  if (state.focusCategoryId) {
+    const acceptedIds = new Set([state.focusCategoryId, ...getDescendantCategoryIds(state.focusCategoryId)])
+    return registry.filter((file) => acceptedIds.has(file.categoryId))
+  }
+
+  const brand = getActiveBrand()
+  if (!brand) return []
+
+  return registry.filter((file) => file.brandId === brand.id)
+}
+
 const isUnfilteredFileView = () =>
   !getInputValue('filterBrand') && !getInputValue('filterCategory') && !getInputValue('filterStatus')
 
@@ -255,6 +282,7 @@ const setFocus = ({ brandId = '', categoryId = '' }: { brandId?: string; categor
 
   renderWorkspaceHeader()
   renderCatalogExplorer()
+  renderCatalogInspector()
   renderDashboardBrands()
 }
 
@@ -284,6 +312,14 @@ const syncViewModes = () => {
     details.open = state.fileAdvancedOpen
   }
 
+  const overlay = byId<HTMLDivElement>('adminEditorOverlay')
+  if (overlay) {
+    overlay.hidden = !state.editorOpen
+    overlay.classList.toggle('is-open', state.editorOpen)
+  }
+
+  document.body.classList.toggle('admin-lock-scroll', state.editorOpen)
+
   renderWorkspaceHeader()
 }
 
@@ -295,6 +331,7 @@ const revealComposer = (
   } = {},
 ) => {
   state.activeComposer = mode
+  state.editorOpen = true
   if (typeof options.fileAdvancedOpen === 'boolean') {
     state.fileAdvancedOpen = options.fileAdvancedOpen
   }
@@ -303,6 +340,11 @@ const revealComposer = (
   if (options.scroll && window.innerWidth < 1080) {
     byId<HTMLElement>('adminComposerCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
+}
+
+const closeComposer = () => {
+  state.editorOpen = false
+  syncViewModes()
 }
 
 const revealWorkspace = (mode: WorkspaceMode, options: { scroll?: boolean } = {}) => {
@@ -410,28 +452,26 @@ const renderSidebarMarkup = () => `
   <aside class="admin-sidebar admin-card">
     <div class="admin-sidebar-brand">
       <p class="admin-eyebrow">AOSUNLOCKER</p>
-      <h1 class="admin-sidebar-title">Download Control Panel</h1>
-      <p class="admin-copy">Kelola brand, folder, subfolder, file, link, dan price dalam panel yang lebih rapi dan tidak campur.</p>
+      <h1 class="admin-sidebar-title">Admin Panel</h1>
+      <p class="admin-copy">Kelola brand, folder, subfolder, file, link, dan price dari panel yang lebih ringkas.</p>
     </div>
 
     <nav class="admin-sidebar-nav" aria-label="Admin sections">
-      <button class="admin-nav-button" type="button" data-workspace-mode="dashboard">Dashboard</button>
-      <button class="admin-nav-button" type="button" data-workspace-mode="catalog">Catalog Manager</button>
-      <button class="admin-nav-button" type="button" data-workspace-mode="files">File Manager</button>
+      <button class="admin-nav-button" type="button" data-workspace-mode="catalog">Catalog</button>
+      <button class="admin-nav-button" type="button" data-workspace-mode="files">Files</button>
       <button class="admin-nav-button" type="button" data-workspace-mode="tools">Tools</button>
     </nav>
 
     <section class="admin-sidebar-section">
       <div class="admin-card-head">
         <div>
-          <p class="admin-eyebrow">Quick Actions</p>
-          <h2 class="admin-section-title admin-section-title-sm">Create Fast</h2>
+          <p class="admin-eyebrow">Tambah Cepat</p>
+          <h2 class="admin-section-title admin-section-title-sm">Aksi Ringkas</h2>
         </div>
       </div>
       <div class="admin-sidebar-actions">
-        <button class="admin-button admin-button-primary" type="button" data-composer-mode="brand" data-composer-reset="true" data-open-workspace="catalog">New Brand</button>
-        <button class="admin-button admin-button-secondary" type="button" data-composer-mode="category" data-composer-reset="true" data-open-workspace="catalog">New Folder</button>
-        <button class="admin-button admin-button-secondary" type="button" data-composer-mode="file" data-composer-reset="true" data-open-workspace="catalog">New File</button>
+        <button class="admin-button admin-button-primary" type="button" data-composer-mode="category" data-composer-reset="true" data-open-workspace="catalog">Tambah Folder</button>
+        <button class="admin-button admin-button-secondary" type="button" data-composer-mode="file" data-composer-reset="true" data-open-workspace="catalog">Tambah File</button>
       </div>
     </section>
 
@@ -458,8 +498,8 @@ const renderSidebarMarkup = () => `
         </label>
         <div class="admin-action-row">
           <button id="saveConnectionButton" class="admin-button admin-button-primary" type="submit">Connect</button>
-          <button id="refreshBootstrapButton" class="admin-button admin-button-secondary" type="button">Reload Data</button>
-          <button id="clearTokenButton" class="admin-button admin-button-ghost" type="button">Clear Token</button>
+          <button id="refreshBootstrapButton" class="admin-button admin-button-secondary" type="button">Reload</button>
+          <button id="clearTokenButton" class="admin-button admin-button-ghost" type="button">Clear</button>
         </div>
       </form>
     </section>
@@ -467,147 +507,153 @@ const renderSidebarMarkup = () => `
 `
 
 const renderEditorMarkup = () => `
-  <article id="adminComposerCard" class="admin-card admin-panel-card admin-editor-card">
-    <div class="admin-card-head">
-      <div>
-        <p class="admin-eyebrow">Editor</p>
-        <h2 class="admin-section-title admin-section-title-sm">Single action form</h2>
-        <p class="admin-section-copy">Klik Edit, New Folder, atau New File dari explorer di kiri, lalu form akan otomatis siap di sini.</p>
-      </div>
-      <div class="admin-tab-row">
-        <button class="admin-tab-button" type="button" data-composer-mode="brand">Brand</button>
-        <button class="admin-tab-button" type="button" data-composer-mode="category">Folder</button>
-        <button class="admin-tab-button" type="button" data-composer-mode="file">File</button>
-      </div>
-    </div>
-
-    <section class="admin-composer-panel" data-composer-panel="brand">
-      <p class="admin-eyebrow">Brand</p>
-      <h2 class="admin-section-title" id="brandFormTitle">Create Brand</h2>
-      <p class="admin-section-copy">Gunakan untuk brand utama seperti Huawei, Honor, atau Solution.</p>
-      <form id="brandForm" class="admin-form-grid" data-columns="1">
-        <label class="admin-field">
-          <span class="admin-label">Brand ID</span>
-          <input id="brandId" class="admin-input" type="text" placeholder="huawei" />
-        </label>
-        <label class="admin-field">
-          <span class="admin-label">Brand label</span>
-          <input id="brandLabel" class="admin-input" type="text" placeholder="Huawei" />
-        </label>
-        <div class="admin-action-row">
-          <button id="brandSubmitButton" class="admin-button admin-button-primary" type="submit">Save Brand</button>
-          <button id="brandResetButton" class="admin-button admin-button-secondary" type="button">Reset</button>
+  <div id="adminEditorOverlay" class="admin-editor-overlay" hidden>
+    <button class="admin-editor-backdrop" type="button" data-close-editor="true" aria-label="Close editor"></button>
+    <article id="adminComposerCard" class="admin-card admin-panel-card admin-editor-card" role="dialog" aria-modal="true">
+      <div class="admin-card-head">
+        <div>
+          <p class="admin-eyebrow">Quick Editor</p>
+          <h2 class="admin-section-title admin-section-title-sm">Tambah atau edit tanpa bikin layar penuh</h2>
+          <p class="admin-section-copy">Editor hanya muncul saat Anda butuh. Pilih aksi dari browser utama, lalu simpan dan kembali ke daftar.</p>
         </div>
-      </form>
-    </section>
-
-    <section class="admin-composer-panel" data-composer-panel="category" hidden>
-      <p class="admin-eyebrow">Folder</p>
-      <h2 class="admin-section-title" id="categoryFormTitle">Create Folder / Subfolder</h2>
-      <p class="admin-section-copy">Pilih brand dulu, lalu isi parent folder kalau item ini memang subfolder.</p>
-      <form id="categoryForm" class="admin-form-grid">
-        <label class="admin-field">
-          <span class="admin-label">Folder ID</span>
-          <input id="categoryId" class="admin-input" type="text" placeholder="auto-generated if blank" />
-        </label>
-        <label class="admin-field">
-          <span class="admin-label">Folder label</span>
-          <input id="categoryLabel" class="admin-input" type="text" placeholder="Removed ID" />
-        </label>
-        <label class="admin-field">
-          <span class="admin-label">Brand</span>
-          <select id="categoryBrand" class="admin-select"></select>
-        </label>
-        <label class="admin-field">
-          <span class="admin-label">Parent folder</span>
-          <select id="parentCategory" class="admin-select"></select>
-        </label>
-        <div class="admin-action-row admin-span-2">
-          <button id="categorySubmitButton" class="admin-button admin-button-primary" type="submit">Save Folder</button>
-          <button id="categoryResetButton" class="admin-button admin-button-secondary" type="button">Reset</button>
-        </div>
-      </form>
-    </section>
-
-    <section class="admin-composer-panel" data-composer-panel="file" hidden>
-      <p class="admin-eyebrow">File</p>
-      <h2 class="admin-section-title" id="fileFormTitle">Create File</h2>
-      <p class="admin-section-copy">Field utama ditampilkan langsung. Buka detail tambahan hanya saat perlu subtitle, notes, size, price, atau counter.</p>
-      <form id="fileForm" class="admin-form-grid">
-        <label class="admin-field">
-          <span class="admin-label">File ID</span>
-          <input id="fileId" class="admin-input" type="text" placeholder="auto-generated if blank" />
-        </label>
-        <label class="admin-field">
-          <span class="admin-label">Title</span>
-          <input id="fileTitle" class="admin-input" type="text" placeholder="Huawei Mate50..." />
-        </label>
-        <label class="admin-field">
-          <span class="admin-label">Brand</span>
-          <select id="fileBrand" class="admin-select"></select>
-        </label>
-        <label class="admin-field">
-          <span class="admin-label">Folder</span>
-          <select id="fileCategory" class="admin-select"></select>
-        </label>
-        <label class="admin-field admin-span-2">
-          <span class="admin-label">Drive URL</span>
-          <input id="fileDriveUrl" class="admin-input" type="url" placeholder="https://drive.google.com/file/d/..." />
-        </label>
-        <label class="admin-field">
-          <span class="admin-label">Status</span>
-          <select id="fileStatus" class="admin-select">
-            <option value="draft">draft</option>
-            <option value="published">published</option>
-          </select>
-        </label>
-        <details id="fileAdvancedDetails" class="admin-disclosure admin-span-2">
-          <summary class="admin-disclosure-summary">Advanced file details</summary>
-          <div class="admin-disclosure-content admin-form-grid">
-            <label class="admin-field admin-span-2">
-              <span class="admin-label">Subtitle</span>
-              <input id="fileSubtitle" class="admin-input" type="text" placeholder="Short subtitle for the download list" />
-            </label>
-            <label class="admin-field admin-span-2">
-              <span class="admin-label">Summary</span>
-              <textarea id="fileSummary" class="admin-textarea" placeholder="Short summary, notes, or package context"></textarea>
-            </label>
-            <label class="admin-field">
-              <span class="admin-label">Date label</span>
-              <input id="fileDate" class="admin-input" type="text" placeholder="07-04-2026" />
-            </label>
-            <label class="admin-field">
-              <span class="admin-label">Size label</span>
-              <input id="fileSize" class="admin-input" type="text" placeholder="7.91 GB" />
-            </label>
-            <label class="admin-field">
-              <span class="admin-label">Price</span>
-              <input id="filePrice" class="admin-input" type="text" placeholder="free" />
-            </label>
-            <label class="admin-field">
-              <span class="admin-label">Featured</span>
-              <select id="fileFeaturedSelect" class="admin-select">
-                <option value="false">No</option>
-                <option value="true">Yes</option>
-              </select>
-            </label>
-            <label class="admin-field">
-              <span class="admin-label">Visits</span>
-              <input id="fileVisits" class="admin-input" type="number" min="0" step="1" placeholder="0" />
-            </label>
-            <label class="admin-field">
-              <span class="admin-label">Downloads</span>
-              <input id="fileDownloads" class="admin-input" type="number" min="0" step="1" placeholder="0" />
-            </label>
+        <div class="admin-overlay-actions">
+          <div class="admin-tab-row">
+            <button class="admin-tab-button" type="button" data-composer-mode="brand">Brand</button>
+            <button class="admin-tab-button" type="button" data-composer-mode="category">Folder</button>
+            <button class="admin-tab-button" type="button" data-composer-mode="file">File</button>
           </div>
-        </details>
-        <div class="admin-action-row admin-span-2">
-          <button id="fileSubmitButton" class="admin-button admin-button-primary" type="submit">Save File</button>
-          <button id="fileResetButton" class="admin-button admin-button-secondary" type="button">Reset</button>
+          <button id="closeComposerButton" class="admin-button admin-button-ghost" type="button">Close</button>
         </div>
-      </form>
-    </section>
-  </article>
+      </div>
+
+      <section class="admin-composer-panel" data-composer-panel="brand">
+        <p class="admin-eyebrow">Brand</p>
+        <h2 class="admin-section-title" id="brandFormTitle">Create Brand</h2>
+        <p class="admin-section-copy">Gunakan untuk brand utama seperti Huawei, Honor, atau Solution.</p>
+        <form id="brandForm" class="admin-form-grid" data-columns="1">
+          <label class="admin-field">
+            <span class="admin-label">Brand ID</span>
+            <input id="brandId" class="admin-input" type="text" placeholder="huawei" />
+          </label>
+          <label class="admin-field">
+            <span class="admin-label">Brand label</span>
+            <input id="brandLabel" class="admin-input" type="text" placeholder="Huawei" />
+          </label>
+          <div class="admin-action-row">
+            <button id="brandSubmitButton" class="admin-button admin-button-primary" type="submit">Save Brand</button>
+            <button id="brandResetButton" class="admin-button admin-button-secondary" type="button">Reset</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="admin-composer-panel" data-composer-panel="category" hidden>
+        <p class="admin-eyebrow">Folder</p>
+        <h2 class="admin-section-title" id="categoryFormTitle">Create Folder / Subfolder</h2>
+        <p class="admin-section-copy">Pilih brand dulu, lalu isi parent folder kalau item ini memang subfolder.</p>
+        <form id="categoryForm" class="admin-form-grid">
+          <label class="admin-field">
+            <span class="admin-label">Folder ID</span>
+            <input id="categoryId" class="admin-input" type="text" placeholder="auto-generated if blank" />
+          </label>
+          <label class="admin-field">
+            <span class="admin-label">Folder label</span>
+            <input id="categoryLabel" class="admin-input" type="text" placeholder="Removed ID" />
+          </label>
+          <label class="admin-field">
+            <span class="admin-label">Brand</span>
+            <select id="categoryBrand" class="admin-select"></select>
+          </label>
+          <label class="admin-field">
+            <span class="admin-label">Parent folder</span>
+            <select id="parentCategory" class="admin-select"></select>
+          </label>
+          <div class="admin-action-row admin-span-2">
+            <button id="categorySubmitButton" class="admin-button admin-button-primary" type="submit">Save Folder</button>
+            <button id="categoryResetButton" class="admin-button admin-button-secondary" type="button">Reset</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="admin-composer-panel" data-composer-panel="file" hidden>
+        <p class="admin-eyebrow">File</p>
+        <h2 class="admin-section-title" id="fileFormTitle">Create File</h2>
+        <p class="admin-section-copy">Field utama ditampilkan langsung. Buka detail tambahan hanya saat perlu subtitle, notes, size, price, atau counter.</p>
+        <form id="fileForm" class="admin-form-grid">
+          <label class="admin-field">
+            <span class="admin-label">File ID</span>
+            <input id="fileId" class="admin-input" type="text" placeholder="auto-generated if blank" />
+          </label>
+          <label class="admin-field">
+            <span class="admin-label">Title</span>
+            <input id="fileTitle" class="admin-input" type="text" placeholder="Huawei Mate50..." />
+          </label>
+          <label class="admin-field">
+            <span class="admin-label">Brand</span>
+            <select id="fileBrand" class="admin-select"></select>
+          </label>
+          <label class="admin-field">
+            <span class="admin-label">Folder</span>
+            <select id="fileCategory" class="admin-select"></select>
+          </label>
+          <label class="admin-field admin-span-2">
+            <span class="admin-label">Drive URL</span>
+            <input id="fileDriveUrl" class="admin-input" type="url" placeholder="https://drive.google.com/file/d/..." />
+          </label>
+          <label class="admin-field">
+            <span class="admin-label">Status</span>
+            <select id="fileStatus" class="admin-select">
+              <option value="draft">draft</option>
+              <option value="published">published</option>
+            </select>
+          </label>
+          <details id="fileAdvancedDetails" class="admin-disclosure admin-span-2">
+            <summary class="admin-disclosure-summary">Advanced file details</summary>
+            <div class="admin-disclosure-content admin-form-grid">
+              <label class="admin-field admin-span-2">
+                <span class="admin-label">Subtitle</span>
+                <input id="fileSubtitle" class="admin-input" type="text" placeholder="Short subtitle for the download list" />
+              </label>
+              <label class="admin-field admin-span-2">
+                <span class="admin-label">Summary</span>
+                <textarea id="fileSummary" class="admin-textarea" placeholder="Short summary, notes, or package context"></textarea>
+              </label>
+              <label class="admin-field">
+                <span class="admin-label">Date label</span>
+                <input id="fileDate" class="admin-input" type="text" placeholder="07-04-2026" />
+              </label>
+              <label class="admin-field">
+                <span class="admin-label">Size label</span>
+                <input id="fileSize" class="admin-input" type="text" placeholder="7.91 GB" />
+              </label>
+              <label class="admin-field">
+                <span class="admin-label">Price</span>
+                <input id="filePrice" class="admin-input" type="text" placeholder="free" />
+              </label>
+              <label class="admin-field">
+                <span class="admin-label">Featured</span>
+                <select id="fileFeaturedSelect" class="admin-select">
+                  <option value="false">No</option>
+                  <option value="true">Yes</option>
+                </select>
+              </label>
+              <label class="admin-field">
+                <span class="admin-label">Visits</span>
+                <input id="fileVisits" class="admin-input" type="number" min="0" step="1" placeholder="0" />
+              </label>
+              <label class="admin-field">
+                <span class="admin-label">Downloads</span>
+                <input id="fileDownloads" class="admin-input" type="number" min="0" step="1" placeholder="0" />
+              </label>
+            </div>
+          </details>
+          <div class="admin-action-row admin-span-2">
+            <button id="fileSubmitButton" class="admin-button admin-button-primary" type="submit">Save File</button>
+            <button id="fileResetButton" class="admin-button admin-button-secondary" type="button">Reset</button>
+          </div>
+        </form>
+      </section>
+    </article>
+  </div>
 `
 
 const renderDashboardMarkup = () => `
@@ -652,24 +698,43 @@ const renderDashboardMarkup = () => `
 
 const renderCatalogMarkup = () => `
   <section class="admin-workspace-panel" data-workspace-panel="catalog" hidden>
-    <div class="admin-manager-grid">
+    <div class="admin-browser-grid">
       <article class="admin-card admin-panel-card admin-explorer-card">
         <div class="admin-card-head">
           <div>
             <p class="admin-eyebrow">Catalog Manager</p>
-            <h2 class="admin-section-title admin-section-title-sm">Brand and folder explorer</h2>
-            <p class="admin-section-copy">Setiap brand menampilkan isi folder dan subfoldernya langsung, jadi struktur tidak lagi campur.</p>
-          </div>
-          <div class="admin-action-row">
-            <button class="admin-button admin-button-secondary" type="button" data-composer-mode="brand" data-composer-reset="true" data-open-workspace="catalog">New Brand</button>
-            <button class="admin-button admin-button-secondary" type="button" data-composer-mode="category" data-composer-reset="true" data-open-workspace="catalog">New Folder</button>
-            <button class="admin-button admin-button-secondary" type="button" data-composer-mode="file" data-composer-reset="true" data-open-workspace="catalog">New File</button>
+            <h2 class="admin-section-title admin-section-title-sm">Brand dan folder browser</h2>
+            <p class="admin-section-copy">Pilih brand di atas, lalu klik folder di kiri. Isi brand atau folder aktif langsung tampil di panel kanan.</p>
           </div>
         </div>
         <div id="catalogExplorer" class="admin-explorer-stack"></div>
       </article>
 
-      ${renderEditorMarkup()}
+      <article class="admin-card admin-panel-card admin-inspector-card">
+        <div class="admin-card-head">
+          <div>
+            <p class="admin-eyebrow">Current View</p>
+            <h2 id="catalogInspectorTitle" class="admin-section-title admin-section-title-sm">Pilih brand atau folder</h2>
+            <p id="catalogInspectorCopy" class="admin-section-copy">Di sini nanti terlihat isi brand atau folder yang sedang aktif, jadi tidak campur lagi.</p>
+          </div>
+          <div id="catalogQuickActions" class="admin-action-row"></div>
+        </div>
+        <div id="catalogSelectionMeta" class="admin-pill-row"></div>
+        <div class="admin-table-shell admin-table-shell-medium">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>File</th>
+                <th>Price</th>
+                <th>Status</th>
+                <th>Link</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="catalogFileTableBody"></tbody>
+          </table>
+        </div>
+      </article>
     </div>
   </section>
 `
@@ -1102,16 +1167,15 @@ const renderShell = () => {
         <section class="admin-main">
           <header id="adminMainHeader" class="admin-card admin-header-card">
             <div class="admin-header-copy">
-              <p id="workspaceEyebrow" class="admin-eyebrow">Dashboard</p>
-              <h2 id="workspaceTitle" class="admin-header-title">Overview and quick access</h2>
-              <p id="workspaceCopy" class="admin-copy">Open the section you need from the left. Catalog shows brand structure, File Manager focuses on links, and Tools keeps the data healthy.</p>
+              <p id="workspaceEyebrow" class="admin-eyebrow">Catalog</p>
+              <h2 id="workspaceTitle" class="admin-header-title">Browser brand, folder, dan file</h2>
+              <p id="workspaceCopy" class="admin-copy">Pilih satu area kerja, lalu fokuskan edit hanya pada item yang aktif.</p>
             </div>
             <div class="admin-header-side">
               <div id="workspaceTrail" class="admin-pill-row"></div>
               <div class="admin-action-row">
                 <button id="headerReloadButton" class="admin-button admin-button-secondary" type="button">Reload All</button>
                 <button id="headerCacheButton" class="admin-button admin-button-secondary" type="button">Refresh Cache</button>
-                <button id="headerIntegrityButton" class="admin-button admin-button-secondary" type="button">Integrity Scan</button>
               </div>
             </div>
           </header>
@@ -1122,6 +1186,7 @@ const renderShell = () => {
           ${renderToolsMarkup()}
         </section>
       </div>
+      ${renderEditorMarkup()}
     </main>
   `
 }
@@ -1149,22 +1214,22 @@ const renderWorkspaceHeader = () => {
     dashboard: {
       eyebrow: 'Dashboard',
       title: 'Overview and quick access',
-      copy: 'Mulai dari sini untuk melihat ringkasan brand, file terbaru, dan kondisi cache tanpa panel yang gemuk.',
+      copy: 'Ringkasan sistem.',
     },
     catalog: {
-      eyebrow: 'Catalog Manager',
-      title: 'Brand and folder explorer',
-      copy: 'Explorer menunjukkan brand beserta folder dan subfolder di bawahnya, jadi mudah lihat struktur mana milik brand tertentu.',
+      eyebrow: 'Catalog',
+      title: 'Browser brand, folder, dan isi file',
+      copy: 'Fokuskan satu brand atau satu folder saja. Isi file aktif tampil di kanan supaya struktur lebih gampang dibaca.',
     },
     files: {
-      eyebrow: 'File Manager',
-      title: 'Manage links, price, and publish status',
-      copy: 'Filter brand dan folder supaya daftar file tidak campur. Edit dari sini akan membuka form file yang benar.',
+      eyebrow: 'Files',
+      title: 'Link, price, dan status file',
+      copy: 'Gunakan filter brand dan folder supaya daftar file lebih jelas dan tidak bercampur.',
     },
     tools: {
       eyebrow: 'Tools',
-      title: 'Search and integrity utilities',
-      copy: 'Cari file dengan cepat, refresh cache publik, lalu scan integritas untuk memastikan data tetap rapi.',
+      title: 'Pencarian dan pengecekan data',
+      copy: 'Gunakan hanya saat perlu cari file cepat atau cek integritas.',
     },
   }
 
@@ -1339,56 +1404,143 @@ const renderCatalogExplorer = () => {
             <span class="admin-folder-bullet"></span>
             <span>
               <strong>${escapeHtml(category.label)}</strong>
-              <span class="admin-folder-meta">${escapeHtml(category.fullLabel || category.label)} / ${fileCount} files / ${children.length} subfolders</span>
+              <span class="admin-folder-meta">${fileCount} file / ${children.length} subfolder</span>
             </span>
           </button>
-        </div>
-        <div class="admin-actions">
-          <button class="admin-button admin-button-secondary" type="button" data-action="category-files" data-id="${escapeHtml(category.id)}">Files</button>
-          <button class="admin-button admin-button-secondary" type="button" data-action="new-subcategory" data-id="${escapeHtml(category.id)}">Subfolder</button>
-          <button class="admin-button admin-button-secondary" type="button" data-action="new-file-in-category" data-id="${escapeHtml(category.id)}">New File</button>
-          <button class="admin-button admin-button-secondary" type="button" data-action="edit-category" data-id="${escapeHtml(category.id)}">Edit</button>
-          <button class="admin-button admin-button-danger" type="button" data-action="delete-category" data-id="${escapeHtml(category.id)}">Delete</button>
         </div>
       </article>
       ${children.length ? `<div class="admin-folder-children">${children.map((child) => renderCategoryBranch(child, depth + 1)).join('')}</div>` : ''}
     `
   }
 
-  mount.innerHTML = brands
-    .map((brand) => {
-      const brandCategories = getRootCategoriesForBrand(brand.id)
-      const isActive = state.focusBrandId === brand.id && !state.focusCategoryId
-      const folderCount = getCategoriesForBrand(brand.id).length
-      const fileCount = countIndexedFilesForBrand(brand.id)
+  const activeBrandId = state.focusBrandId || brands[0]?.id || ''
+  const activeBrand = getBrandById(activeBrandId) || brands[0]
 
-      return `
-        <article class="admin-brand-card${isActive ? ' is-active' : ''}">
-          <div class="admin-card-head">
-            <div>
-              <p class="admin-eyebrow">Brand</p>
-              <h3 class="admin-subpanel-title">${escapeHtml(brand.label)}</h3>
-              <p class="admin-muted">ID <span class="admin-kbd">${escapeHtml(brand.id)}</span> / ${folderCount} folders / ${fileCount} files</p>
+  if (activeBrand && state.focusBrandId !== activeBrand.id) {
+    state.focusBrandId = activeBrand.id
+  }
+
+  const activeCategories = activeBrand ? getRootCategoriesForBrand(activeBrand.id) : []
+  const activeFolderCount = activeBrand ? getCategoriesForBrand(activeBrand.id).length : 0
+  const activeFileCount = activeBrand ? countIndexedFilesForBrand(activeBrand.id) : 0
+
+  mount.innerHTML = `
+    <section class="admin-brand-switcher">
+      ${brands
+        .map((brand) => {
+          const isActive = activeBrand?.id === brand.id
+          return `
+            <button class="admin-brand-pill${isActive ? ' is-active' : ''}" type="button" data-action="focus-brand" data-id="${escapeHtml(brand.id)}">
+              <span>${escapeHtml(brand.label)}</span>
+              <small>${countIndexedFilesForBrand(brand.id)} files</small>
+            </button>
+          `
+        })
+        .join('')}
+    </section>
+
+    ${
+      activeBrand
+        ? `
+          <article class="admin-brand-card is-active">
+            <div class="admin-card-head">
+              <div>
+                <p class="admin-eyebrow">Brand aktif</p>
+                <h3 class="admin-subpanel-title">${escapeHtml(activeBrand.label)}</h3>
+                <p class="admin-muted">ID <span class="admin-kbd">${escapeHtml(activeBrand.id)}</span> / ${activeFolderCount} folders / ${activeFileCount} files</p>
+              </div>
             </div>
-            <div class="admin-actions">
-              <button class="admin-button admin-button-secondary" type="button" data-action="focus-brand" data-id="${escapeHtml(brand.id)}">Focus</button>
-              <button class="admin-button admin-button-secondary" type="button" data-action="brand-files" data-id="${escapeHtml(brand.id)}">Files</button>
-              <button class="admin-button admin-button-secondary" type="button" data-action="new-category-in-brand" data-id="${escapeHtml(brand.id)}">New Folder</button>
-              <button class="admin-button admin-button-secondary" type="button" data-action="new-file-in-brand" data-id="${escapeHtml(brand.id)}">New File</button>
-              <button class="admin-button admin-button-secondary" type="button" data-action="edit-brand" data-id="${escapeHtml(brand.id)}">Edit</button>
-              <button class="admin-button admin-button-danger" type="button" data-action="delete-brand" data-id="${escapeHtml(brand.id)}">Delete</button>
+            <div class="admin-folder-tree">
+              ${
+                activeCategories.length
+                  ? activeCategories.map((category) => renderCategoryBranch(category)).join('')
+                  : '<div class="admin-empty">Belum ada folder di brand ini.</div>'
+              }
             </div>
-          </div>
-          <div class="admin-folder-tree">
-            ${
-              brandCategories.length
-                ? brandCategories.map((category) => renderCategoryBranch(category)).join('')
-                : '<div class="admin-empty">No folders under this brand yet.</div>'
-            }
-          </div>
-        </article>
+          </article>
+        `
+        : `<article class="admin-list-item"><div class="admin-empty">No brand selected.</div></article>`
+    }
+  `
+}
+
+const renderCatalogInspector = () => {
+  const title = byId<HTMLHeadingElement>('catalogInspectorTitle')
+  const copy = byId<HTMLParagraphElement>('catalogInspectorCopy')
+  const meta = byId<HTMLDivElement>('catalogSelectionMeta')
+  const actions = byId<HTMLDivElement>('catalogQuickActions')
+  const body = byId<HTMLTableSectionElement>('catalogFileTableBody')
+
+  if (!title || !copy || !meta || !actions || !body) return
+
+  const activeBrand = getActiveBrand()
+  const activeCategory = state.focusCategoryId ? getCategoryById(state.focusCategoryId) : null
+  const files = getInspectorFiles()
+
+  if (!activeBrand) {
+    title.textContent = 'Belum ada brand aktif'
+      copy.textContent = 'Connect dulu, lalu pilih brand agar isi file tampil di sini.'
+    meta.innerHTML = ''
+    actions.innerHTML = ''
+    body.innerHTML = `<tr><td colspan="5" class="admin-subtle">No brand selected yet.</td></tr>`
+    return
+  }
+
+  title.textContent = activeCategory ? `${activeCategory.label}` : `${activeBrand.label}`
+  copy.textContent = activeCategory
+    ? `Menampilkan file milik folder ${activeCategory.label} beserta subfolder di brand ${activeBrand.label}.`
+    : `Menampilkan semua file dalam brand ${activeBrand.label}. Klik folder di kiri kalau ingin lebih fokus.`
+
+  meta.innerHTML = [
+    `<span class="admin-pill">Brand: ${escapeHtml(activeBrand.label)}</span>`,
+    activeCategory ? `<span class="admin-pill">Folder: ${escapeHtml(activeCategory.fullLabel || activeCategory.label)}</span>` : '',
+    `<span class="admin-pill">${files.length} file tampil</span>`,
+  ]
+    .filter(Boolean)
+    .join('')
+
+  actions.innerHTML = activeCategory
+    ? `
+        <button class="admin-button admin-button-secondary" type="button" data-action="inspect-edit-category" data-id="${escapeHtml(activeCategory.id)}">Edit Folder</button>
+        <button class="admin-button admin-button-secondary" type="button" data-action="inspect-new-subcategory" data-id="${escapeHtml(activeCategory.id)}">Tambah Subfolder</button>
+        <button class="admin-button admin-button-secondary" type="button" data-action="inspect-new-file" data-id="${escapeHtml(activeCategory.id)}">Tambah File</button>
+        <button class="admin-button admin-button-danger" type="button" data-action="inspect-delete-category" data-id="${escapeHtml(activeCategory.id)}">Hapus Folder</button>
       `
-    })
+    : `
+        <button class="admin-button admin-button-secondary" type="button" data-action="inspect-edit-brand" data-id="${escapeHtml(activeBrand.id)}">Edit Brand</button>
+        <button class="admin-button admin-button-secondary" type="button" data-action="inspect-new-category" data-id="${escapeHtml(activeBrand.id)}">Tambah Folder</button>
+        <button class="admin-button admin-button-secondary" type="button" data-action="inspect-new-file-in-brand" data-id="${escapeHtml(activeBrand.id)}">Tambah File</button>
+      `
+
+  if (!files.length) {
+    body.innerHTML = `<tr><td colspan="5" class="admin-subtle">Belum ada file di pilihan ini.</td></tr>`
+    return
+  }
+
+  body.innerHTML = files
+    .map(
+      (file) => `
+        <tr>
+          <td>
+            <div class="admin-file-title">${escapeHtml(file.title)}</div>
+            <div class="admin-file-meta">${escapeHtml(file.categoryLabel)}</div>
+          </td>
+          <td>${escapeHtml(file.price || 'free')}</td>
+          <td>
+            <span class="admin-file-chip" data-tone="${escapeHtml(file.status)}">${escapeHtml(file.status)}</span>
+          </td>
+          <td>
+            <a class="admin-link-button" href="${escapeHtml(file.driveUrl || '#')}" target="_blank" rel="noreferrer">Open Link</a>
+          </td>
+          <td>
+            <div class="admin-actions">
+              <button class="admin-button admin-button-secondary" type="button" data-action="inspect-edit-file" data-id="${escapeHtml(file.id)}">Edit</button>
+              <button class="admin-button admin-button-danger" type="button" data-action="inspect-delete-file" data-id="${escapeHtml(file.id)}">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `,
+    )
     .join('')
 }
 
@@ -2005,11 +2157,15 @@ const ensureFocusStillValid = () => {
 const applyBootstrap = (payload: BootstrapResponse) => {
   state.bootstrap = payload
   ensureFocusStillValid()
+  if (!state.focusBrandId) {
+    state.focusBrandId = payload.brands[0]?.id || ''
+  }
   renderStats()
   renderDashboardBrands()
   renderDashboardRecentFiles()
   renderDashboardHealth()
   renderCatalogExplorer()
+  renderCatalogInspector()
   syncBrandOptions()
   ensureFormsStillValid()
   renderWorkspaceHeader()
@@ -2028,6 +2184,7 @@ const loadFileIndex = async () => {
   renderDashboardRecentFiles()
   renderDashboardHealth()
   renderCatalogExplorer()
+  renderCatalogInspector()
 }
 
 const loadFiles = async () => {
@@ -2053,6 +2210,7 @@ const loadFiles = async () => {
   } finally {
     state.filesLoading = false
     renderFileTable()
+    renderCatalogInspector()
   }
 }
 
@@ -2097,6 +2255,7 @@ const submitBrandForm = async (button: HTMLButtonElement | null) => {
     await loadFileIndex()
     await loadFiles()
     resetBrandForm()
+    closeComposer()
     setBanner('Brand saved successfully.', 'success')
   } finally {
     release()
@@ -2127,6 +2286,7 @@ const submitCategoryForm = async (button: HTMLButtonElement | null) => {
     await loadFileIndex()
     await loadFiles()
     resetCategoryForm()
+    closeComposer()
     setBanner('Folder saved successfully.', 'success')
   } finally {
     release()
@@ -2167,6 +2327,7 @@ const submitFileForm = async (button: HTMLButtonElement | null) => {
     await loadFileIndex()
     await loadFiles()
     resetFileForm()
+    closeComposer()
     setBanner('File saved successfully.', 'success')
   } finally {
     release()
@@ -2295,7 +2456,7 @@ const handleConnectionSave = async (button: HTMLButtonElement | null) => {
   const release = setButtonBusy(button, 'Connecting...')
   try {
     await refreshAllData()
-    revealWorkspace('dashboard')
+    revealWorkspace('catalog')
     setBanner('Admin panel connected to Cloudflare successfully.', 'success')
   } finally {
     release()
@@ -2361,6 +2522,23 @@ const bindStaticEventsLegacy = () => {
     window.localStorage.removeItem(TOKEN_STORAGE_KEY)
     syncConnectionFields()
     setBanner('Stored token cleared from this browser.', 'warning')
+  })
+
+  byId<HTMLButtonElement>('closeComposerButton')?.addEventListener('click', () => {
+    closeComposer()
+  })
+
+  byId<HTMLButtonElement>('adminEditorOverlay')?.addEventListener('click', (event) => {
+    const target = event.target as HTMLElement
+    if (target.closest('[data-close-editor="true"]')) {
+      closeComposer()
+    }
+  })
+
+  window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && state.editorOpen) {
+      closeComposer()
+    }
   })
 
   byId<HTMLFormElement>('brandForm')?.addEventListener('submit', async (event) => {
@@ -2609,7 +2787,7 @@ const bindStaticEvents = () => {
   }
 
   byId<HTMLButtonElement>('refreshBootstrapButton')?.addEventListener('click', async () => {
-    await reloadEverything('refreshBootstrapButton', 'Reloading...', 'Reload Data')
+    await reloadEverything('refreshBootstrapButton', 'Reloading...', 'Reload')
   })
 
   byId<HTMLButtonElement>('headerReloadButton')?.addEventListener('click', async () => {
@@ -2640,6 +2818,23 @@ const bindStaticEvents = () => {
     window.localStorage.removeItem(TOKEN_STORAGE_KEY)
     syncConnectionFields()
     setBanner('Stored token cleared from this browser.', 'warning')
+  })
+
+  byId<HTMLButtonElement>('closeComposerButton')?.addEventListener('click', () => {
+    closeComposer()
+  })
+
+  byId<HTMLDivElement>('adminEditorOverlay')?.addEventListener('click', (event) => {
+    const target = event.target as HTMLElement
+    if (target.closest('[data-close-editor="true"]')) {
+      closeComposer()
+    }
+  })
+
+  window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && state.editorOpen) {
+      closeComposer()
+    }
   })
 
   byId<HTMLFormElement>('brandForm')?.addEventListener('submit', async (event) => {
@@ -2848,6 +3043,59 @@ const bindStaticEvents = () => {
     }
   })
 
+  byId<HTMLDivElement>('catalogQuickActions')?.addEventListener('click', async (event) => {
+    const target = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]')
+    if (!target) return
+
+    const action = target.dataset.action || ''
+    const activeBrand = getActiveBrand()
+    const activeCategory = state.focusCategoryId ? getCategoryById(state.focusCategoryId) : null
+
+    try {
+      if (action === 'inspect-edit-brand' && activeBrand) {
+        populateBrandForm(activeBrand)
+      } else if (action === 'inspect-new-category' && activeBrand) {
+        prepareNewCategoryForm(activeBrand.id, '')
+      } else if (action === 'inspect-new-file-in-brand' && activeBrand) {
+        prepareNewFileForm(activeBrand.id, '')
+      } else if (action === 'inspect-edit-category' && activeCategory) {
+        populateCategoryForm(activeCategory)
+      } else if (action === 'inspect-new-subcategory' && activeCategory) {
+        prepareNewCategoryForm(activeCategory.brandId, activeCategory.id)
+      } else if (action === 'inspect-new-file' && activeCategory) {
+        prepareNewFileForm(activeCategory.brandId, activeCategory.id)
+      } else if (action === 'inspect-delete-category' && activeCategory) {
+        await deleteCategory(activeCategory.id)
+      }
+    } catch (error) {
+      console.error(error)
+      setBanner(error instanceof Error ? error.message : 'Inspector action failed.', 'error')
+    }
+  })
+
+  byId<HTMLTableSectionElement>('catalogFileTableBody')?.addEventListener('click', async (event) => {
+    const target = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]')
+    if (!target) return
+
+    const fileId = target.dataset.id || ''
+
+    try {
+      if (target.dataset.action === 'inspect-edit-file') {
+        const file = getKnownFiles().find((item) => item.id === fileId)
+        if (file) {
+          populateFileForm(file)
+        }
+      }
+
+      if (target.dataset.action === 'inspect-delete-file') {
+        await deleteFile(fileId)
+      }
+    } catch (error) {
+      console.error(error)
+      setBanner(error instanceof Error ? error.message : 'Catalog file action failed.', 'error')
+    }
+  })
+
   byId<HTMLTableSectionElement>('fileTableBody')?.addEventListener('click', async (event) => {
     const target = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]')
     if (!target) return
@@ -2916,6 +3164,7 @@ const bootstrapAdmin = async () => {
   renderDashboardRecentFiles()
   renderDashboardHealth()
   renderCatalogExplorer()
+  renderCatalogInspector()
   renderFileTable()
   renderSearchResults()
   renderIntegrityResults()
@@ -2928,8 +3177,8 @@ const bootstrapAdmin = async () => {
   syncViewModes()
 
   if (!state.token) {
-    setBanner('Admin token belum diisi. Paste token lalu klik Connect Panel.', 'warning')
-    revealWorkspace('dashboard')
+    setBanner('Admin token belum diisi. Paste token lalu klik Connect.', 'warning')
+    revealWorkspace('catalog')
     return
   }
 
