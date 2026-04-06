@@ -95,7 +95,7 @@ type IntegrityResponse = {
 }
 
 type ComposerMode = 'brand' | 'category' | 'file'
-type WorkspaceMode = 'catalog' | 'files' | 'tools'
+type WorkspaceMode = 'dashboard' | 'catalog' | 'files' | 'tools'
 type BannerTone = 'neutral' | 'success' | 'warning' | 'error'
 
 const TOKEN_STORAGE_KEY = 'aosunlocker-admin-token'
@@ -113,6 +113,7 @@ const state = {
   bannerTone: 'neutral' as BannerTone,
   bannerMessage: 'Paste your admin token, then connect this panel to Cloudflare Pages Functions.',
   bootstrap: null as BootstrapResponse | null,
+  fileIndex: [] as AdminFile[],
   files: [] as AdminFile[],
   filesLoading: false,
   searchResults: [] as AdminFile[],
@@ -121,8 +122,10 @@ const state = {
   editingBrandId: '',
   editingCategoryId: '',
   editingFileId: '',
-  activeComposer: 'file' as ComposerMode,
-  activeWorkspace: 'files' as WorkspaceMode,
+  focusBrandId: '',
+  focusCategoryId: '',
+  activeComposer: 'category' as ComposerMode,
+  activeWorkspace: 'dashboard' as WorkspaceMode,
   fileAdvancedOpen: false,
 }
 
@@ -196,12 +199,63 @@ const getCategoriesForBrand = (brandId: string) =>
 const getKnownFiles = () => {
   const registry = new Map<string, AdminFile>()
 
-  ;[...(state.bootstrap?.recentFiles ?? []), ...state.files, ...state.searchResults].forEach((file) => {
+  ;[...(state.bootstrap?.recentFiles ?? []), ...state.fileIndex, ...state.files, ...state.searchResults].forEach((file) => {
     if (!file?.id) return
     registry.set(file.id, file)
   })
 
   return Array.from(registry.values())
+}
+
+const getRootCategoriesForBrand = (brandId: string) =>
+  getCategoriesForBrand(brandId).filter((category) => !toText(category.parentCategoryId))
+
+const getChildCategories = (parentCategoryId: string) =>
+  getBootstrapCategories().filter((category) => category.parentCategoryId === toText(parentCategoryId))
+
+const getDescendantCategoryIds = (categoryId: string): string[] => {
+  const descendants = new Set<string>()
+  const queue = [toText(categoryId)]
+
+  while (queue.length) {
+    const currentId = queue.shift()
+    if (!currentId) continue
+
+    getChildCategories(currentId).forEach((child) => {
+      if (descendants.has(child.id)) return
+      descendants.add(child.id)
+      queue.push(child.id)
+    })
+  }
+
+  return Array.from(descendants)
+}
+
+const countIndexedFilesForBrand = (brandId: string) =>
+  state.fileIndex.filter((file) => file.brandId === toText(brandId)).length
+
+const countIndexedFilesForCategory = (categoryId: string) => {
+  const acceptedIds = new Set([toText(categoryId), ...getDescendantCategoryIds(categoryId)])
+  return state.fileIndex.filter((file) => acceptedIds.has(file.categoryId)).length
+}
+
+const isUnfilteredFileView = () =>
+  !getInputValue('filterBrand') && !getInputValue('filterCategory') && !getInputValue('filterStatus')
+
+const setFocus = ({ brandId = '', categoryId = '' }: { brandId?: string; categoryId?: string }) => {
+  if (categoryId) {
+    const category = getCategoryById(categoryId)
+    state.focusCategoryId = category?.id || ''
+    state.focusBrandId = category?.brandId || ''
+  } else {
+    const brand = getBrandById(brandId)
+    state.focusBrandId = brand?.id || ''
+    state.focusCategoryId = ''
+  }
+
+  renderWorkspaceHeader()
+  renderCatalogExplorer()
+  renderDashboardBrands()
 }
 
 const syncViewModes = () => {
@@ -229,6 +283,8 @@ const syncViewModes = () => {
   if (details) {
     details.open = state.fileAdvancedOpen
   }
+
+  renderWorkspaceHeader()
 }
 
 const revealComposer = (
@@ -253,8 +309,8 @@ const revealWorkspace = (mode: WorkspaceMode, options: { scroll?: boolean } = {}
   state.activeWorkspace = mode
   syncViewModes()
 
-  if (options.scroll && window.innerWidth < 1080) {
-    byId<HTMLElement>('adminWorkspaceCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  if (options.scroll) {
+    byId<HTMLElement>('adminMainHeader')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 }
 
@@ -350,7 +406,370 @@ const setSelectOptions = (
   select.value = hasExactValue ? nextValue : options[0]?.value || ''
 }
 
-const renderShell = () => {
+const renderSidebarMarkup = () => `
+  <aside class="admin-sidebar admin-card">
+    <div class="admin-sidebar-brand">
+      <p class="admin-eyebrow">AOSUNLOCKER</p>
+      <h1 class="admin-sidebar-title">Download Control Panel</h1>
+      <p class="admin-copy">Kelola brand, folder, subfolder, file, link, dan price dalam panel yang lebih rapi dan tidak campur.</p>
+    </div>
+
+    <nav class="admin-sidebar-nav" aria-label="Admin sections">
+      <button class="admin-nav-button" type="button" data-workspace-mode="dashboard">Dashboard</button>
+      <button class="admin-nav-button" type="button" data-workspace-mode="catalog">Catalog Manager</button>
+      <button class="admin-nav-button" type="button" data-workspace-mode="files">File Manager</button>
+      <button class="admin-nav-button" type="button" data-workspace-mode="tools">Tools</button>
+    </nav>
+
+    <section class="admin-sidebar-section">
+      <div class="admin-card-head">
+        <div>
+          <p class="admin-eyebrow">Quick Actions</p>
+          <h2 class="admin-section-title admin-section-title-sm">Create Fast</h2>
+        </div>
+      </div>
+      <div class="admin-sidebar-actions">
+        <button class="admin-button admin-button-primary" type="button" data-composer-mode="brand" data-composer-reset="true" data-open-workspace="catalog">New Brand</button>
+        <button class="admin-button admin-button-secondary" type="button" data-composer-mode="category" data-composer-reset="true" data-open-workspace="catalog">New Folder</button>
+        <button class="admin-button admin-button-secondary" type="button" data-composer-mode="file" data-composer-reset="true" data-open-workspace="catalog">New File</button>
+      </div>
+    </section>
+
+    <section class="admin-sidebar-section">
+      <div id="adminBanner" class="admin-status" data-tone="neutral"></div>
+      <p class="admin-footer-note">Current target: <span class="admin-kbd" id="currentApiTarget">/api/admin</span></p>
+    </section>
+
+    <section class="admin-sidebar-section">
+      <div class="admin-card-head">
+        <div>
+          <p class="admin-eyebrow">Connection</p>
+          <h2 class="admin-section-title admin-section-title-sm">Admin Gateway</h2>
+        </div>
+      </div>
+      <form id="connectionForm" class="admin-form-grid" data-columns="1">
+        <label class="admin-field">
+          <span class="admin-label">Admin API base</span>
+          <input id="adminApiBase" class="admin-input" type="text" placeholder="/api/admin" />
+        </label>
+        <label class="admin-field">
+          <span class="admin-label">Admin token</span>
+          <input id="adminToken" class="admin-input" type="password" placeholder="Paste ADMIN_TOKEN" />
+        </label>
+        <div class="admin-action-row">
+          <button id="saveConnectionButton" class="admin-button admin-button-primary" type="submit">Connect</button>
+          <button id="refreshBootstrapButton" class="admin-button admin-button-secondary" type="button">Reload Data</button>
+          <button id="clearTokenButton" class="admin-button admin-button-ghost" type="button">Clear Token</button>
+        </div>
+      </form>
+    </section>
+  </aside>
+`
+
+const renderEditorMarkup = () => `
+  <article id="adminComposerCard" class="admin-card admin-panel-card admin-editor-card">
+    <div class="admin-card-head">
+      <div>
+        <p class="admin-eyebrow">Editor</p>
+        <h2 class="admin-section-title admin-section-title-sm">Single action form</h2>
+        <p class="admin-section-copy">Klik Edit, New Folder, atau New File dari explorer di kiri, lalu form akan otomatis siap di sini.</p>
+      </div>
+      <div class="admin-tab-row">
+        <button class="admin-tab-button" type="button" data-composer-mode="brand">Brand</button>
+        <button class="admin-tab-button" type="button" data-composer-mode="category">Folder</button>
+        <button class="admin-tab-button" type="button" data-composer-mode="file">File</button>
+      </div>
+    </div>
+
+    <section class="admin-composer-panel" data-composer-panel="brand">
+      <p class="admin-eyebrow">Brand</p>
+      <h2 class="admin-section-title" id="brandFormTitle">Create Brand</h2>
+      <p class="admin-section-copy">Gunakan untuk brand utama seperti Huawei, Honor, atau Solution.</p>
+      <form id="brandForm" class="admin-form-grid" data-columns="1">
+        <label class="admin-field">
+          <span class="admin-label">Brand ID</span>
+          <input id="brandId" class="admin-input" type="text" placeholder="huawei" />
+        </label>
+        <label class="admin-field">
+          <span class="admin-label">Brand label</span>
+          <input id="brandLabel" class="admin-input" type="text" placeholder="Huawei" />
+        </label>
+        <div class="admin-action-row">
+          <button id="brandSubmitButton" class="admin-button admin-button-primary" type="submit">Save Brand</button>
+          <button id="brandResetButton" class="admin-button admin-button-secondary" type="button">Reset</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="admin-composer-panel" data-composer-panel="category" hidden>
+      <p class="admin-eyebrow">Folder</p>
+      <h2 class="admin-section-title" id="categoryFormTitle">Create Folder / Subfolder</h2>
+      <p class="admin-section-copy">Pilih brand dulu, lalu isi parent folder kalau item ini memang subfolder.</p>
+      <form id="categoryForm" class="admin-form-grid">
+        <label class="admin-field">
+          <span class="admin-label">Folder ID</span>
+          <input id="categoryId" class="admin-input" type="text" placeholder="auto-generated if blank" />
+        </label>
+        <label class="admin-field">
+          <span class="admin-label">Folder label</span>
+          <input id="categoryLabel" class="admin-input" type="text" placeholder="Removed ID" />
+        </label>
+        <label class="admin-field">
+          <span class="admin-label">Brand</span>
+          <select id="categoryBrand" class="admin-select"></select>
+        </label>
+        <label class="admin-field">
+          <span class="admin-label">Parent folder</span>
+          <select id="parentCategory" class="admin-select"></select>
+        </label>
+        <div class="admin-action-row admin-span-2">
+          <button id="categorySubmitButton" class="admin-button admin-button-primary" type="submit">Save Folder</button>
+          <button id="categoryResetButton" class="admin-button admin-button-secondary" type="button">Reset</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="admin-composer-panel" data-composer-panel="file" hidden>
+      <p class="admin-eyebrow">File</p>
+      <h2 class="admin-section-title" id="fileFormTitle">Create File</h2>
+      <p class="admin-section-copy">Field utama ditampilkan langsung. Buka detail tambahan hanya saat perlu subtitle, notes, size, price, atau counter.</p>
+      <form id="fileForm" class="admin-form-grid">
+        <label class="admin-field">
+          <span class="admin-label">File ID</span>
+          <input id="fileId" class="admin-input" type="text" placeholder="auto-generated if blank" />
+        </label>
+        <label class="admin-field">
+          <span class="admin-label">Title</span>
+          <input id="fileTitle" class="admin-input" type="text" placeholder="Huawei Mate50..." />
+        </label>
+        <label class="admin-field">
+          <span class="admin-label">Brand</span>
+          <select id="fileBrand" class="admin-select"></select>
+        </label>
+        <label class="admin-field">
+          <span class="admin-label">Folder</span>
+          <select id="fileCategory" class="admin-select"></select>
+        </label>
+        <label class="admin-field admin-span-2">
+          <span class="admin-label">Drive URL</span>
+          <input id="fileDriveUrl" class="admin-input" type="url" placeholder="https://drive.google.com/file/d/..." />
+        </label>
+        <label class="admin-field">
+          <span class="admin-label">Status</span>
+          <select id="fileStatus" class="admin-select">
+            <option value="draft">draft</option>
+            <option value="published">published</option>
+          </select>
+        </label>
+        <details id="fileAdvancedDetails" class="admin-disclosure admin-span-2">
+          <summary class="admin-disclosure-summary">Advanced file details</summary>
+          <div class="admin-disclosure-content admin-form-grid">
+            <label class="admin-field admin-span-2">
+              <span class="admin-label">Subtitle</span>
+              <input id="fileSubtitle" class="admin-input" type="text" placeholder="Short subtitle for the download list" />
+            </label>
+            <label class="admin-field admin-span-2">
+              <span class="admin-label">Summary</span>
+              <textarea id="fileSummary" class="admin-textarea" placeholder="Short summary, notes, or package context"></textarea>
+            </label>
+            <label class="admin-field">
+              <span class="admin-label">Date label</span>
+              <input id="fileDate" class="admin-input" type="text" placeholder="07-04-2026" />
+            </label>
+            <label class="admin-field">
+              <span class="admin-label">Size label</span>
+              <input id="fileSize" class="admin-input" type="text" placeholder="7.91 GB" />
+            </label>
+            <label class="admin-field">
+              <span class="admin-label">Price</span>
+              <input id="filePrice" class="admin-input" type="text" placeholder="free" />
+            </label>
+            <label class="admin-field">
+              <span class="admin-label">Featured</span>
+              <select id="fileFeaturedSelect" class="admin-select">
+                <option value="false">No</option>
+                <option value="true">Yes</option>
+              </select>
+            </label>
+            <label class="admin-field">
+              <span class="admin-label">Visits</span>
+              <input id="fileVisits" class="admin-input" type="number" min="0" step="1" placeholder="0" />
+            </label>
+            <label class="admin-field">
+              <span class="admin-label">Downloads</span>
+              <input id="fileDownloads" class="admin-input" type="number" min="0" step="1" placeholder="0" />
+            </label>
+          </div>
+        </details>
+        <div class="admin-action-row admin-span-2">
+          <button id="fileSubmitButton" class="admin-button admin-button-primary" type="submit">Save File</button>
+          <button id="fileResetButton" class="admin-button admin-button-secondary" type="button">Reset</button>
+        </div>
+      </form>
+    </section>
+  </article>
+`
+
+const renderDashboardMarkup = () => `
+  <section class="admin-workspace-panel" data-workspace-panel="dashboard">
+    <div id="adminStats" class="admin-metric-grid"></div>
+    <div class="admin-dashboard-grid">
+      <article class="admin-card admin-panel-card">
+        <div class="admin-card-head">
+          <div>
+            <p class="admin-eyebrow">Brand Map</p>
+            <h2 class="admin-section-title admin-section-title-sm">Which brand contains what</h2>
+          </div>
+          <button class="admin-button admin-button-secondary" type="button" data-workspace-mode="catalog">Open Catalog</button>
+        </div>
+        <div id="dashboardBrands" class="admin-brand-summary-grid"></div>
+      </article>
+
+      <article class="admin-card admin-panel-card">
+        <div class="admin-card-head">
+          <div>
+            <p class="admin-eyebrow">Recent Files</p>
+            <h2 class="admin-section-title admin-section-title-sm">Latest items touched in D1</h2>
+          </div>
+          <button class="admin-button admin-button-secondary" type="button" data-workspace-mode="files">Open Files</button>
+        </div>
+        <div id="dashboardRecentFiles" class="admin-list"></div>
+      </article>
+
+      <article class="admin-card admin-panel-card">
+        <div class="admin-card-head">
+          <div>
+            <p class="admin-eyebrow">System</p>
+            <h2 class="admin-section-title admin-section-title-sm">Cache and health</h2>
+          </div>
+          <button class="admin-button admin-button-secondary" type="button" data-workspace-mode="tools">Open Tools</button>
+        </div>
+        <div id="dashboardHealth" class="admin-health-grid"></div>
+      </article>
+    </div>
+  </section>
+`
+
+const renderCatalogMarkup = () => `
+  <section class="admin-workspace-panel" data-workspace-panel="catalog" hidden>
+    <div class="admin-manager-grid">
+      <article class="admin-card admin-panel-card admin-explorer-card">
+        <div class="admin-card-head">
+          <div>
+            <p class="admin-eyebrow">Catalog Manager</p>
+            <h2 class="admin-section-title admin-section-title-sm">Brand and folder explorer</h2>
+            <p class="admin-section-copy">Setiap brand menampilkan isi folder dan subfoldernya langsung, jadi struktur tidak lagi campur.</p>
+          </div>
+          <div class="admin-action-row">
+            <button class="admin-button admin-button-secondary" type="button" data-composer-mode="brand" data-composer-reset="true" data-open-workspace="catalog">New Brand</button>
+            <button class="admin-button admin-button-secondary" type="button" data-composer-mode="category" data-composer-reset="true" data-open-workspace="catalog">New Folder</button>
+            <button class="admin-button admin-button-secondary" type="button" data-composer-mode="file" data-composer-reset="true" data-open-workspace="catalog">New File</button>
+          </div>
+        </div>
+        <div id="catalogExplorer" class="admin-explorer-stack"></div>
+      </article>
+
+      ${renderEditorMarkup()}
+    </div>
+  </section>
+`
+
+const renderFilesMarkup = () => `
+  <section class="admin-workspace-panel" data-workspace-panel="files" hidden>
+    <article class="admin-card admin-panel-card">
+      <div class="admin-card-head">
+        <div>
+          <p class="admin-eyebrow">File Manager</p>
+          <h2 class="admin-section-title admin-section-title-sm">All links, price, status, and traffic</h2>
+          <p class="admin-section-copy">Gunakan filter brand dan folder agar daftar file tidak campur. Klik Edit untuk membuka editor file yang tepat.</p>
+        </div>
+        <div class="admin-action-row">
+          <button id="reloadFilesButton" class="admin-button admin-button-secondary" type="button">Reload Files</button>
+          <button class="admin-button admin-button-secondary" type="button" data-composer-mode="file" data-composer-reset="true" data-open-workspace="catalog">New File</button>
+          <button class="admin-button admin-button-ghost" type="button" data-workspace-mode="catalog">Open Catalog</button>
+        </div>
+      </div>
+      <div class="admin-filter-row">
+        <label class="admin-field">
+          <span class="admin-label">Filter brand</span>
+          <select id="filterBrand" class="admin-select"></select>
+        </label>
+        <label class="admin-field">
+          <span class="admin-label">Filter folder</span>
+          <select id="filterCategory" class="admin-select"></select>
+        </label>
+        <label class="admin-field">
+          <span class="admin-label">Filter status</span>
+          <select id="filterStatus" class="admin-select">
+            <option value="">All status</option>
+            <option value="published">Published only</option>
+            <option value="draft">Draft only</option>
+          </select>
+        </label>
+      </div>
+      <div class="admin-table-shell admin-table-shell-tall">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>File</th>
+              <th>Folder</th>
+              <th>Status</th>
+              <th>Traffic</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="fileTableBody"></tbody>
+        </table>
+      </div>
+    </article>
+  </section>
+`
+
+const renderToolsMarkup = () => `
+  <section class="admin-workspace-panel" data-workspace-panel="tools" hidden>
+    <div class="admin-tools-grid">
+      <article class="admin-card admin-panel-card">
+        <div class="admin-card-head">
+          <div>
+            <p class="admin-eyebrow">Search</p>
+            <h2 class="admin-section-title admin-section-title-sm">Find files fast</h2>
+            <p class="admin-section-copy">Cari judul file, folder, brand, atau link tanpa perlu scroll daftar panjang.</p>
+          </div>
+        </div>
+        <form id="searchForm" class="admin-form-grid">
+          <label class="admin-field admin-span-2">
+            <span class="admin-label">Search query</span>
+            <input id="searchQuery" class="admin-input" type="text" placeholder="file title, category, brand, link..." />
+          </label>
+          <div class="admin-action-row admin-span-2">
+            <button id="searchSubmitButton" class="admin-button admin-button-primary" type="submit">Run Search</button>
+            <button id="refreshCacheButton" class="admin-button admin-button-secondary" type="button">Refresh Public Cache</button>
+            <button id="runIntegrityButton" class="admin-button admin-button-secondary" type="button">Run Integrity Scan</button>
+          </div>
+        </form>
+        <div class="admin-card-head admin-card-head-tight">
+          <div>
+            <h3 class="admin-subpanel-title">Search results</h3>
+            <p class="admin-muted" id="searchSummary">Search results will appear here.</p>
+          </div>
+        </div>
+        <div id="searchResults" class="admin-search-list"></div>
+      </article>
+
+      <article class="admin-card admin-panel-card">
+        <div class="admin-card-head">
+          <div>
+            <p class="admin-eyebrow">Integrity</p>
+            <h2 class="admin-section-title admin-section-title-sm">Data health check</h2>
+            <p class="admin-section-copy">Scan setelah edit supaya parent-child relation, file link, dan struktur folder tetap sehat.</p>
+          </div>
+        </div>
+        <div id="integrityResults" class="admin-issue-list"></div>
+      </article>
+    </div>
+  </section>
+`
+const renderShellLegacy = () => {
   app.innerHTML = `
     <main class="admin-shell">
       <section class="admin-hero">
@@ -674,12 +1093,95 @@ const renderShell = () => {
   `
 }
 
+const renderShell = () => {
+  app.innerHTML = `
+    <main class="admin-shell">
+      <div class="admin-layout">
+        ${renderSidebarMarkup()}
+
+        <section class="admin-main">
+          <header id="adminMainHeader" class="admin-card admin-header-card">
+            <div class="admin-header-copy">
+              <p id="workspaceEyebrow" class="admin-eyebrow">Dashboard</p>
+              <h2 id="workspaceTitle" class="admin-header-title">Overview and quick access</h2>
+              <p id="workspaceCopy" class="admin-copy">Open the section you need from the left. Catalog shows brand structure, File Manager focuses on links, and Tools keeps the data healthy.</p>
+            </div>
+            <div class="admin-header-side">
+              <div id="workspaceTrail" class="admin-pill-row"></div>
+              <div class="admin-action-row">
+                <button id="headerReloadButton" class="admin-button admin-button-secondary" type="button">Reload All</button>
+                <button id="headerCacheButton" class="admin-button admin-button-secondary" type="button">Refresh Cache</button>
+                <button id="headerIntegrityButton" class="admin-button admin-button-secondary" type="button">Integrity Scan</button>
+              </div>
+            </div>
+          </header>
+
+          ${renderDashboardMarkup()}
+          ${renderCatalogMarkup()}
+          ${renderFilesMarkup()}
+          ${renderToolsMarkup()}
+        </section>
+      </div>
+    </main>
+  `
+}
+
 const renderBanner = () => {
   const banner = byId<HTMLDivElement>('adminBanner')
   if (!banner) return
 
   banner.dataset.tone = state.bannerTone
   banner.textContent = state.bannerMessage
+}
+
+const renderWorkspaceHeader = () => {
+  const eyebrow = byId<HTMLParagraphElement>('workspaceEyebrow')
+  const title = byId<HTMLHeadingElement>('workspaceTitle')
+  const copy = byId<HTMLParagraphElement>('workspaceCopy')
+  const trail = byId<HTMLDivElement>('workspaceTrail')
+
+  if (!eyebrow || !title || !copy || !trail) return
+
+  const focusBrand = state.focusBrandId ? getBrandById(state.focusBrandId) : null
+  const focusCategory = state.focusCategoryId ? getCategoryById(state.focusCategoryId) : null
+
+  const dictionary: Record<WorkspaceMode, { eyebrow: string; title: string; copy: string }> = {
+    dashboard: {
+      eyebrow: 'Dashboard',
+      title: 'Overview and quick access',
+      copy: 'Mulai dari sini untuk melihat ringkasan brand, file terbaru, dan kondisi cache tanpa panel yang gemuk.',
+    },
+    catalog: {
+      eyebrow: 'Catalog Manager',
+      title: 'Brand and folder explorer',
+      copy: 'Explorer menunjukkan brand beserta folder dan subfolder di bawahnya, jadi mudah lihat struktur mana milik brand tertentu.',
+    },
+    files: {
+      eyebrow: 'File Manager',
+      title: 'Manage links, price, and publish status',
+      copy: 'Filter brand dan folder supaya daftar file tidak campur. Edit dari sini akan membuka form file yang benar.',
+    },
+    tools: {
+      eyebrow: 'Tools',
+      title: 'Search and integrity utilities',
+      copy: 'Cari file dengan cepat, refresh cache publik, lalu scan integritas untuk memastikan data tetap rapi.',
+    },
+  }
+
+  const current = dictionary[state.activeWorkspace]
+  eyebrow.textContent = current.eyebrow
+  title.textContent = current.title
+  copy.textContent = current.copy
+
+  const chips = [
+    focusBrand ? `<span class="admin-pill">Brand: ${escapeHtml(focusBrand.label)}</span>` : '',
+    focusCategory ? `<span class="admin-pill">Folder: ${escapeHtml(focusCategory.fullLabel || focusCategory.label)}</span>` : '',
+    state.bootstrap?.lastPublicRefresh
+      ? `<span class="admin-pill">Refresh: ${escapeHtml(formatTimestamp(state.bootstrap.lastPublicRefresh))}</span>`
+      : '',
+  ].filter(Boolean)
+
+  trail.innerHTML = chips.join('') || `<span class="admin-pill">No focus selected yet</span>`
 }
 
 const renderStats = () => {
@@ -689,27 +1191,205 @@ const renderStats = () => {
   const totals = state.bootstrap?.totals
   const brandCount = totals?.brands ?? state.bootstrap?.brands.length ?? 0
   const categoryCount = totals?.categories ?? state.bootstrap?.categories.length ?? 0
-  const fileCount = totals?.files ?? state.files.length ?? state.bootstrap?.recentFiles.length ?? 0
+  const fileCount = totals?.files ?? state.fileIndex.length ?? state.files.length ?? state.bootstrap?.recentFiles.length ?? 0
   const lastRefresh = formatTimestamp(state.bootstrap?.lastPublicRefresh || '')
 
   mount.innerHTML = `
-    <article class="admin-stat-card">
-      <span class="admin-muted">Brands</span>
+    <article class="admin-metric-card" data-tone="blue">
+      <span class="admin-metric-label">Brands</span>
       <strong>${brandCount}</strong>
+      <span class="admin-metric-meta">Root groups</span>
     </article>
-    <article class="admin-stat-card">
-      <span class="admin-muted">Folders</span>
+    <article class="admin-metric-card" data-tone="amber">
+      <span class="admin-metric-label">Folders</span>
       <strong>${categoryCount}</strong>
+      <span class="admin-metric-meta">Folder and subfolder rows</span>
     </article>
-    <article class="admin-stat-card">
-      <span class="admin-muted">Files</span>
+    <article class="admin-metric-card" data-tone="green">
+      <span class="admin-metric-label">Files</span>
       <strong>${fileCount}</strong>
+      <span class="admin-metric-meta">Indexed in D1</span>
     </article>
-    <article class="admin-stat-card">
-      <span class="admin-muted">Last public refresh</span>
-      <strong style="font-size:18px;line-height:1.3">${escapeHtml(lastRefresh)}</strong>
+    <article class="admin-metric-card" data-tone="rose">
+      <span class="admin-metric-label">Last Refresh</span>
+      <strong class="admin-metric-compact">${escapeHtml(lastRefresh)}</strong>
+      <span class="admin-metric-meta">Public cache update</span>
     </article>
   `
+}
+
+const renderDashboardBrands = () => {
+  const mount = byId<HTMLDivElement>('dashboardBrands')
+  if (!mount) return
+
+  const brands = getBootstrapBrands()
+  if (!brands.length) {
+    mount.innerHTML = `<article class="admin-list-item"><div class="admin-empty">No brands loaded yet.</div></article>`
+    return
+  }
+
+  mount.innerHTML = brands
+    .map((brand) => {
+      const folderCount = getCategoriesForBrand(brand.id).length
+      const fileCount = countIndexedFilesForBrand(brand.id)
+      const isActive = state.focusBrandId === brand.id && !state.focusCategoryId
+
+      return `
+        <article class="admin-brand-summary-card${isActive ? ' is-active' : ''}">
+          <div class="admin-card-head admin-card-head-tight">
+            <div>
+              <h3 class="admin-subpanel-title">${escapeHtml(brand.label)}</h3>
+              <p class="admin-muted">ID <span class="admin-kbd">${escapeHtml(brand.id)}</span></p>
+            </div>
+            <div class="admin-chip-row">
+              <span class="admin-tree-chip">${folderCount} folders</span>
+              <span class="admin-tree-chip">${fileCount} files</span>
+            </div>
+          </div>
+          <div class="admin-action-row">
+            <button class="admin-button admin-button-secondary" type="button" data-action="open-brand-catalog" data-id="${escapeHtml(brand.id)}">Open Catalog</button>
+            <button class="admin-button admin-button-secondary" type="button" data-action="brand-files" data-id="${escapeHtml(brand.id)}">Open Files</button>
+          </div>
+        </article>
+      `
+    })
+    .join('')
+}
+
+const renderDashboardRecentFiles = () => {
+  const mount = byId<HTMLDivElement>('dashboardRecentFiles')
+  if (!mount) return
+
+  const files = [...(state.bootstrap?.recentFiles ?? [])]
+  if (!files.length) {
+    mount.innerHTML = `<article class="admin-list-item"><div class="admin-empty">No recent files yet.</div></article>`
+    return
+  }
+
+  mount.innerHTML = files
+    .map(
+      (file) => `
+        <article class="admin-list-item">
+          <div class="admin-list-item-head">
+            <div>
+              <div class="admin-file-title">${escapeHtml(file.title)}</div>
+              <div class="admin-file-meta">${escapeHtml(file.brandLabel)} / ${escapeHtml(file.categoryLabel)} / ${escapeHtml(file.status)}</div>
+              <div class="admin-subtle">Updated ${escapeHtml(formatTimestamp(file.updatedAt))}</div>
+            </div>
+            <div class="admin-actions">
+              <button class="admin-button admin-button-secondary" type="button" data-action="edit-dashboard-file" data-id="${escapeHtml(file.id)}">Edit</button>
+              <button class="admin-button admin-button-ghost" type="button" data-action="category-files" data-id="${escapeHtml(file.categoryId)}">Open Folder</button>
+            </div>
+          </div>
+        </article>
+      `,
+    )
+    .join('')
+}
+
+const renderDashboardHealth = () => {
+  const mount = byId<HTMLDivElement>('dashboardHealth')
+  if (!mount) return
+
+  const refreshTime = formatTimestamp(state.bootstrap?.lastPublicRefresh || '')
+  const cacheVersion = toText(state.bootstrap?.cacheVersion || '') || '-'
+  const integrityState = state.integrity?.status || 'not-run'
+  const integrityTotal = state.integrity?.summary.totalIssues ?? 0
+
+  mount.innerHTML = `
+    <article class="admin-health-card">
+      <span class="admin-muted">Current target</span>
+      <strong>${escapeHtml(getCurrentAdminBaseUrl() || '/api/admin')}</strong>
+    </article>
+    <article class="admin-health-card">
+      <span class="admin-muted">Cache version</span>
+      <strong>${escapeHtml(cacheVersion)}</strong>
+    </article>
+    <article class="admin-health-card">
+      <span class="admin-muted">Last refresh</span>
+      <strong>${escapeHtml(refreshTime)}</strong>
+    </article>
+    <article class="admin-health-card">
+      <span class="admin-muted">Integrity</span>
+      <strong>${escapeHtml(integrityState)}</strong>
+      <span class="admin-subtle">${integrityTotal} issue(s)</span>
+    </article>
+  `
+}
+
+const renderCatalogExplorer = () => {
+  const mount = byId<HTMLDivElement>('catalogExplorer')
+  if (!mount) return
+
+  const brands = getBootstrapBrands()
+  if (!brands.length) {
+    mount.innerHTML = `<article class="admin-list-item"><div class="admin-empty">No brands loaded yet. Connect the panel first.</div></article>`
+    return
+  }
+
+  const renderCategoryBranch = (category: AdminCategory, depth = 0): string => {
+    const children = getChildCategories(category.id)
+    const fileCount = countIndexedFilesForCategory(category.id)
+    const isActive = state.focusCategoryId === category.id
+
+    return `
+      <article class="admin-folder-row${isActive ? ' is-active' : ''}" style="--folder-depth:${depth}">
+        <div class="admin-folder-main">
+          <button class="admin-folder-select" type="button" data-action="focus-category" data-id="${escapeHtml(category.id)}">
+            <span class="admin-folder-bullet"></span>
+            <span>
+              <strong>${escapeHtml(category.label)}</strong>
+              <span class="admin-folder-meta">${escapeHtml(category.fullLabel || category.label)} / ${fileCount} files / ${children.length} subfolders</span>
+            </span>
+          </button>
+        </div>
+        <div class="admin-actions">
+          <button class="admin-button admin-button-secondary" type="button" data-action="category-files" data-id="${escapeHtml(category.id)}">Files</button>
+          <button class="admin-button admin-button-secondary" type="button" data-action="new-subcategory" data-id="${escapeHtml(category.id)}">Subfolder</button>
+          <button class="admin-button admin-button-secondary" type="button" data-action="new-file-in-category" data-id="${escapeHtml(category.id)}">New File</button>
+          <button class="admin-button admin-button-secondary" type="button" data-action="edit-category" data-id="${escapeHtml(category.id)}">Edit</button>
+          <button class="admin-button admin-button-danger" type="button" data-action="delete-category" data-id="${escapeHtml(category.id)}">Delete</button>
+        </div>
+      </article>
+      ${children.length ? `<div class="admin-folder-children">${children.map((child) => renderCategoryBranch(child, depth + 1)).join('')}</div>` : ''}
+    `
+  }
+
+  mount.innerHTML = brands
+    .map((brand) => {
+      const brandCategories = getRootCategoriesForBrand(brand.id)
+      const isActive = state.focusBrandId === brand.id && !state.focusCategoryId
+      const folderCount = getCategoriesForBrand(brand.id).length
+      const fileCount = countIndexedFilesForBrand(brand.id)
+
+      return `
+        <article class="admin-brand-card${isActive ? ' is-active' : ''}">
+          <div class="admin-card-head">
+            <div>
+              <p class="admin-eyebrow">Brand</p>
+              <h3 class="admin-subpanel-title">${escapeHtml(brand.label)}</h3>
+              <p class="admin-muted">ID <span class="admin-kbd">${escapeHtml(brand.id)}</span> / ${folderCount} folders / ${fileCount} files</p>
+            </div>
+            <div class="admin-actions">
+              <button class="admin-button admin-button-secondary" type="button" data-action="focus-brand" data-id="${escapeHtml(brand.id)}">Focus</button>
+              <button class="admin-button admin-button-secondary" type="button" data-action="brand-files" data-id="${escapeHtml(brand.id)}">Files</button>
+              <button class="admin-button admin-button-secondary" type="button" data-action="new-category-in-brand" data-id="${escapeHtml(brand.id)}">New Folder</button>
+              <button class="admin-button admin-button-secondary" type="button" data-action="new-file-in-brand" data-id="${escapeHtml(brand.id)}">New File</button>
+              <button class="admin-button admin-button-secondary" type="button" data-action="edit-brand" data-id="${escapeHtml(brand.id)}">Edit</button>
+              <button class="admin-button admin-button-danger" type="button" data-action="delete-brand" data-id="${escapeHtml(brand.id)}">Delete</button>
+            </div>
+          </div>
+          <div class="admin-folder-tree">
+            ${
+              brandCategories.length
+                ? brandCategories.map((category) => renderCategoryBranch(category)).join('')
+                : '<div class="admin-empty">No folders under this brand yet.</div>'
+            }
+          </div>
+        </article>
+      `
+    })
+    .join('')
 }
 
 const renderBrandList = () => {
@@ -779,7 +1459,7 @@ const renderCategoryList = () => {
     .join('')
 }
 
-const renderFileTable = () => {
+const renderFileTableLegacy = () => {
   const mount = byId<HTMLTableSectionElement>('fileTableBody')
   if (!mount) return
 
@@ -827,7 +1507,55 @@ const renderFileTable = () => {
     .join('')
 }
 
-const renderSearchResults = () => {
+const renderFileTable = () => {
+  const mount = byId<HTMLTableSectionElement>('fileTableBody')
+  if (!mount) return
+
+  if (state.filesLoading) {
+    mount.innerHTML = `<tr><td colspan="5" class="admin-subtle">Loading files from D1...</td></tr>`
+    return
+  }
+
+  if (!state.files.length) {
+    mount.innerHTML = `<tr><td colspan="5" class="admin-subtle">No files match the current filter.</td></tr>`
+    return
+  }
+
+  mount.innerHTML = state.files
+    .map(
+      (file) => `
+        <tr>
+          <td>
+            <div class="admin-file-title">${escapeHtml(file.title)}</div>
+            <div class="admin-file-meta">${escapeHtml(file.subtitle || '-')}</div>
+            <div class="admin-subtle">ID <span class="admin-kbd">${escapeHtml(file.id)}</span></div>
+          </td>
+          <td>
+            <div class="admin-file-title">${escapeHtml(file.categoryLabel)}</div>
+            <div class="admin-file-meta">${escapeHtml(file.brandLabel)} / ${escapeHtml(file.size || '-')}</div>
+          </td>
+          <td>
+            <span class="admin-file-chip" data-tone="${escapeHtml(file.status)}">${escapeHtml(file.status)}</span>
+            ${file.featured ? `<div class="admin-subtle" style="margin-top:8px">Featured</div>` : ''}
+          </td>
+          <td>
+            <div class="admin-file-title">${escapeHtml(file.downloads)} downloads</div>
+            <div class="admin-file-meta">${escapeHtml(file.visits)} visits / ${escapeHtml(file.price || 'free')}</div>
+          </td>
+          <td>
+            <div class="admin-actions">
+              <button class="admin-button admin-button-secondary" type="button" data-action="edit-file" data-id="${escapeHtml(file.id)}">Edit</button>
+              <a class="admin-link-button" href="${escapeHtml(file.driveUrl || '#')}" target="_blank" rel="noreferrer">Open Link</a>
+              <button class="admin-button admin-button-danger" type="button" data-action="delete-file" data-id="${escapeHtml(file.id)}">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `,
+    )
+    .join('')
+}
+
+const renderSearchResultsLegacy = () => {
   const mount = byId<HTMLDivElement>('searchResults')
   const summary = byId<HTMLParagraphElement>('searchSummary')
   if (!mount || !summary) return
@@ -858,7 +1586,39 @@ const renderSearchResults = () => {
     .join('')
 }
 
-const renderIntegrityResults = () => {
+const renderSearchResults = () => {
+  const mount = byId<HTMLDivElement>('searchResults')
+  const summary = byId<HTMLParagraphElement>('searchSummary')
+  if (!mount || !summary) return
+
+  summary.textContent = state.searchSummary || 'Search results will appear here.'
+
+  if (!state.searchResults.length) {
+    mount.innerHTML = ''
+    return
+  }
+
+  mount.innerHTML = state.searchResults
+    .map(
+      (file) => `
+        <article class="admin-search-item">
+          <div class="admin-search-item-head">
+            <div>
+              <div class="admin-file-title">${escapeHtml(file.title)}</div>
+              <div class="admin-search-meta">${escapeHtml(file.brandLabel)} / ${escapeHtml(file.categoryLabel)} / ${escapeHtml(file.status)}</div>
+            </div>
+            <div class="admin-actions">
+              <button class="admin-button admin-button-secondary" type="button" data-action="edit-search-file" data-id="${escapeHtml(file.id)}">Edit</button>
+              <button class="admin-button admin-button-ghost" type="button" data-action="search-open-folder" data-id="${escapeHtml(file.categoryId)}">Open Folder</button>
+            </div>
+          </div>
+        </article>
+      `,
+    )
+    .join('')
+}
+
+const renderIntegrityResultsLegacy = () => {
   const mount = byId<HTMLDivElement>('integrityResults')
   if (!mount) return
 
@@ -900,6 +1660,58 @@ const renderIntegrityResults = () => {
           <div class="admin-search-meta">
             Checked ${escapeHtml(formatTimestamp(state.integrity.checkedAt))} ·
             ${state.integrity.summary.totalIssues} issues ·
+            ${state.integrity.summary.files} files
+          </div>
+        </div>
+        <span class="admin-issue-chip" data-tone="${statusTone}">${escapeHtml(state.integrity.status)}</span>
+      </div>
+    </article>
+    ${issueMarkup}
+  `
+}
+
+const renderIntegrityResults = () => {
+  const mount = byId<HTMLDivElement>('integrityResults')
+  if (!mount) return
+
+  if (!state.integrity) {
+    mount.innerHTML = `<article class="admin-issue-item"><div class="admin-empty">Run an integrity scan to see structure health here.</div></article>`
+    return
+  }
+
+  const statusTone =
+    state.integrity.status === 'critical'
+      ? 'critical'
+      : state.integrity.status === 'warning'
+        ? 'warning'
+        : 'clean'
+
+  const issueMarkup = state.integrity.issues.length
+    ? state.integrity.issues
+        .map(
+          (issue) => `
+            <article class="admin-issue-item">
+              <div class="admin-list-item-head">
+                <div>
+                  <div class="admin-issue-title">${escapeHtml(issue.title)}</div>
+                  <div class="admin-issue-detail">${escapeHtml(issue.detail)}</div>
+                </div>
+                <span class="admin-issue-chip" data-tone="${escapeHtml(issue.level)}">${escapeHtml(issue.level)}</span>
+              </div>
+            </article>
+          `,
+        )
+        .join('')
+    : `<article class="admin-issue-item"><div class="admin-empty">No integrity issues detected.</div></article>`
+
+  mount.innerHTML = `
+    <article class="admin-search-item">
+      <div class="admin-list-item-head">
+        <div>
+          <div class="admin-file-title">Integrity status: ${escapeHtml(state.integrity.status)}</div>
+          <div class="admin-search-meta">
+            Checked ${escapeHtml(formatTimestamp(state.integrity.checkedAt))} /
+            ${state.integrity.summary.totalIssues} issues /
             ${state.integrity.summary.files} files
           </div>
         </div>
@@ -1047,17 +1859,17 @@ const resetCategoryForm = () => {
   state.editingCategoryId = ''
   setInputValue('categoryId', '')
   setInputValue('categoryLabel', '')
-  const firstBrandId = getBootstrapBrands()[0]?.id || ''
+  const firstBrandId = state.focusBrandId || getBootstrapBrands()[0]?.id || ''
   setInputValue('categoryBrand', firstBrandId)
   syncCategoryParentOptions()
-  setInputValue('parentCategory', '')
+  setInputValue('parentCategory', state.focusCategoryId || '')
   setCategoryFormMode(false)
   syncViewModes()
 }
 
 const resetFileForm = () => {
   state.editingFileId = ''
-  const firstBrandId = getBootstrapBrands()[0]?.id || ''
+  const firstBrandId = state.focusBrandId || getBootstrapBrands()[0]?.id || ''
 
   setInputValue('fileId', '')
   setInputValue('fileTitle', '')
@@ -1072,11 +1884,52 @@ const resetFileForm = () => {
   setInputValue('fileStatus', 'draft')
   setInputValue('fileBrand', firstBrandId)
   syncFileCategoryOptions()
-  setInputValue('fileCategory', getCategoriesForBrand(firstBrandId)[0]?.id || '')
+  setInputValue('fileCategory', state.focusCategoryId || getCategoriesForBrand(firstBrandId)[0]?.id || '')
   setInputValue('fileFeaturedSelect', 'false')
   setFileFormMode(false)
   state.fileAdvancedOpen = false
   syncViewModes()
+}
+
+const prepareNewCategoryForm = (brandId = '', parentCategoryId = '') => {
+  state.editingCategoryId = ''
+  setCategoryFormMode(false)
+  setInputValue('categoryId', '')
+  setInputValue('categoryLabel', '')
+  const nextBrandId = brandId || state.focusBrandId || getBootstrapBrands()[0]?.id || ''
+  setInputValue('categoryBrand', nextBrandId)
+  syncCategoryParentOptions()
+  setInputValue('parentCategory', parentCategoryId)
+  setFocus({ brandId: nextBrandId, categoryId: parentCategoryId })
+  revealWorkspace('catalog', { scroll: true })
+  revealComposer('category', { scroll: true })
+}
+
+const prepareNewFileForm = (brandId = '', categoryId = '') => {
+  state.editingFileId = ''
+  setFileFormMode(false)
+  const nextBrandId = brandId || state.focusBrandId || getBootstrapBrands()[0]?.id || ''
+  const nextCategoryId = categoryId || state.focusCategoryId || getCategoriesForBrand(nextBrandId)[0]?.id || ''
+
+  setInputValue('fileId', '')
+  setInputValue('fileTitle', '')
+  setInputValue('fileSubtitle', '')
+  setInputValue('fileSummary', '')
+  setInputValue('fileDriveUrl', '')
+  setInputValue('fileDate', '')
+  setInputValue('fileSize', '')
+  setInputValue('filePrice', 'free')
+  setInputValue('fileVisits', '0')
+  setInputValue('fileDownloads', '0')
+  setInputValue('fileStatus', 'draft')
+  setInputValue('fileBrand', nextBrandId)
+  syncFileCategoryOptions()
+  setInputValue('fileCategory', nextCategoryId)
+  setInputValue('fileFeaturedSelect', 'false')
+  state.fileAdvancedOpen = false
+  setFocus({ brandId: nextBrandId, categoryId: nextCategoryId })
+  revealWorkspace('catalog', { scroll: true })
+  revealComposer('file', { scroll: true })
 }
 
 const populateBrandForm = (brand: AdminBrand) => {
@@ -1084,6 +1937,8 @@ const populateBrandForm = (brand: AdminBrand) => {
   setInputValue('brandId', brand.id)
   setInputValue('brandLabel', brand.label)
   setBrandFormMode(true)
+  setFocus({ brandId: brand.id })
+  revealWorkspace('catalog', { scroll: true })
   revealComposer('brand', { scroll: true })
 }
 
@@ -1095,6 +1950,8 @@ const populateCategoryForm = (category: AdminCategory) => {
   syncCategoryParentOptions()
   setInputValue('parentCategory', category.parentCategoryId || '')
   setCategoryFormMode(true)
+  setFocus({ categoryId: category.id })
+  revealWorkspace('catalog', { scroll: true })
   revealComposer('category', { scroll: true })
 }
 
@@ -1116,6 +1973,8 @@ const populateFileForm = (file: AdminFile) => {
   setInputValue('fileCategory', file.categoryId)
   setInputValue('fileFeaturedSelect', String(Boolean(file.featured)))
   setFileFormMode(true)
+  setFocus({ categoryId: file.categoryId })
+  revealWorkspace('catalog', { scroll: true })
   revealComposer('file', { scroll: true, fileAdvancedOpen: true })
 }
 
@@ -1133,18 +1992,42 @@ const ensureFormsStillValid = () => {
   }
 }
 
+const ensureFocusStillValid = () => {
+  if (state.focusCategoryId && !getCategoryById(state.focusCategoryId)) {
+    state.focusCategoryId = ''
+  }
+
+  if (state.focusBrandId && !getBrandById(state.focusBrandId)) {
+    state.focusBrandId = ''
+  }
+}
+
 const applyBootstrap = (payload: BootstrapResponse) => {
   state.bootstrap = payload
+  ensureFocusStillValid()
   renderStats()
-  renderBrandList()
-  renderCategoryList()
+  renderDashboardBrands()
+  renderDashboardRecentFiles()
+  renderDashboardHealth()
+  renderCatalogExplorer()
   syncBrandOptions()
   ensureFormsStillValid()
+  renderWorkspaceHeader()
 }
 
 const loadBootstrap = async () => {
   const data = await requestAdmin<BootstrapResponse>('bootstrap', { method: 'GET' })
   applyBootstrap(data)
+}
+
+const loadFileIndex = async () => {
+  const data = await requestAdmin<FilesResponse>('files', { method: 'GET' })
+  state.fileIndex = data.files ?? []
+  renderStats()
+  renderDashboardBrands()
+  renderDashboardRecentFiles()
+  renderDashboardHealth()
+  renderCatalogExplorer()
 }
 
 const loadFiles = async () => {
@@ -1157,22 +2040,39 @@ const loadFiles = async () => {
     const categoryId = getInputValue('filterCategory')
     const status = getInputValue('filterStatus')
 
-    if (brandId) params.set('brand', brandId)
-    if (categoryId) params.set('category', categoryId)
-    if (status) params.set('status', status)
+    if (isUnfilteredFileView() && state.fileIndex.length) {
+      state.files = [...state.fileIndex]
+    } else {
+      if (brandId) params.set('brand', brandId)
+      if (categoryId) params.set('category', categoryId)
+      if (status) params.set('status', status)
 
-    const data = await requestAdmin<FilesResponse>('files', { method: 'GET' }, params)
-    state.files = data.files ?? []
+      const data = await requestAdmin<FilesResponse>('files', { method: 'GET' }, params)
+      state.files = data.files ?? []
+    }
   } finally {
     state.filesLoading = false
     renderFileTable()
-    renderStats()
   }
+}
+
+const openFilesWorkspace = async ({ brandId = '', categoryId = '' }: { brandId?: string; categoryId?: string }) => {
+  const nextBrandId = categoryId ? getCategoryById(categoryId)?.brandId || brandId : brandId
+
+  setInputValue('filterBrand', nextBrandId)
+  syncFilterCategoryOptions()
+  setInputValue('filterCategory', categoryId)
+  setInputValue('filterStatus', '')
+  setFocus({ brandId: nextBrandId, categoryId })
+  revealWorkspace('files', { scroll: true })
+  await loadFiles()
 }
 
 const refreshAllData = async () => {
   await loadBootstrap()
+  await loadFileIndex()
   await loadFiles()
+  renderDashboardHealth()
 }
 
 const submitBrandForm = async (button: HTMLButtonElement | null) => {
@@ -1194,6 +2094,7 @@ const submitBrandForm = async (button: HTMLButtonElement | null) => {
         })
 
     applyBootstrap(nextState)
+    await loadFileIndex()
     await loadFiles()
     resetBrandForm()
     setBanner('Brand saved successfully.', 'success')
@@ -1223,6 +2124,7 @@ const submitCategoryForm = async (button: HTMLButtonElement | null) => {
         })
 
     applyBootstrap(nextState)
+    await loadFileIndex()
     await loadFiles()
     resetCategoryForm()
     setBanner('Folder saved successfully.', 'success')
@@ -1262,6 +2164,7 @@ const submitFileForm = async (button: HTMLButtonElement | null) => {
         })
 
     applyBootstrap(nextState)
+    await loadFileIndex()
     await loadFiles()
     resetFileForm()
     setBanner('File saved successfully.', 'success')
@@ -1280,6 +2183,7 @@ const deleteBrand = async (brandId: string) => {
   })
 
   applyBootstrap(nextState)
+  await loadFileIndex()
   await loadFiles()
   resetBrandForm()
   setBanner(`Brand "${brand.label}" deleted.`, 'success')
@@ -1295,6 +2199,7 @@ const deleteCategory = async (categoryId: string) => {
   })
 
   applyBootstrap(nextState)
+  await loadFileIndex()
   await loadFiles()
   resetCategoryForm()
   setBanner(`Folder "${category.label}" deleted.`, 'success')
@@ -1310,6 +2215,7 @@ const deleteFile = async (fileId: string) => {
   })
 
   applyBootstrap(nextState)
+  await loadFileIndex()
   await loadFiles()
   resetFileForm()
   setBanner(`File "${file.title}" deleted.`, 'success')
@@ -1370,6 +2276,8 @@ const refreshPublicCache = async (button: HTMLButtonElement | null) => {
     }
 
     renderStats()
+    renderDashboardHealth()
+    renderWorkspaceHeader()
     setBanner('Public cache version bumped successfully.', 'success')
   } finally {
     release()
@@ -1387,6 +2295,7 @@ const handleConnectionSave = async (button: HTMLButtonElement | null) => {
   const release = setButtonBusy(button, 'Connecting...')
   try {
     await refreshAllData()
+    revealWorkspace('dashboard')
     setBanner('Admin panel connected to Cloudflare successfully.', 'success')
   } finally {
     release()
@@ -1400,7 +2309,7 @@ const restoreButton = (buttonId: string, label: string) => {
   button.textContent = label
 }
 
-const bindStaticEvents = () => {
+const bindStaticEventsLegacy = () => {
   app.addEventListener('click', (event) => {
     const target = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-composer-mode], button[data-workspace-mode]')
     if (!target) return
@@ -1647,6 +2556,354 @@ const bindStaticEvents = () => {
   })
 }
 
+const bindStaticEvents = () => {
+  app.addEventListener('click', (event) => {
+    const target = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-composer-mode], button[data-workspace-mode]')
+    if (!target) return
+
+    const openWorkspace = target.dataset.openWorkspace as WorkspaceMode | undefined
+    if (openWorkspace) {
+      revealWorkspace(openWorkspace)
+    }
+
+    const composerMode = target.dataset.composerMode as ComposerMode | undefined
+    if (composerMode) {
+      if (target.dataset.composerReset === 'true') {
+        if (composerMode === 'brand') resetBrandForm()
+        if (composerMode === 'category') resetCategoryForm()
+        if (composerMode === 'file') resetFileForm()
+      }
+
+      revealComposer(composerMode, { scroll: true })
+      return
+    }
+
+    const workspaceMode = target.dataset.workspaceMode as WorkspaceMode | undefined
+    if (workspaceMode) {
+      revealWorkspace(workspaceMode, { scroll: true })
+    }
+  })
+
+  byId<HTMLFormElement>('connectionForm')?.addEventListener('submit', async (event) => {
+    event.preventDefault()
+
+    try {
+      await handleConnectionSave(byId<HTMLButtonElement>('saveConnectionButton'))
+    } catch (error) {
+      console.error(error)
+      setBanner(error instanceof Error ? error.message : 'Connection failed.', 'error')
+    }
+  })
+
+  const reloadEverything = async (buttonId: string, busyLabel: string, idleLabel: string) => {
+    try {
+      const release = setButtonBusy(byId<HTMLButtonElement>(buttonId), busyLabel)
+      await refreshAllData()
+      setBanner('Data reloaded from D1.', 'success')
+      release()
+    } catch (error) {
+      console.error(error)
+      setBanner(error instanceof Error ? error.message : 'Reload failed.', 'error')
+      restoreButton(buttonId, idleLabel)
+    }
+  }
+
+  byId<HTMLButtonElement>('refreshBootstrapButton')?.addEventListener('click', async () => {
+    await reloadEverything('refreshBootstrapButton', 'Reloading...', 'Reload Data')
+  })
+
+  byId<HTMLButtonElement>('headerReloadButton')?.addEventListener('click', async () => {
+    await reloadEverything('headerReloadButton', 'Reloading...', 'Reload All')
+  })
+
+  byId<HTMLButtonElement>('headerCacheButton')?.addEventListener('click', async () => {
+    try {
+      await refreshPublicCache(byId<HTMLButtonElement>('headerCacheButton'))
+    } catch (error) {
+      console.error(error)
+      setBanner(error instanceof Error ? error.message : 'Cache refresh failed.', 'error')
+    }
+  })
+
+  byId<HTMLButtonElement>('headerIntegrityButton')?.addEventListener('click', async () => {
+    try {
+      await runIntegrity(byId<HTMLButtonElement>('headerIntegrityButton'))
+      renderDashboardHealth()
+    } catch (error) {
+      console.error(error)
+      setBanner(error instanceof Error ? error.message : 'Integrity scan failed.', 'error')
+    }
+  })
+
+  byId<HTMLButtonElement>('clearTokenButton')?.addEventListener('click', () => {
+    state.token = ''
+    window.localStorage.removeItem(TOKEN_STORAGE_KEY)
+    syncConnectionFields()
+    setBanner('Stored token cleared from this browser.', 'warning')
+  })
+
+  byId<HTMLFormElement>('brandForm')?.addEventListener('submit', async (event) => {
+    event.preventDefault()
+    try {
+      await submitBrandForm(byId<HTMLButtonElement>('brandSubmitButton'))
+    } catch (error) {
+      console.error(error)
+      setBanner(error instanceof Error ? error.message : 'Brand save failed.', 'error')
+    }
+  })
+
+  byId<HTMLButtonElement>('brandResetButton')?.addEventListener('click', () => {
+    resetBrandForm()
+  })
+
+  byId<HTMLFormElement>('categoryForm')?.addEventListener('submit', async (event) => {
+    event.preventDefault()
+    try {
+      await submitCategoryForm(byId<HTMLButtonElement>('categorySubmitButton'))
+    } catch (error) {
+      console.error(error)
+      setBanner(error instanceof Error ? error.message : 'Folder save failed.', 'error')
+    }
+  })
+
+  byId<HTMLButtonElement>('categoryResetButton')?.addEventListener('click', () => {
+    resetCategoryForm()
+  })
+
+  byId<HTMLSelectElement>('categoryBrand')?.addEventListener('change', () => {
+    setFocus({ brandId: getInputValue('categoryBrand') })
+    syncCategoryParentOptions()
+  })
+
+  byId<HTMLFormElement>('fileForm')?.addEventListener('submit', async (event) => {
+    event.preventDefault()
+    try {
+      await submitFileForm(byId<HTMLButtonElement>('fileSubmitButton'))
+    } catch (error) {
+      console.error(error)
+      setBanner(error instanceof Error ? error.message : 'File save failed.', 'error')
+    }
+  })
+
+  byId<HTMLButtonElement>('fileResetButton')?.addEventListener('click', () => {
+    resetFileForm()
+  })
+
+  byId<HTMLSelectElement>('fileBrand')?.addEventListener('change', () => {
+    setFocus({ brandId: getInputValue('fileBrand') })
+    syncFileCategoryOptions()
+  })
+
+  byId<HTMLDetailsElement>('fileAdvancedDetails')?.addEventListener('toggle', (event) => {
+    state.fileAdvancedOpen = (event.currentTarget as HTMLDetailsElement).open
+  })
+
+  byId<HTMLButtonElement>('reloadFilesButton')?.addEventListener('click', async () => {
+    try {
+      const release = setButtonBusy(byId<HTMLButtonElement>('reloadFilesButton'), 'Reloading...')
+      await loadFiles()
+      setBanner('File list reloaded.', 'success')
+      release()
+    } catch (error) {
+      console.error(error)
+      setBanner(error instanceof Error ? error.message : 'File reload failed.', 'error')
+      restoreButton('reloadFilesButton', 'Reload Files')
+    }
+  })
+
+  ;['filterBrand', 'filterCategory', 'filterStatus'].forEach((id) => {
+    byId<HTMLSelectElement>(id)?.addEventListener('change', async () => {
+      if (id === 'filterBrand') {
+        syncFilterCategoryOptions()
+        setFocus({ brandId: getInputValue('filterBrand') })
+      }
+
+      if (id === 'filterCategory') {
+        const categoryId = getInputValue('filterCategory')
+        if (categoryId) {
+          setFocus({ categoryId })
+        }
+      }
+
+      try {
+        await loadFiles()
+      } catch (error) {
+        console.error(error)
+        setBanner(error instanceof Error ? error.message : 'Filtering failed.', 'error')
+      }
+    })
+  })
+
+  byId<HTMLFormElement>('searchForm')?.addEventListener('submit', async (event) => {
+    event.preventDefault()
+    try {
+      await runSearch(byId<HTMLButtonElement>('searchSubmitButton'))
+    } catch (error) {
+      console.error(error)
+      setBanner(error instanceof Error ? error.message : 'Search failed.', 'error')
+    }
+  })
+
+  byId<HTMLButtonElement>('refreshCacheButton')?.addEventListener('click', async () => {
+    try {
+      await refreshPublicCache(byId<HTMLButtonElement>('refreshCacheButton'))
+    } catch (error) {
+      console.error(error)
+      setBanner(error instanceof Error ? error.message : 'Cache refresh failed.', 'error')
+    }
+  })
+
+  byId<HTMLButtonElement>('runIntegrityButton')?.addEventListener('click', async () => {
+    try {
+      await runIntegrity(byId<HTMLButtonElement>('runIntegrityButton'))
+      renderDashboardHealth()
+    } catch (error) {
+      console.error(error)
+      setBanner(error instanceof Error ? error.message : 'Integrity scan failed.', 'error')
+    }
+  })
+
+  byId<HTMLDivElement>('dashboardBrands')?.addEventListener('click', async (event) => {
+    const target = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]')
+    if (!target) return
+
+    try {
+      if (target.dataset.action === 'open-brand-catalog') {
+        const brandId = target.dataset.id || ''
+        setFocus({ brandId })
+        revealWorkspace('catalog', { scroll: true })
+        return
+      }
+
+      if (target.dataset.action === 'brand-files') {
+        await openFilesWorkspace({ brandId: target.dataset.id || '' })
+      }
+    } catch (error) {
+      console.error(error)
+      setBanner(error instanceof Error ? error.message : 'Dashboard action failed.', 'error')
+    }
+  })
+
+  byId<HTMLDivElement>('dashboardRecentFiles')?.addEventListener('click', async (event) => {
+    const target = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]')
+    if (!target) return
+
+    try {
+      if (target.dataset.action === 'edit-dashboard-file') {
+        const file = getKnownFiles().find((item) => item.id === (target.dataset.id || ''))
+        if (file) {
+          populateFileForm(file)
+        }
+      }
+
+      if (target.dataset.action === 'category-files') {
+        await openFilesWorkspace({ categoryId: target.dataset.id || '' })
+      }
+    } catch (error) {
+      console.error(error)
+      setBanner(error instanceof Error ? error.message : 'Recent file action failed.', 'error')
+    }
+  })
+
+  byId<HTMLDivElement>('catalogExplorer')?.addEventListener('click', async (event) => {
+    const target = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]')
+    if (!target) return
+
+    const action = target.dataset.action || ''
+    const id = target.dataset.id || ''
+
+    try {
+      if (action === 'focus-brand') {
+        setFocus({ brandId: id })
+      } else if (action === 'edit-brand') {
+        const brand = getBrandById(id)
+        if (brand) populateBrandForm(brand)
+      } else if (action === 'delete-brand') {
+        await deleteBrand(id)
+      } else if (action === 'brand-files') {
+        await openFilesWorkspace({ brandId: id })
+      } else if (action === 'new-category-in-brand') {
+        prepareNewCategoryForm(id, '')
+      } else if (action === 'new-file-in-brand') {
+        prepareNewFileForm(id, '')
+      } else if (action === 'focus-category') {
+        setFocus({ categoryId: id })
+      } else if (action === 'edit-category') {
+        const category = getCategoryById(id)
+        if (category) populateCategoryForm(category)
+      } else if (action === 'delete-category') {
+        await deleteCategory(id)
+      } else if (action === 'category-files') {
+        await openFilesWorkspace({ categoryId: id })
+      } else if (action === 'new-subcategory') {
+        const category = getCategoryById(id)
+        if (category) prepareNewCategoryForm(category.brandId, category.id)
+      } else if (action === 'new-file-in-category') {
+        const category = getCategoryById(id)
+        if (category) prepareNewFileForm(category.brandId, category.id)
+      }
+    } catch (error) {
+      console.error(error)
+      setBanner(error instanceof Error ? error.message : 'Catalog action failed.', 'error')
+    }
+  })
+
+  byId<HTMLTableSectionElement>('fileTableBody')?.addEventListener('click', async (event) => {
+    const target = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]')
+    if (!target) return
+
+    const fileId = target.dataset.id || ''
+
+    try {
+      if (target.dataset.action === 'edit-file') {
+        const file = getKnownFiles().find((item) => item.id === fileId)
+        if (file) {
+          populateFileForm(file)
+        }
+      }
+
+      if (target.dataset.action === 'delete-file') {
+        await deleteFile(fileId)
+      }
+    } catch (error) {
+      console.error(error)
+      setBanner(error instanceof Error ? error.message : 'File action failed.', 'error')
+    }
+  })
+
+  byId<HTMLDivElement>('searchResults')?.addEventListener('click', async (event) => {
+    const target = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]')
+    if (!target) return
+
+    try {
+      if (target.dataset.action === 'edit-search-file') {
+        const fileId = target.dataset.id || ''
+        const file = getKnownFiles().find((item) => item.id === fileId)
+        if (file) {
+          populateFileForm(file)
+        }
+      }
+
+      if (target.dataset.action === 'search-open-folder') {
+        await openFilesWorkspace({ categoryId: target.dataset.id || '' })
+      }
+    } catch (error) {
+      console.error(error)
+      setBanner(error instanceof Error ? error.message : 'Search action failed.', 'error')
+    }
+  })
+}
+
+void [
+  renderShellLegacy,
+  renderBrandList,
+  renderCategoryList,
+  renderFileTableLegacy,
+  renderSearchResultsLegacy,
+  renderIntegrityResultsLegacy,
+  bindStaticEventsLegacy,
+]
+
 const bootstrapAdmin = async () => {
   state.apiBaseUrl = window.localStorage.getItem(API_STORAGE_KEY) || getConfigAdminBaseUrl()
   state.token = window.localStorage.getItem(TOKEN_STORAGE_KEY) || ''
@@ -1655,8 +2912,10 @@ const bootstrapAdmin = async () => {
   syncViewModes()
   renderBanner()
   renderStats()
-  renderBrandList()
-  renderCategoryList()
+  renderDashboardBrands()
+  renderDashboardRecentFiles()
+  renderDashboardHealth()
+  renderCatalogExplorer()
   renderFileTable()
   renderSearchResults()
   renderIntegrityResults()
@@ -1670,6 +2929,7 @@ const bootstrapAdmin = async () => {
 
   if (!state.token) {
     setBanner('Admin token belum diisi. Paste token lalu klik Connect Panel.', 'warning')
+    revealWorkspace('dashboard')
     return
   }
 
