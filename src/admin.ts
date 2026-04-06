@@ -2988,6 +2988,10 @@ const bindStaticEvents = () => {
     setBanner('Stored token cleared from this browser.', 'warning')
   })
 
+  byId<HTMLButtonElement>('fileAutofillButton')?.addEventListener('click', () => {
+    autofillFileFieldsFromLink()
+  })
+
   byId<HTMLButtonElement>('closeComposerButton')?.addEventListener('click', () => {
     closeComposer()
   })
@@ -3002,6 +3006,26 @@ const bindStaticEvents = () => {
   window.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && state.editorOpen) {
       closeComposer()
+      return
+    }
+
+    if (event.key === 'Escape' && confirmResolver) {
+      closeConfirmDialog(false)
+    }
+  })
+
+  byId<HTMLButtonElement>('confirmDialogAccept')?.addEventListener('click', () => {
+    closeConfirmDialog(true)
+  })
+
+  byId<HTMLButtonElement>('confirmDialogCancel')?.addEventListener('click', () => {
+    closeConfirmDialog(false)
+  })
+
+  byId<HTMLDivElement>('adminConfirmOverlay')?.addEventListener('click', (event) => {
+    const target = event.target as HTMLElement
+    if (target.closest('[data-close-confirm="true"]')) {
+      closeConfirmDialog(false)
     }
   })
 
