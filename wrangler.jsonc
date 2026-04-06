@@ -3,6 +3,14 @@
   "name": "aosunlocker",
   "main": "./worker/index.js",
   "compatibility_date": "2026-04-06",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "aosunlocker",
+      "database_id": "47377e88-dd8f-42d5-a835-07766a62becf",
+      "preview_database_id": "47377e88-dd8f-42d5-a835-07766a62becf"
+    }
+  ],
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS"
