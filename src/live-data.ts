@@ -510,14 +510,30 @@ const dedupeBrands = (brands: Array<{ id?: string; label?: string }>) => {
 }
 
 const dedupeCategories = (categories: PublicCategoryRecord[]) => {
-  const seen = new Set<string>()
+  const knownIds = new Set(
+    categories
+      .map((item) => String(item.id || '').trim().toLowerCase())
+      .filter(Boolean),
+  )
+  const selected = new Map<string, PublicCategoryRecord & { _sourceIndex?: number }>()
 
-  return categories.filter((item) => {
+  categories.forEach((item, index) => {
     const categoryKey = String(item.id || '').trim().toLowerCase()
-    if (!categoryKey || seen.has(categoryKey)) return false
-    seen.add(categoryKey)
-    return true
+    if (!categoryKey) return
+
+    const candidate = { ...item, _sourceIndex: index }
+    const existing = selected.get(categoryKey)
+    if (!existing) {
+      selected.set(categoryKey, candidate)
+      return
+    }
+
+    selected.set(categoryKey, pickPreferredCategoryRecord(existing, candidate, knownIds))
   })
+
+  return Array.from(selected.values())
+    .sort((left, right) => Number(left._sourceIndex || 0) - Number(right._sourceIndex || 0))
+    .map(({ _sourceIndex, ...item }) => item)
 }
 
 const dedupeFiles = (files: PublicFileRecord[]) => {
@@ -546,6 +562,40 @@ const dedupeDownloadFiles = (files: DownloadListFile[]) => {
   })
 
   return Array.from(uniqueFiles.values())
+}
+
+const pickPreferredCategoryRecord = (
+  current: PublicCategoryRecord & { _sourceIndex?: number },
+  candidate: PublicCategoryRecord & { _sourceIndex?: number },
+  knownIds: Set<string>,
+) => {
+  const currentScore = getCategoryRecordScore(current, knownIds)
+  const candidateScore = getCategoryRecordScore(candidate, knownIds)
+
+  if (candidateScore !== currentScore) {
+    return candidateScore > currentScore ? candidate : current
+  }
+
+  return Number(candidate._sourceIndex || 0) >= Number(current._sourceIndex || 0) ? candidate : current
+}
+
+const getCategoryRecordScore = (
+  item: PublicCategoryRecord,
+  knownIds: Set<string>,
+) => {
+  const categoryId = String(item.id || '').trim().toLowerCase()
+  const brandId = String(item.brandId || '').trim().toLowerCase()
+  const label = String(item.label || '').trim()
+  const parentCategoryId = String(item.parentCategoryId || '').trim().toLowerCase()
+  const hasKnownParent = Boolean(parentCategoryId && knownIds.has(parentCategoryId) && parentCategoryId !== categoryId)
+
+  let score = 0
+  if (brandId) score += 1
+  if (label) score += 2
+  if (!parentCategoryId) score += 1
+  if (hasKnownParent) score += 3
+
+  return score
 }
 
 const toBrandSearchLabel = (brandId?: string) => {

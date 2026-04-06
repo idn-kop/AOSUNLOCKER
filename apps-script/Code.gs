@@ -8,7 +8,7 @@ const META_HEADERS = ['key', 'value'];
 const PUBLIC_CACHE_VERSION_KEY = 'public_cache_version';
 const LAST_ADMIN_UPDATE_KEY = 'last_admin_update';
 const PUBLIC_REFRESH_URL_PROPERTY = 'AOSUNLOCKER_PUBLIC_REFRESH_URL';
-const DEFAULT_PUBLIC_REFRESH_URL = 'https://script.google.com/macros/s/AKfycbxw9cz3qQ3KMozWE6YtYZ4rhVow8tj-XntjY8RrS7VTgC7_f-H7Jkobj9FIqlVM5I7Z/exec';
+const DEFAULT_PUBLIC_REFRESH_URL = 'https://script.google.com/macros/s/AKfycbx4TPaaYSdoz9-GAWOUrrdNE3J_vdcxA0BQKiU89LulASntSpKMzL1O4aMwYZavq-hy/exec';
 
 const DOWNLOADS_HEADERS = [
   'id',
@@ -62,6 +62,22 @@ function doGet(e) {
 
 function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+
+function withMutationLock_(callback) {
+  const lock = LockService.getScriptLock();
+
+  try {
+    lock.waitLock(30000);
+  } catch (error) {
+    throw new Error('Another admin change is still running. Please wait a few seconds and try again.');
+  }
+
+  try {
+    return callback();
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function getBootstrapData() {
@@ -385,405 +401,421 @@ function runIntegrityScan() {
 }
 
 function repairIncompleteCategoryRows() {
-  ensureSchema_();
+  return withMutationLock_(function() {
+    ensureSchema_();
 
-  const settingsSheet = getSettingsSheet_();
-  const values = settingsSheet.getDataRange().getValues();
-  if (!values.length) {
-    return {
-      ok: true,
-      removed: 0,
-      message: 'Settings sheet is already clean.',
-      brands: getBrands_(),
-      categories: getCategories_(),
-      recentFiles: getRecentFiles_(),
-      report: runIntegrityScan(),
-    };
-  }
-
-  const rowIndexes = [];
-  values.slice(1).forEach(function(row, index) {
-    const brandId = String(row[0] || '').trim();
-    const brandLabel = String(row[1] || '').trim();
-    const categoryId = String(row[2] || '').trim();
-    const categoryLabel = String(row[3] || '').trim();
-    const filledCount = [brandId, brandLabel, categoryId, categoryLabel].filter(function(item) {
-      return Boolean(item);
-    }).length;
-
-    if (filledCount > 0 && filledCount < 4) {
-      rowIndexes.push(index + 2);
+    const settingsSheet = getSettingsSheet_();
+    const values = settingsSheet.getDataRange().getValues();
+    if (!values.length) {
+      return {
+        ok: true,
+        removed: 0,
+        message: 'Settings sheet is already clean.',
+        brands: getBrands_(),
+        categories: getCategories_(),
+        recentFiles: getRecentFiles_(),
+        report: runIntegrityScan(),
+      };
     }
-  });
 
-  if (!rowIndexes.length) {
-    return {
-      ok: true,
-      removed: 0,
-      message: 'No incomplete folder rows were found.',
-      brands: getBrands_(),
-      categories: getCategories_(),
-      recentFiles: getRecentFiles_(),
-      report: runIntegrityScan(),
-    };
-  }
+    const rowIndexes = [];
+    values.slice(1).forEach(function(row, index) {
+      const brandId = String(row[0] || '').trim();
+      const brandLabel = String(row[1] || '').trim();
+      const categoryId = String(row[2] || '').trim();
+      const categoryLabel = String(row[3] || '').trim();
+      const filledCount = [brandId, brandLabel, categoryId, categoryLabel].filter(function(item) {
+        return Boolean(item);
+      }).length;
 
-  rowIndexes
-    .slice()
-    .sort(function(left, right) {
-      return right - left;
-    })
-    .forEach(function(rowIndex) {
-      settingsSheet.deleteRow(rowIndex);
+      if (filledCount > 0 && filledCount < 4) {
+        rowIndexes.push(index + 2);
+      }
     });
 
-  ensureSchema_();
-  touchPublicCacheVersion_();
+    if (!rowIndexes.length) {
+      return {
+        ok: true,
+        removed: 0,
+        message: 'No incomplete folder rows were found.',
+        brands: getBrands_(),
+        categories: getCategories_(),
+        recentFiles: getRecentFiles_(),
+        report: runIntegrityScan(),
+      };
+    }
 
-  return {
-    ok: true,
-    removed: rowIndexes.length,
-    message: rowIndexes.length === 1
-      ? 'Removed 1 incomplete folder row.'
-      : 'Removed ' + rowIndexes.length + ' incomplete folder rows.',
-    brands: getBrands_(),
-    categories: getCategories_(),
-    recentFiles: getRecentFiles_(),
-    report: runIntegrityScan(),
-  };
+    rowIndexes
+      .slice()
+      .sort(function(left, right) {
+        return right - left;
+      })
+      .forEach(function(rowIndex) {
+        settingsSheet.deleteRow(rowIndex);
+      });
+
+    ensureSchema_();
+    touchPublicCacheVersion_();
+
+    return {
+      ok: true,
+      removed: rowIndexes.length,
+      message: rowIndexes.length === 1
+        ? 'Removed 1 incomplete folder row.'
+        : 'Removed ' + rowIndexes.length + ' incomplete folder rows.',
+      brands: getBrands_(),
+      categories: getCategories_(),
+      recentFiles: getRecentFiles_(),
+      report: runIntegrityScan(),
+    };
+  });
 }
 
 function addBrand(payload) {
-  ensureSchema_();
+  return withMutationLock_(function() {
+    ensureSchema_();
 
-  const brandId = String(payload && payload.brandId ? payload.brandId : '')
-    .trim()
-    .toLowerCase();
-  const brandLabel = String(payload && payload.brandLabel ? payload.brandLabel : '').trim();
+    const brandId = String(payload && payload.brandId ? payload.brandId : '')
+      .trim()
+      .toLowerCase();
+    const brandLabel = String(payload && payload.brandLabel ? payload.brandLabel : '').trim();
 
-  if (!brandId) throw new Error('Brand ID is required.');
-  if (!brandLabel) throw new Error('Brand label is required.');
-  if (!/^[a-z0-9-]+$/.test(brandId)) {
-    throw new Error('Brand ID can only contain lowercase letters, numbers, and dashes.');
-  }
+    if (!brandId) throw new Error('Brand ID is required.');
+    if (!brandLabel) throw new Error('Brand label is required.');
+    if (!/^[a-z0-9-]+$/.test(brandId)) {
+      throw new Error('Brand ID can only contain lowercase letters, numbers, and dashes.');
+    }
 
-  const brands = getBrands_();
-  const exists = brands.some(function(item) {
-    return item.id === brandId;
+    const brands = getBrands_();
+    const exists = brands.some(function(item) {
+      return item.id === brandId;
+    });
+
+    if (exists) {
+      throw new Error('Brand ID already exists.');
+    }
+
+    getBrandsSheet_().appendRow([brandId, brandLabel]);
+    touchPublicCacheVersion_();
+
+    return {
+      ok: true,
+      message: 'Brand created successfully.',
+      brands: getBrands_(),
+      categories: getCategories_(),
+    };
   });
-
-  if (exists) {
-    throw new Error('Brand ID already exists.');
-  }
-
-  getBrandsSheet_().appendRow([brandId, brandLabel]);
-  touchPublicCacheVersion_();
-
-  return {
-    ok: true,
-    message: 'Brand created successfully.',
-    brands: getBrands_(),
-    categories: getCategories_(),
-  };
 }
 
 function updateBrand(payload) {
-  ensureSchema_();
+  return withMutationLock_(function() {
+    ensureSchema_();
 
-  if (!payload) {
-    throw new Error('Missing brand payload.');
-  }
+    if (!payload) {
+      throw new Error('Missing brand payload.');
+    }
 
-  const originalBrandId = String(payload.originalBrandId || '').trim().toLowerCase();
-  const brandLabel = String(payload.brandLabel || '').trim();
+    const originalBrandId = String(payload.originalBrandId || '').trim().toLowerCase();
+    const brandLabel = String(payload.brandLabel || '').trim();
 
-  if (!originalBrandId) throw new Error('Original brand ID is missing.');
-  if (!brandLabel) throw new Error('Brand label is required.');
+    if (!originalBrandId) throw new Error('Original brand ID is missing.');
+    if (!brandLabel) throw new Error('Brand label is required.');
 
-  const brandsSheet = getBrandsSheet_();
-  const values = brandsSheet.getDataRange().getValues();
-  const rowIndex = values.findIndex(function(row, index) {
-    if (index === 0) return false;
-    return String(row[0] || '').trim().toLowerCase() === originalBrandId;
+    const brandsSheet = getBrandsSheet_();
+    const values = brandsSheet.getDataRange().getValues();
+    const rowIndex = values.findIndex(function(row, index) {
+      if (index === 0) return false;
+      return String(row[0] || '').trim().toLowerCase() === originalBrandId;
+    });
+
+    if (rowIndex === -1) {
+      throw new Error('Brand row not found.');
+    }
+
+    brandsSheet.getRange(rowIndex + 1, 1, 1, 2).setValues([[originalBrandId, brandLabel]]);
+    syncSettingsBrandUpdate_(originalBrandId, originalBrandId, brandLabel);
+    syncDownloadsBrandUpdate_(originalBrandId, originalBrandId, brandLabel);
+    touchPublicCacheVersion_();
+
+    return {
+      ok: true,
+      message: 'Brand updated successfully.',
+      brands: getBrands_(),
+      categories: getCategories_(),
+      recentFiles: getRecentFiles_(),
+    };
   });
-
-  if (rowIndex === -1) {
-    throw new Error('Brand row not found.');
-  }
-
-  brandsSheet.getRange(rowIndex + 1, 1, 1, 2).setValues([[originalBrandId, brandLabel]]);
-  syncSettingsBrandUpdate_(originalBrandId, originalBrandId, brandLabel);
-  syncDownloadsBrandUpdate_(originalBrandId, originalBrandId, brandLabel);
-  touchPublicCacheVersion_();
-
-  return {
-    ok: true,
-    message: 'Brand updated successfully.',
-    brands: getBrands_(),
-    categories: getCategories_(),
-    recentFiles: getRecentFiles_(),
-  };
 }
 
 function deleteBrand(brandId) {
-  ensureSchema_();
+  return withMutationLock_(function() {
+    ensureSchema_();
 
-  const targetId = String(brandId || '').trim().toLowerCase();
-  if (!targetId) {
-    throw new Error('Brand ID is missing.');
-  }
+    const targetId = String(brandId || '').trim().toLowerCase();
+    if (!targetId) {
+      throw new Error('Brand ID is missing.');
+    }
 
-  const brandsSheet = getBrandsSheet_();
-  const values = brandsSheet.getDataRange().getValues();
-  const rowIndex = values.findIndex(function(row, index) {
-    if (index === 0) return false;
-    return String(row[0] || '').trim().toLowerCase() === targetId;
+    const brandsSheet = getBrandsSheet_();
+    const values = brandsSheet.getDataRange().getValues();
+    const rowIndex = values.findIndex(function(row, index) {
+      if (index === 0) return false;
+      return String(row[0] || '').trim().toLowerCase() === targetId;
+    });
+
+    if (rowIndex === -1) {
+      throw new Error('Brand row not found.');
+    }
+
+    const categoryCount = countCategoriesForBrand_(targetId);
+    const fileCount = countFilesForBrand_(targetId);
+    if (categoryCount || fileCount) {
+      throw new Error(
+        'This brand still has ' + categoryCount + ' categories and ' + fileCount + ' files. Remove or move them first.'
+      );
+    }
+
+    brandsSheet.deleteRow(rowIndex + 1);
+    touchPublicCacheVersion_();
+
+    return {
+      ok: true,
+      message: 'Brand deleted successfully.',
+      brands: getBrands_(),
+      categories: getCategories_(),
+      recentFiles: getRecentFiles_(),
+    };
   });
-
-  if (rowIndex === -1) {
-    throw new Error('Brand row not found.');
-  }
-
-  const categoryCount = countCategoriesForBrand_(targetId);
-  const fileCount = countFilesForBrand_(targetId);
-  if (categoryCount || fileCount) {
-    throw new Error(
-      'This brand still has ' + categoryCount + ' categories and ' + fileCount + ' files. Remove or move them first.'
-    );
-  }
-
-  brandsSheet.deleteRow(rowIndex + 1);
-  touchPublicCacheVersion_();
-
-  return {
-    ok: true,
-    message: 'Brand deleted successfully.',
-    brands: getBrands_(),
-    categories: getCategories_(),
-    recentFiles: getRecentFiles_(),
-  };
 }
 
 function addCategory(payload) {
-  ensureSchema_();
+  return withMutationLock_(function() {
+    ensureSchema_();
 
-  if (!payload) {
-    throw new Error('Missing category payload.');
-  }
+    if (!payload) {
+      throw new Error('Missing category payload.');
+    }
 
-  const brandId = String(payload.brandId || '').trim().toLowerCase();
-  const brandLabel = getBrandLabel_(brandId);
-  const categoryLabel = String(payload.categoryLabel || '').trim();
-  const customCategoryId = String(payload.categoryId || '').trim();
-  const parentCategoryId = String(payload.parentCategoryId || '').trim();
+    const brandId = String(payload.brandId || '').trim().toLowerCase();
+    const brandLabel = getBrandLabel_(brandId);
+    const categoryLabel = String(payload.categoryLabel || '').trim();
+    const customCategoryId = String(payload.categoryId || '').trim();
+    const parentCategoryId = String(payload.parentCategoryId || '').trim();
 
-  if (!brandId) throw new Error('Brand is required.');
-  if (!categoryLabel) throw new Error('Category label is required.');
+    if (!brandId) throw new Error('Brand is required.');
+    if (!categoryLabel) throw new Error('Category label is required.');
 
-  const categoryId = customCategoryId || buildCategoryId_(brandId, categoryLabel, parentCategoryId);
-  const categories = getCategories_();
-  const exists = categories.some(function(item) {
-    return String(item.id || '').trim() === categoryId;
-  });
-
-  if (exists) {
-    throw new Error('Category ID already exists.');
-  }
-
-  if (parentCategoryId) {
-    const parentCategory = categories.find(function(item) {
-      return String(item.id || '').trim() === parentCategoryId;
+    const categoryId = customCategoryId || buildCategoryId_(brandId, categoryLabel, parentCategoryId);
+    const categories = getCategories_();
+    const exists = categories.some(function(item) {
+      return String(item.id || '').trim() === categoryId;
     });
 
-    if (!parentCategory) {
-      throw new Error('Parent folder was not found.');
+    if (exists) {
+      throw new Error('Category ID already exists.');
     }
 
-    if (String(parentCategory.brandId || '').trim().toLowerCase() !== brandId) {
-      throw new Error('Parent folder belongs to a different brand.');
+    if (parentCategoryId) {
+      const parentCategory = categories.find(function(item) {
+        return String(item.id || '').trim() === parentCategoryId;
+      });
+
+      if (!parentCategory) {
+        throw new Error('Parent folder was not found.');
+      }
+
+      if (String(parentCategory.brandId || '').trim().toLowerCase() !== brandId) {
+        throw new Error('Parent folder belongs to a different brand.');
+      }
+
+      if (parentCategoryId === categoryId) {
+        throw new Error('Folder cannot be its own parent.');
+      }
     }
 
-    if (parentCategoryId === categoryId) {
-      throw new Error('Folder cannot be its own parent.');
-    }
-  }
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SETTINGS_SHEET_NAME);
+    sheet.appendRow([brandId, brandLabel, categoryId, categoryLabel, parentCategoryId]);
+    touchPublicCacheVersion_();
 
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SETTINGS_SHEET_NAME);
-  sheet.appendRow([brandId, brandLabel, categoryId, categoryLabel, parentCategoryId]);
-  touchPublicCacheVersion_();
-
-  return {
-    ok: true,
-    message: 'Category created successfully.',
-    brands: getBrands_(),
-    categories: getCategories_(),
-  };
+    return {
+      ok: true,
+      message: 'Category created successfully.',
+      brands: getBrands_(),
+      categories: getCategories_(),
+    };
+  });
 }
 
 function updateCategory(payload) {
-  ensureSchema_();
+  return withMutationLock_(function() {
+    ensureSchema_();
 
-  if (!payload) {
-    throw new Error('Missing category payload.');
-  }
+    if (!payload) {
+      throw new Error('Missing category payload.');
+    }
 
-  const originalCategoryId = String(payload.originalCategoryId || '').trim();
-  const brandId = String(payload.brandId || '').trim().toLowerCase();
-  const brandLabel = getBrandLabel_(brandId);
-  const categoryLabel = String(payload.categoryLabel || '').trim();
-  const customCategoryId = String(payload.categoryId || '').trim();
-  const parentCategoryId = String(payload.parentCategoryId || '').trim();
+    const originalCategoryId = String(payload.originalCategoryId || '').trim();
+    const brandId = String(payload.brandId || '').trim().toLowerCase();
+    const brandLabel = getBrandLabel_(brandId);
+    const categoryLabel = String(payload.categoryLabel || '').trim();
+    const customCategoryId = String(payload.categoryId || '').trim();
+    const parentCategoryId = String(payload.parentCategoryId || '').trim();
 
-  if (!originalCategoryId) throw new Error('Original category ID is missing.');
-  if (!brandId) throw new Error('Brand is required.');
-  if (!categoryLabel) throw new Error('Category label is required.');
+    if (!originalCategoryId) throw new Error('Original category ID is missing.');
+    if (!brandId) throw new Error('Brand is required.');
+    if (!categoryLabel) throw new Error('Category label is required.');
 
-  const nextCategoryId = customCategoryId || buildCategoryId_(brandId, categoryLabel, parentCategoryId);
-  const settingsSheet = getSettingsSheet_();
-  const values = settingsSheet.getDataRange().getValues();
-  const rowIndex = values.findIndex(function(row, index) {
-    if (index === 0) return false;
-    return String(row[2] || row[0] || '').trim() === originalCategoryId;
-  });
-
-  if (rowIndex === -1) {
-    throw new Error('Category row not found.');
-  }
-
-  const categories = getCategories_();
-  const currentCategory = categories.find(function(item) {
-    return item.id === originalCategoryId;
-  });
-  const descendantIds = getCategoryDescendantIds_(categories, originalCategoryId);
-  const duplicate = categories.some(function(item) {
-    return item.id === nextCategoryId && item.id !== originalCategoryId;
-  });
-
-  if (duplicate) {
-    throw new Error('Category ID already exists.');
-  }
-
-  if (parentCategoryId === originalCategoryId || parentCategoryId === nextCategoryId) {
-    throw new Error('Folder cannot be its own parent.');
-  }
-
-  if (parentCategoryId && descendantIds.indexOf(parentCategoryId) >= 0) {
-    throw new Error("Parent folder cannot be one of this folder's children.");
-  }
-
-  if (descendantIds.length && currentCategory && currentCategory.brandId !== brandId) {
-    throw new Error('Move or delete subfolders first before changing this folder to another brand.');
-  }
-
-  if (parentCategoryId) {
-    const parentCategory = categories.find(function(item) {
-      return item.id === parentCategoryId;
+    const nextCategoryId = customCategoryId || buildCategoryId_(brandId, categoryLabel, parentCategoryId);
+    const settingsSheet = getSettingsSheet_();
+    const values = settingsSheet.getDataRange().getValues();
+    const rowIndex = values.findIndex(function(row, index) {
+      if (index === 0) return false;
+      return String(row[2] || row[0] || '').trim() === originalCategoryId;
     });
 
-    if (!parentCategory) {
-      throw new Error('Parent folder was not found.');
+    if (rowIndex === -1) {
+      throw new Error('Category row not found.');
     }
 
-    if (String(parentCategory.brandId || '').trim().toLowerCase() !== brandId) {
-      throw new Error('Parent folder belongs to a different brand.');
+    const categories = getCategories_();
+    const currentCategory = categories.find(function(item) {
+      return item.id === originalCategoryId;
+    });
+    const descendantIds = getCategoryDescendantIds_(categories, originalCategoryId);
+    const duplicate = categories.some(function(item) {
+      return item.id === nextCategoryId && item.id !== originalCategoryId;
+    });
+
+    if (duplicate) {
+      throw new Error('Category ID already exists.');
     }
-  }
 
-  settingsSheet.getRange(rowIndex + 1, 1, 1, SETTINGS_HEADERS.length).setValues([[brandId, brandLabel, nextCategoryId, categoryLabel, parentCategoryId]]);
-  if (originalCategoryId !== nextCategoryId) {
-    syncSettingsCategoryParentUpdate_(originalCategoryId, nextCategoryId);
-  }
-  syncDownloadsCategoryUpdate_(originalCategoryId, nextCategoryId, categoryLabel, brandId, brandLabel);
-  touchPublicCacheVersion_();
+    if (parentCategoryId === originalCategoryId || parentCategoryId === nextCategoryId) {
+      throw new Error('Folder cannot be its own parent.');
+    }
 
-  return {
-    ok: true,
-    message: 'Category updated successfully.',
-    brands: getBrands_(),
-    categories: getCategories_(),
-  };
+    if (parentCategoryId && descendantIds.indexOf(parentCategoryId) >= 0) {
+      throw new Error("Parent folder cannot be one of this folder's children.");
+    }
+
+    if (descendantIds.length && currentCategory && currentCategory.brandId !== brandId) {
+      throw new Error('Move or delete subfolders first before changing this folder to another brand.');
+    }
+
+    if (parentCategoryId) {
+      const parentCategory = categories.find(function(item) {
+        return item.id === parentCategoryId;
+      });
+
+      if (!parentCategory) {
+        throw new Error('Parent folder was not found.');
+      }
+
+      if (String(parentCategory.brandId || '').trim().toLowerCase() !== brandId) {
+        throw new Error('Parent folder belongs to a different brand.');
+      }
+    }
+
+    settingsSheet.getRange(rowIndex + 1, 1, 1, SETTINGS_HEADERS.length).setValues([[brandId, brandLabel, nextCategoryId, categoryLabel, parentCategoryId]]);
+    if (originalCategoryId !== nextCategoryId) {
+      syncSettingsCategoryParentUpdate_(originalCategoryId, nextCategoryId);
+    }
+    syncDownloadsCategoryUpdate_(originalCategoryId, nextCategoryId, categoryLabel, brandId, brandLabel);
+    touchPublicCacheVersion_();
+
+    return {
+      ok: true,
+      message: 'Category updated successfully.',
+      brands: getBrands_(),
+      categories: getCategories_(),
+    };
+  });
 }
 
 function deleteCategory(categoryId) {
-  ensureSchema_();
+  return withMutationLock_(function() {
+    ensureSchema_();
 
-  const targetId = String(categoryId || '').trim();
-  if (!targetId) {
-    throw new Error('Category ID is missing.');
-  }
+    const targetId = String(categoryId || '').trim();
+    if (!targetId) {
+      throw new Error('Category ID is missing.');
+    }
 
-  const settingsSheet = getSettingsSheet_();
-  const values = settingsSheet.getDataRange().getValues();
-  const rowIndex = values.findIndex(function(row, index) {
-    if (index === 0) return false;
-    return String(row[2] || row[0] || '').trim() === targetId;
+    const settingsSheet = getSettingsSheet_();
+    const values = settingsSheet.getDataRange().getValues();
+    const rowIndex = values.findIndex(function(row, index) {
+      if (index === 0) return false;
+      return String(row[2] || row[0] || '').trim() === targetId;
+    });
+
+    if (rowIndex === -1) {
+      throw new Error('Category row not found.');
+    }
+
+    const linkedFileCount = countFilesForCategory_(targetId);
+    const childFolderCount = countChildCategories_(targetId);
+
+    if (linkedFileCount) {
+      throw new Error('This category still has ' + linkedFileCount + ' files. Move or remove them first.');
+    }
+
+    if (childFolderCount) {
+      throw new Error('This category still has ' + childFolderCount + ' subfolder' + (childFolderCount === 1 ? '' : 's') + '. Remove them first.');
+    }
+
+    settingsSheet.deleteRow(rowIndex + 1);
+    touchPublicCacheVersion_();
+
+    return {
+      ok: true,
+      message: 'Category deleted successfully.',
+      brands: getBrands_(),
+      categories: getCategories_(),
+    };
   });
-
-  if (rowIndex === -1) {
-    throw new Error('Category row not found.');
-  }
-
-  const linkedFileCount = countFilesForCategory_(targetId);
-  const childFolderCount = countChildCategories_(targetId);
-
-  if (linkedFileCount) {
-    throw new Error('This category still has ' + linkedFileCount + ' files. Move or remove them first.');
-  }
-
-  if (childFolderCount) {
-    throw new Error('This category still has ' + childFolderCount + ' subfolder' + (childFolderCount === 1 ? '' : 's') + '. Remove them first.');
-  }
-
-  settingsSheet.deleteRow(rowIndex + 1);
-  touchPublicCacheVersion_();
-
-  return {
-    ok: true,
-    message: 'Category deleted successfully.',
-    brands: getBrands_(),
-    categories: getCategories_(),
-  };
 }
 
 function deleteDownloadFile(fileId) {
-  ensureSchema_();
+  return withMutationLock_(function() {
+    ensureSchema_();
 
-  const targetId = String(fileId || '').trim();
-  if (!targetId) {
-    throw new Error('File ID is missing.');
-  }
-
-  const sheet = getDownloadsSheet_();
-  const values = sheet.getDataRange().getValues();
-  const rowIndexes = values.reduce(function(indexes, row, index) {
-    if (index > 0 && String(row[0] || '').trim() === targetId) {
-      indexes.push(index);
+    const targetId = String(fileId || '').trim();
+    if (!targetId) {
+      throw new Error('File ID is missing.');
     }
-    return indexes;
-  }, []);
 
-  if (!rowIndexes.length) {
-    throw new Error('File row was not found.');
-  }
+    const sheet = getDownloadsSheet_();
+    const values = sheet.getDataRange().getValues();
+    const rowIndexes = values.reduce(function(indexes, row, index) {
+      if (index > 0 && String(row[0] || '').trim() === targetId) {
+        indexes.push(index);
+      }
+      return indexes;
+    }, []);
 
-  rowIndexes
-    .slice()
-    .sort(function(left, right) {
-      return right - left;
-    })
-    .forEach(function(rowIndex) {
-      sheet.deleteRow(rowIndex + 1);
-    });
+    if (!rowIndexes.length) {
+      throw new Error('File row was not found.');
+    }
 
-  touchPublicCacheVersion_();
+    rowIndexes
+      .slice()
+      .sort(function(left, right) {
+        return right - left;
+      })
+      .forEach(function(rowIndex) {
+        sheet.deleteRow(rowIndex + 1);
+      });
 
-  return {
-    ok: true,
-    message: rowIndexes.length > 1
-      ? 'File deleted successfully. Removed ' + rowIndexes.length + ' duplicate rows with the same file ID.'
-      : 'File deleted successfully.',
-    recentFiles: getRecentFiles_(),
-  };
+    touchPublicCacheVersion_();
+
+    return {
+      ok: true,
+      message: rowIndexes.length > 1
+        ? 'File deleted successfully. Removed ' + rowIndexes.length + ' duplicate rows with the same file ID.'
+        : 'File deleted successfully.',
+      recentFiles: getRecentFiles_(),
+    };
+  });
 }
 
 function hasDownloadIdConflict_(values, fileId, currentRowIndex) {
@@ -851,105 +883,109 @@ function getDriveFileMeta(driveUrl) {
 }
 
 function addDownloadFile(payload) {
-  ensureSchema_();
+  return withMutationLock_(function() {
+    ensureSchema_();
 
-  const clean = sanitizePayload_(payload);
-  const now = new Date().toISOString();
-  const row = [
-    clean.id,
-    clean.brandId,
-    clean.brandLabel,
-    clean.categoryId,
-    clean.categoryLabel,
-    clean.title,
-    clean.subtitle,
-    clean.summary,
-    clean.date,
-    clean.size,
-    clean.visits,
-    clean.downloads,
-    clean.price,
-    clean.driveUrl,
-    clean.featured ? 'TRUE' : 'FALSE',
-    clean.status,
-    now,
-    now,
-  ];
+    const clean = sanitizePayload_(payload);
+    const now = new Date().toISOString();
+    const row = [
+      clean.id,
+      clean.brandId,
+      clean.brandLabel,
+      clean.categoryId,
+      clean.categoryLabel,
+      clean.title,
+      clean.subtitle,
+      clean.summary,
+      clean.date,
+      clean.size,
+      clean.visits,
+      clean.downloads,
+      clean.price,
+      clean.driveUrl,
+      clean.featured ? 'TRUE' : 'FALSE',
+      clean.status,
+      now,
+      now,
+    ];
 
-  const sheet = getDownloadsSheet_();
-  const values = sheet.getDataRange().getValues();
-  if (hasDownloadIdConflict_(values, clean.id)) {
-    throw new Error('A file with the same generated ID already exists. Edit the existing file instead of adding a duplicate.');
-  }
+    const sheet = getDownloadsSheet_();
+    const values = sheet.getDataRange().getValues();
+    if (hasDownloadIdConflict_(values, clean.id)) {
+      throw new Error('A file with the same generated ID already exists. Edit the existing file instead of adding a duplicate.');
+    }
 
-  sheet.appendRow(row);
-  touchPublicCacheVersion_();
+    sheet.appendRow(row);
+    touchPublicCacheVersion_();
 
-  return {
-    ok: true,
-    message: 'File saved successfully.',
-    file: toFileRecord_(row),
-    recentFiles: getRecentFiles_(),
-  };
+    return {
+      ok: true,
+      message: 'File saved successfully.',
+      file: toFileRecord_(row),
+      recentFiles: getRecentFiles_(),
+    };
+  });
 }
 
 function updateDownloadFile(payload) {
-  ensureSchema_();
+  return withMutationLock_(function() {
+    ensureSchema_();
 
-  const originalId = String(payload && payload.originalId ? payload.originalId : '').trim();
-  if (!originalId) {
-    throw new Error('Original file ID is missing.');
-  }
+    const originalId = String(payload && payload.originalId ? payload.originalId : '').trim();
+    if (!originalId) {
+      throw new Error('Original file ID is missing.');
+    }
 
-  const clean = sanitizePayload_(payload);
-  const sheet = getDownloadsSheet_();
-  const values = sheet.getDataRange().getValues();
-  const rowIndex = values.findIndex(function(row, index) {
-    return index > 0 && String(row[0] || '').trim() === originalId;
+    const clean = sanitizePayload_(payload);
+    const sheet = getDownloadsSheet_();
+    const values = sheet.getDataRange().getValues();
+    const rowIndex = values.findIndex(function(row, index) {
+      return index > 0 && String(row[0] || '').trim() === originalId;
+    });
+
+    if (rowIndex === -1) {
+      throw new Error('File row was not found.');
+    }
+
+    if (hasDownloadIdConflict_(values, clean.id, rowIndex)) {
+      throw new Error('Another file already uses this generated ID. Change the title or category, or edit the matching file instead.');
+    }
+
+    const existing = values[rowIndex];
+    const legacyRow = isLegacyRow_(existing);
+    const createdAt = legacyRow ? existing[11] || new Date().toISOString() : existing[14] || new Date().toISOString();
+    const updatedAt = new Date().toISOString();
+    const row = [
+      clean.id,
+      clean.brandId,
+      clean.brandLabel,
+      clean.categoryId,
+      clean.categoryLabel,
+      clean.title,
+      clean.subtitle,
+      clean.summary,
+      clean.date,
+      clean.size,
+      clean.visits,
+      clean.downloads,
+      clean.price,
+      clean.driveUrl,
+      clean.featured ? 'TRUE' : 'FALSE',
+      clean.status,
+      createdAt,
+      updatedAt,
+    ];
+
+    sheet.getRange(rowIndex + 1, 1, 1, row.length).setValues([row]);
+    touchPublicCacheVersion_();
+
+    return {
+      ok: true,
+      message: 'File updated successfully.',
+      file: toFileRecord_(row),
+      recentFiles: getRecentFiles_(),
+    };
   });
-
-  if (rowIndex === -1) {
-    throw new Error('File row was not found.');
-  }
-
-  if (hasDownloadIdConflict_(values, clean.id, rowIndex)) {
-    throw new Error('Another file already uses this generated ID. Change the title or category, or edit the matching file instead.');
-  }
-
-  const existing = values[rowIndex];
-  const legacyRow = isLegacyRow_(existing);
-  const createdAt = legacyRow ? existing[11] || new Date().toISOString() : existing[14] || new Date().toISOString();
-  const updatedAt = new Date().toISOString();
-  const row = [
-    clean.id,
-    clean.brandId,
-    clean.brandLabel,
-    clean.categoryId,
-    clean.categoryLabel,
-    clean.title,
-    clean.subtitle,
-    clean.summary,
-    clean.date,
-    clean.size,
-    clean.visits,
-    clean.downloads,
-    clean.price,
-    clean.driveUrl,
-    clean.featured ? 'TRUE' : 'FALSE',
-    clean.status,
-    createdAt,
-    updatedAt,
-  ];
-
-  sheet.getRange(rowIndex + 1, 1, 1, row.length).setValues([row]);
-  touchPublicCacheVersion_();
-
-  return {
-    ok: true,
-    message: 'File updated successfully.',
-    file: toFileRecord_(row),
-    recentFiles: getRecentFiles_(),
-  };
 }
 
 function ensureSchema_() {
@@ -1680,7 +1716,8 @@ function refreshPublicCacheEndpoint_(version, updatedAt) {
     const url = baseUrl +
       separator +
       'view=refresh&version=' + encodeURIComponent(String(version || '').trim()) +
-      '&updatedAt=' + encodeURIComponent(String(updatedAt || '').trim());
+      '&updatedAt=' + encodeURIComponent(String(updatedAt || '').trim()) +
+      '&warm=0';
 
     try {
       const response = UrlFetchApp.fetch(url, {
@@ -1749,14 +1786,37 @@ function dedupeBrands_(items) {
 }
 
 function dedupeCategories_(items) {
-  const seen = {};
+  const knownIds = {};
+  const selected = {};
 
-  return items.filter(function(item) {
+  items.forEach(function(item) {
     const categoryId = String((item && item.id) || '').trim().toLowerCase();
-    if (!categoryId || seen[categoryId]) return false;
-    seen[categoryId] = true;
-    return true;
+    if (!categoryId) return;
+    knownIds[categoryId] = true;
   });
+
+  items.forEach(function(item, index) {
+    const categoryId = String((item && item.id) || '').trim().toLowerCase();
+    if (!categoryId) return;
+
+    const candidate = Object.assign({}, item, { _sourceIndex: index });
+    const existing = selected[categoryId];
+    if (!existing) {
+      selected[categoryId] = candidate;
+      return;
+    }
+
+    selected[categoryId] = pickPreferredCategoryRecord_(existing, candidate, knownIds);
+  });
+
+  return Object.keys(selected)
+    .map(function(key) {
+      return selected[key];
+    })
+    .sort(function(left, right) {
+      return Number(left._sourceIndex || 0) - Number(right._sourceIndex || 0);
+    })
+    .map(stripInternalRecordMeta_);
 }
 
 function decorateCategories_(items) {
@@ -1873,12 +1933,106 @@ function hasCategoryCycleInRegistry_(categoryId, registry) {
 }
 
 function dedupeFiles_(items) {
-  const seen = {};
+  const selected = {};
 
-  return items.filter(function(item) {
+  items.forEach(function(item, index) {
     const key = String((item && item.id) || '').trim();
-    if (!key || seen[key]) return false;
-    seen[key] = true;
-    return true;
+    if (!key) return;
+
+    const candidate = Object.assign({}, item, { _sourceIndex: index });
+    const existing = selected[key];
+    if (!existing) {
+      selected[key] = candidate;
+      return;
+    }
+
+    selected[key] = pickPreferredFileRecord_(existing, candidate);
   });
+
+  return Object.keys(selected)
+    .map(function(key) {
+      return selected[key];
+    })
+    .sort(function(left, right) {
+      return Number(left._sourceIndex || 0) - Number(right._sourceIndex || 0);
+    })
+    .map(stripInternalRecordMeta_);
+}
+
+function pickPreferredCategoryRecord_(current, candidate, knownIds) {
+  const currentScore = getCategoryRecordScore_(current, knownIds);
+  const candidateScore = getCategoryRecordScore_(candidate, knownIds);
+
+  if (candidateScore !== currentScore) {
+    return candidateScore > currentScore ? candidate : current;
+  }
+
+  return Number(candidate._sourceIndex || 0) >= Number(current._sourceIndex || 0) ? candidate : current;
+}
+
+function getCategoryRecordScore_(item, knownIds) {
+  const categoryId = String((item && item.id) || '').trim().toLowerCase();
+  const brandId = String((item && item.brandId) || '').trim().toLowerCase();
+  const label = String((item && item.label) || '').trim();
+  const parentCategoryId = String((item && item.parentCategoryId) || '').trim().toLowerCase();
+  const hasKnownParent = Boolean(parentCategoryId && knownIds[parentCategoryId] && parentCategoryId !== categoryId);
+
+  var score = 0;
+  if (brandId) score += 1;
+  if (label) score += 2;
+  if (!parentCategoryId) score += 1;
+  if (hasKnownParent) score += 3;
+
+  return score;
+}
+
+function pickPreferredFileRecord_(current, candidate) {
+  const currentTime = getFileSortTime_(current);
+  const candidateTime = getFileSortTime_(candidate);
+
+  if (candidateTime !== currentTime) {
+    return candidateTime > currentTime ? candidate : current;
+  }
+
+  return Number(candidate._sourceIndex || 0) >= Number(current._sourceIndex || 0) ? candidate : current;
+}
+
+function getFileSortTime_(item) {
+  const values = [
+    item && item.updatedAt,
+    item && item.createdAt,
+    item && item.date,
+  ];
+
+  for (var i = 0; i < values.length; i += 1) {
+    const parsed = parseDateValue_(values[i]);
+    if (parsed > 0) {
+      return parsed;
+    }
+  }
+
+  return 0;
+}
+
+function parseDateValue_(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return 0;
+
+  const ddmmyyyy = raw.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (ddmmyyyy) {
+    return new Date(Number(ddmmyyyy[3]), Number(ddmmyyyy[2]) - 1, Number(ddmmyyyy[1])).getTime();
+  }
+
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+}
+
+function stripInternalRecordMeta_(item) {
+  if (!item || typeof item !== 'object') {
+    return item;
+  }
+
+  const clone = Object.assign({}, item);
+  delete clone._sourceIndex;
+  return clone;
 }

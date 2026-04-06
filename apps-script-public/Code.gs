@@ -26,7 +26,8 @@ function doGet(e) {
 
   if (view === 'refresh') {
     const requestedVersion = String((e && e.parameter && e.parameter.version) || '').trim();
-    return jsonOutput_(refreshPublicCache_(requestedVersion));
+    const shouldWarm = String((e && e.parameter && e.parameter.warm) || '').trim() === '1';
+    return jsonOutput_(refreshPublicCache_(requestedVersion, shouldWarm));
   }
 
   if (view === 'status') {
@@ -501,16 +502,19 @@ function serializePersistentJson_(value) {
   return '';
 }
 
-function refreshPublicCache_(requestedVersion) {
-  const fallbackVersion = String(getMetaValue_(PUBLIC_CACHE_VERSION_KEY) || '').trim();
-  const nextVersion = String(requestedVersion || fallbackVersion || Date.now()).trim();
+function refreshPublicCache_(requestedVersion, shouldWarm) {
+  const explicitVersion = String(requestedVersion || '').trim();
+  const nextVersion = explicitVersion || String(Date.now());
 
-  setCacheVersion_(nextVersion, false);
-  warmPublicCaches_();
+  setCacheVersion_(nextVersion, !explicitVersion);
+  if (shouldWarm) {
+    warmPublicCaches_();
+  }
 
   return {
     ok: true,
     cacheVersion: cacheVersionMemo_,
+    warmed: Boolean(shouldWarm),
     warmedAt: new Date().toISOString(),
   };
 }
@@ -744,14 +748,37 @@ function dedupeBrands_(items) {
 }
 
 function dedupeCategories_(items) {
-  const seen = {};
+  const knownIds = {};
+  const selected = {};
 
-  return items.filter(function(item) {
+  items.forEach(function(item) {
     const categoryId = String((item && item.id) || '').trim().toLowerCase();
-    if (!categoryId || seen[categoryId]) return false;
-    seen[categoryId] = true;
-    return true;
+    if (!categoryId) return;
+    knownIds[categoryId] = true;
   });
+
+  items.forEach(function(item, index) {
+    const categoryId = String((item && item.id) || '').trim().toLowerCase();
+    if (!categoryId) return;
+
+    const candidate = Object.assign({}, item, { _sourceIndex: index });
+    const existing = selected[categoryId];
+    if (!existing) {
+      selected[categoryId] = candidate;
+      return;
+    }
+
+    selected[categoryId] = pickPreferredCategoryRecord_(existing, candidate, knownIds);
+  });
+
+  return Object.keys(selected)
+    .map(function(key) {
+      return selected[key];
+    })
+    .sort(function(left, right) {
+      return Number(left._sourceIndex || 0) - Number(right._sourceIndex || 0);
+    })
+    .map(stripInternalRecordMeta_);
 }
 
 function decorateCategories_(items) {
@@ -819,14 +846,108 @@ function getCategoryDepth_(categoryId, map) {
 }
 
 function dedupeFiles_(items) {
-  const seen = {};
+  const selected = {};
 
-  return items.filter(function(item) {
+  items.forEach(function(item, index) {
     const key = String((item && item.id) || '').trim();
-    if (!key || seen[key]) return false;
-    seen[key] = true;
-    return true;
+    if (!key) return;
+
+    const candidate = Object.assign({}, item, { _sourceIndex: index });
+    const existing = selected[key];
+    if (!existing) {
+      selected[key] = candidate;
+      return;
+    }
+
+    selected[key] = pickPreferredFileRecord_(existing, candidate);
   });
+
+  return Object.keys(selected)
+    .map(function(key) {
+      return selected[key];
+    })
+    .sort(function(left, right) {
+      return Number(left._sourceIndex || 0) - Number(right._sourceIndex || 0);
+    })
+    .map(stripInternalRecordMeta_);
+}
+
+function pickPreferredCategoryRecord_(current, candidate, knownIds) {
+  const currentScore = getCategoryRecordScore_(current, knownIds);
+  const candidateScore = getCategoryRecordScore_(candidate, knownIds);
+
+  if (candidateScore !== currentScore) {
+    return candidateScore > currentScore ? candidate : current;
+  }
+
+  return Number(candidate._sourceIndex || 0) >= Number(current._sourceIndex || 0) ? candidate : current;
+}
+
+function getCategoryRecordScore_(item, knownIds) {
+  const categoryId = String((item && item.id) || '').trim().toLowerCase();
+  const brandId = String((item && item.brandId) || '').trim().toLowerCase();
+  const label = String((item && item.label) || '').trim();
+  const parentCategoryId = String((item && item.parentCategoryId) || '').trim().toLowerCase();
+  const hasKnownParent = Boolean(parentCategoryId && knownIds[parentCategoryId] && parentCategoryId !== categoryId);
+
+  var score = 0;
+  if (brandId) score += 1;
+  if (label) score += 2;
+  if (!parentCategoryId) score += 1;
+  if (hasKnownParent) score += 3;
+
+  return score;
+}
+
+function pickPreferredFileRecord_(current, candidate) {
+  const currentTime = getFileSortTime_(current);
+  const candidateTime = getFileSortTime_(candidate);
+
+  if (candidateTime !== currentTime) {
+    return candidateTime > currentTime ? candidate : current;
+  }
+
+  return Number(candidate._sourceIndex || 0) >= Number(current._sourceIndex || 0) ? candidate : current;
+}
+
+function getFileSortTime_(item) {
+  const values = [
+    item && item.updatedAt,
+    item && item.createdAt,
+    item && item.date,
+  ];
+
+  for (var i = 0; i < values.length; i += 1) {
+    const parsed = parseDateValue_(values[i]);
+    if (parsed > 0) {
+      return parsed;
+    }
+  }
+
+  return 0;
+}
+
+function parseDateValue_(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return 0;
+
+  const ddmmyyyy = raw.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (ddmmyyyy) {
+    return new Date(Number(ddmmyyyy[3]), Number(ddmmyyyy[2]) - 1, Number(ddmmyyyy[1])).getTime();
+  }
+
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+}
+
+function stripInternalRecordMeta_(item) {
+  if (!item || typeof item !== 'object') {
+    return item;
+  }
+
+  const clone = Object.assign({}, item);
+  delete clone._sourceIndex;
+  return clone;
 }
 
 const hasOwnProperty_ = Object.prototype.hasOwnProperty;

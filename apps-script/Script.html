@@ -448,10 +448,12 @@
     const brandLabel = String(formData.get('brandLabel') || '').trim();
     const brandId = String(formData.get('brandId') || '').trim() || slugify(brandLabel);
 
+    setBrandSaving(true);
     hideFlash();
 
     const runner = google.script.run
       .withSuccessHandler((response) => {
+        setBrandSaving(false);
         state.brands = response.brands || state.brands;
         state.categories = response.categories || state.categories;
         state.recentFiles = response.recentFiles || state.recentFiles;
@@ -468,6 +470,7 @@
         refreshIntegrityScan(true);
       })
       .withFailureHandler((error) => {
+        setBrandSaving(false);
         showError(error);
       });
 
@@ -537,10 +540,12 @@
       originalCategoryId: formData.get('originalCategoryId'),
     };
 
+    setCategorySaving(true);
     hideFlash();
 
     const runner = google.script.run
       .withSuccessHandler((response) => {
+        setCategorySaving(false);
         state.categories = response.categories || [];
         state.brands = response.brands || state.brands;
         renderBrands();
@@ -556,6 +561,7 @@
         refreshIntegrityScan(true);
       })
       .withFailureHandler((error) => {
+        setCategorySaving(false);
         showError(error);
       });
 
@@ -609,6 +615,22 @@
     button.disabled = isSaving;
     button.textContent = isSaving ? 'Saving...' : state.editId ? 'Update File' : 'Save File';
     syncMobileSaveButton(isSaving);
+  }
+
+  function setBrandSaving(isSaving) {
+    const button = document.getElementById('brandSaveButton');
+    if (!button) return;
+
+    button.disabled = Boolean(isSaving);
+    button.textContent = isSaving ? (state.brandEditId ? 'Updating...' : 'Adding...') : state.brandEditId ? 'Update Brand' : 'Add Brand';
+  }
+
+  function setCategorySaving(isSaving) {
+    const button = document.getElementById('categorySaveButton');
+    if (!button) return;
+
+    button.disabled = Boolean(isSaving);
+    button.textContent = isSaving ? (state.categoryEditId ? 'Updating...' : 'Adding...') : state.categoryEditId ? 'Update Folder' : 'Add Folder';
   }
 
   function syncMobileSaveButton(isSaving) {
