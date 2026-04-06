@@ -36,7 +36,7 @@ import {
   syncLiveCacheVersion,
   warmBrandCategoryData,
 } from './live-data'
-import type { BrandId } from './data-types'
+import type { BrandId, DownloadListFile, SolutionCategory } from './data-types'
 
 type ToolbarSortField = 'date' | 'title'
 type ToolbarSortOrder = 'desc' | 'asc'
@@ -53,6 +53,32 @@ const getBrandMeta = (brandId: BrandId) => {
     description: `Open ${label}-focused solution folders, repair categories, and service packages.`,
   }
 }
+
+const getBrandHubSignature = (
+  items: Array<{ brandId?: string; title?: string; description?: string; href?: string; kind?: string }>,
+) =>
+  JSON.stringify(items.map((item) => [item.brandId || '', item.kind || '', item.title || '', item.description || '', item.href || '']))
+
+const getCategoryListSignature = (items: SolutionCategory[]) =>
+  JSON.stringify(items.map((item) => [item.brandId, item.id, item.title, item.description]))
+
+const getCategoryFileSignature = (category: SolutionCategory | null | undefined, files: DownloadListFile[]) =>
+  JSON.stringify({
+    category: category ? [category.brandId, category.id, category.title, category.description] : null,
+    files: files.map((file) => [
+      file.id,
+      file.brandId || '',
+      file.title,
+      file.subtitle,
+      file.summary,
+      file.date,
+      file.size,
+      file.visits,
+      file.downloads,
+      file.price || '',
+      file.featured ? '1' : '0',
+    ]),
+  })
 
 type DownloadCurrent = {
   title: string
@@ -352,12 +378,13 @@ export const renderDownloadsHubPage = async () => {
   document.title = 'Downloads | AOSUNLOCKER Huawei Lab'
 
   const cachedBrandResult = peekBrandFolders()
-  warmBrandCategoryData(cachedBrandResult.brands.map((item) => item.brandId))
+  const cachedBrandCards = cachedBrandResult?.brands ?? []
+  const cachedBrandSignature = getBrandHubSignature(cachedBrandCards)
+  warmBrandCategoryData(cachedBrandCards.map((item) => item.brandId))
 
   if (cachedBrandResult) {
-    const brandCards = cachedBrandResult.brands
     app.innerHTML = renderSiteChrome(
-      renderDownloadsHubStage(renderBrandHubGrid(brandCards)),
+      renderDownloadsHubStage(renderBrandHubGrid(cachedBrandCards)),
       undefined,
       true,
     )
@@ -374,14 +401,17 @@ export const renderDownloadsHubPage = async () => {
   await versionSyncPromise
   const brandResult = await loadBrandFolders()
   const brandCards = brandResult.brands
+  const liveBrandSignature = getBrandHubSignature(brandCards)
   warmBrandCategoryData(brandCards.map((item) => item.brandId))
 
-  app.innerHTML = renderSiteChrome(
-    renderDownloadsHubStage(renderBrandHubGrid(brandCards)),
-    undefined,
-    true,
-  )
-  setupSearchAndScroll()
+  if (liveBrandSignature !== cachedBrandSignature) {
+    app.innerHTML = renderSiteChrome(
+      renderDownloadsHubStage(renderBrandHubGrid(brandCards)),
+      undefined,
+      true,
+    )
+    setupSearchAndScroll()
+  }
 }
 
 export const renderSolutionFilesPage = async () => {
@@ -399,6 +429,8 @@ export const renderSolutionFilesPage = async () => {
   const brand = getBrandMeta(brandId)
   const cachedCategoryResult = !categoryId ? peekCategoriesByBrand(brandId) : null
   const cachedFileResult = categoryId ? peekFilesByCategory(categoryId, brandId) : null
+  const cachedCategorySignature = getCategoryListSignature(cachedCategoryResult?.categories ?? [])
+  const cachedFileSignature = getCategoryFileSignature(cachedFileResult?.category ?? null, cachedFileResult?.files ?? [])
 
   document.title = `${brand.label} Solution Files | Huawei - Honor Downloads`
 
@@ -496,38 +528,41 @@ export const renderSolutionFilesPage = async () => {
   if (!categoryId) {
     const categoryResult = await loadCategoriesByBrand(brandId)
     const categories = categoryResult.categories
+    const liveCategorySignature = getCategoryListSignature(categories)
 
     warmCategoryFileCache(
       brandId,
       categories.map((item) => item.id),
     )
 
-    app.innerHTML = renderSiteChrome(
-      renderSolutionBrandStage(
-        brand.label,
-        brand.description,
-        categories.length
-          ? `<div class="download-home-grid">${categories
-              .map(
-                (item) =>
-                  renderDownloadHomeCard({
-                    title: item.title,
-                    description: item.description,
-                    href: `/solution-files.html?brand=${brandId}&category=${item.id}`,
-                    kind: 'folder',
-                  }),
-              )
-              .join('')}</div>`
-          : renderDownloadEmptyState(
-              `No ${brand.label} folders yet`,
-              `There are no ${brand.label} solution folders connected yet.`,
-            ),
-      ),
-      undefined,
-      true,
-    )
+    if (liveCategorySignature !== cachedCategorySignature) {
+      app.innerHTML = renderSiteChrome(
+        renderSolutionBrandStage(
+          brand.label,
+          brand.description,
+          categories.length
+            ? `<div class="download-home-grid">${categories
+                .map(
+                  (item) =>
+                    renderDownloadHomeCard({
+                      title: item.title,
+                      description: item.description,
+                      href: `/solution-files.html?brand=${brandId}&category=${item.id}`,
+                      kind: 'folder',
+                    }),
+                )
+                .join('')}</div>`
+            : renderDownloadEmptyState(
+                `No ${brand.label} folders yet`,
+                `There are no ${brand.label} solution folders connected yet.`,
+              ),
+        ),
+        undefined,
+        true,
+      )
 
-    setupSearchAndScroll()
+      setupSearchAndScroll()
+    }
     return
   }
 
@@ -621,9 +656,13 @@ export const renderSolutionFilesPage = async () => {
   }
 
   const result = await loadFilesByCategory(categoryId, brandId)
+  const liveFileSignature = getCategoryFileSignature(result.category, result.files)
   activeCategory = result.category
   activeFiles = result.files
-  renderCategoryScreen()
+
+  if (!cachedFileResult || liveFileSignature !== cachedFileSignature) {
+    renderCategoryScreen()
+  }
 }
 
 export const renderFirmwareHuaweiPage = () => {

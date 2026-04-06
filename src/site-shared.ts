@@ -196,11 +196,36 @@ const renderSiteTickerPlaceholder = (label: 'Latest' | 'Popular', icon: string, 
   </section>
 `
 
-const renderSiteTickerFallback = () =>
-  renderSiteTickerSections(
-    renderSiteTickerPlaceholder('Latest', 'fa-clock', 'Waiting for latest update'),
-    renderSiteTickerPlaceholder('Popular', 'fa-fire', 'Waiting for top file update'),
-  )
+type SiteTickerPayload = { latest: TickerItem[]; top: TickerItem[] }
+
+const getSiteTickerSignature = (payload: SiteTickerPayload) =>
+  JSON.stringify({
+    latest: payload.latest.map((item) => [item.title, item.meta, item.icon]),
+    top: payload.top.map((item) => [item.title, item.meta, item.icon]),
+  })
+
+const buildSiteTickerMarkup = (payload: SiteTickerPayload) => ({
+  signature: getSiteTickerSignature(payload),
+  html: renderSiteTickerSections(
+    payload.latest.length
+      ? renderSiteTickerResult(renderTicker(payload.latest), '')
+      : renderSiteTickerPlaceholder('Latest', 'fa-clock', 'Waiting for latest update'),
+    payload.top.length
+      ? renderSiteTickerResult('', renderTicker(payload.top))
+      : renderSiteTickerPlaceholder('Popular', 'fa-fire', 'Waiting for top file update'),
+  ),
+})
+
+const applySiteTickerMarkup = (tickerMount: HTMLDivElement, payload: SiteTickerPayload) => {
+  const markup = buildSiteTickerMarkup(payload)
+  if (tickerMount.dataset.tickerSignature === markup.signature) {
+    return false
+  }
+
+  tickerMount.dataset.tickerSignature = markup.signature
+  tickerMount.innerHTML = markup.html
+  return true
+}
 
 let siteTickerRequest: Promise<{ latest: TickerItem[]; top: TickerItem[] }> | null = null
 
@@ -209,17 +234,12 @@ const hydrateSiteTicker = () => {
   if (!tickerMount) return
 
   const cachedTicker = peekHomepageTickers()
-  tickerMount.innerHTML =
+  applySiteTickerMarkup(
+    tickerMount,
     cachedTicker && (cachedTicker.latest.length || cachedTicker.top.length)
-      ? renderSiteTickerSections(
-          cachedTicker.latest.length
-            ? renderSiteTickerResult(renderTicker(cachedTicker.latest), '')
-            : renderSiteTickerPlaceholder('Latest', 'fa-clock', 'Waiting for latest update'),
-          cachedTicker.top.length
-            ? renderSiteTickerResult('', renderTicker(cachedTicker.top))
-            : renderSiteTickerPlaceholder('Popular', 'fa-fire', 'Waiting for top file update'),
-        )
-      : renderSiteTickerFallback()
+      ? cachedTicker
+      : { latest: [], top: [] },
+  )
 
   if (tickerMount.dataset.tickerMode === 'static') {
     return
@@ -229,15 +249,7 @@ const hydrateSiteTicker = () => {
 
   void siteTickerRequest.then((tickerResult) => {
     if (!tickerMount.isConnected) return
-
-    tickerMount.innerHTML = renderSiteTickerSections(
-      tickerResult.latest.length
-        ? renderSiteTickerResult(renderTicker(tickerResult.latest), '')
-        : renderSiteTickerPlaceholder('Latest', 'fa-clock', 'Waiting for latest update'),
-      tickerResult.top.length
-        ? renderSiteTickerResult('', renderTicker(tickerResult.top))
-        : renderSiteTickerPlaceholder('Popular', 'fa-fire', 'Waiting for top file update'),
-    )
+    applySiteTickerMarkup(tickerMount, tickerResult)
   })
 }
 
