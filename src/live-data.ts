@@ -4,7 +4,8 @@ import type { BrandId, DownloadListFile, SolutionCategory, TickerItem } from './
 declare global {
   interface Window {
     AOSUNLOCKER_CONFIG?: {
-      appsScriptUrl?: string
+      apiBaseUrl?: string
+      adminApiBaseUrl?: string
     }
   }
 }
@@ -87,7 +88,11 @@ const LIVE_FETCH_TIMEOUT = 1000 * 10
 const LIVE_VERSION_STORAGE_KEY = 'aosunlocker-live-cache-version'
 const inFlightRequests = new Map<string, Promise<unknown>>()
 
-const getAppsScriptUrl = () => window.AOSUNLOCKER_CONFIG?.appsScriptUrl?.trim() ?? ''
+const getPublicApiBaseUrl = () => window.AOSUNLOCKER_CONFIG?.apiBaseUrl?.trim() ?? ''
+
+const shouldUseStaticCatalogFallback = () => !getPublicApiBaseUrl()
+
+const shouldAllowExpiredCacheFallback = () => false
 
 const formatDateValue = (value: string) => {
   const raw = String(value || '').trim()
@@ -107,10 +112,10 @@ const formatDateValue = (value: string) => {
 }
 
 const buildApiUrl = (view: string, params?: Record<string, string>) => {
-  const baseUrl = getAppsScriptUrl()
+  const baseUrl = getPublicApiBaseUrl()
   if (!baseUrl) return ''
 
-  const url = new URL(baseUrl)
+  const url = new URL(baseUrl, window.location.origin)
   url.searchParams.set('api', '1')
   url.searchParams.set('view', view)
 
@@ -402,7 +407,9 @@ const fetchJsonCached = async <T>(
       writeCache(cacheKey, data)
       return data
     } catch (error) {
-      const stale = readCache<T>(cacheKey, { allowExpired: true })
+      const stale = shouldAllowExpiredCacheFallback()
+        ? readCache<T>(cacheKey, { allowExpired: true })
+        : null
       if (stale) return stale
       throw error
     } finally {
@@ -463,7 +470,9 @@ const getLocalCategoriesByBrand = (brandId: BrandId) =>
 const getLocalFilesByCategory = (categoryId: string) => solutionFilesByCategory[categoryId] ?? []
 
 const resolveKnownCategory = (categoryId: string, brandId: BrandId, fallbackLabel = '') => {
-  const knownCategories = peekCategoriesByBrand(brandId)?.categories ?? getLocalCategoriesByBrand(brandId)
+  const knownCategories =
+    peekCategoriesByBrand(brandId)?.categories ??
+    (shouldUseStaticCatalogFallback() ? getLocalCategoriesByBrand(brandId) : [])
   const knownCategory = findCategoryById(knownCategories, categoryId)
 
   if (knownCategory) return knownCategory
@@ -676,7 +685,7 @@ const toTickerDownloadMeta = (file: PublicFileRecord) => {
   return `${count.toLocaleString('en-US')} downloads`
 }
 
-export const hasLiveApi = () => Boolean(getAppsScriptUrl())
+export const hasLiveApi = () => Boolean(getPublicApiBaseUrl())
 
 const getLocalBrandFolders = () =>
   downloadHomeCategories
@@ -735,6 +744,7 @@ export const peekBrandFolders = () => {
 export const peekCategoriesByBrand = (brandId: BrandId) => {
   const cached = readCache<PublicCategoriesResponse>(`categories:${brandId}`)
   if (!cached) {
+    if (!shouldUseStaticCatalogFallback()) return null
     const localCategories = getLocalCategoriesByBrand(brandId)
     return localCategories.length
       ? {
@@ -761,6 +771,7 @@ export const peekFilesByCategory = (categoryId: string, brandId?: BrandId) => {
   const requestBrandId = brandId ?? fallbackCategory.brandId
   const cached = readCache<PublicFilesResponse>(`files:${requestBrandId}:${categoryId}`)
   if (!cached) {
+    if (!shouldUseStaticCatalogFallback()) return null
     const localFiles = getLocalFilesByCategory(categoryId)
     return localFiles.length
       ? {
@@ -812,10 +823,9 @@ export const loadCategoriesByBrand = async (brandId: BrandId) => {
     }
   } catch (error) {
     console.warn('Categories could not be loaded.', error)
-    const localCategories = getLocalCategoriesByBrand(brandId)
     return {
       source: 'live-error' as const,
-      categories: localCategories,
+      categories: shouldUseStaticCatalogFallback() ? getLocalCategoriesByBrand(brandId) : [],
     }
   }
 }
@@ -976,7 +986,7 @@ export const loadGlobalSearchCatalog = async (): Promise<SearchCatalogEntry[]> =
     return Array.from(mergedEntries.values())
   } catch (error) {
     console.warn('Search catalog could not be loaded from live API.', error)
-    return localSearchCatalog
+    return shouldUseStaticCatalogFallback() ? localSearchCatalog : []
   }
 }
 
@@ -1016,20 +1026,21 @@ export const loadFilesByCategory = async (categoryId: string, brandId?: BrandId)
     }
   } catch (error) {
     console.warn('Category files could not be loaded.', error)
-    const localFiles = getLocalFilesByCategory(categoryId)
     return {
       source: 'live-error' as const,
       category: fallbackCategory,
-      files: localFiles,
+      files: shouldUseStaticCatalogFallback() ? getLocalFilesByCategory(categoryId) : [],
     }
   }
 }
 
 export const loadFileById = async (fileId: string) => {
-  const localFileMatch = getLocalFileById(fileId)
+  const localFileMatch = shouldUseStaticCatalogFallback() ? getLocalFileById(fileId) : null
   const fallbackCategory =
     localFileMatch?.category ??
-    decorateSolutionCategories(solutionCategories).find((category) => (solutionFilesByCategory[category.id] ?? []).some((item) => item.id === fileId)) ??
+    (shouldUseStaticCatalogFallback()
+      ? decorateSolutionCategories(solutionCategories).find((category) => (solutionFilesByCategory[category.id] ?? []).some((item) => item.id === fileId))
+      : null) ??
     decorateSolutionCategories(solutionCategories)[0]
 
   const url = buildApiUrl('file', { id: fileId })

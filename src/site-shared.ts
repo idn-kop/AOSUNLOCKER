@@ -352,7 +352,7 @@ const renderBackBlock = (title: string, href: string) => `
 const renderLogoWordmark = () => `
   <span class="logo-wordmark-picture">
     ${renderAssetImage({
-      src: '/aosunlocker%20(1).png',
+      src: '/aosunlocker-wordmark.png',
       alt: 'AOSUNLOCKER',
       className: 'logo-wordmark',
       loading: 'eager',

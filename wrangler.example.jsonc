@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "aosunlocker",
+  "compatibility_date": "2026-04-07",
+  "pages_build_output_dir": "./dist",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "aosunlocker",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "preview_database_id": "DB"
+    }
+  ],
+  "vars": {
+    "ADMIN_TOKEN": "REPLACE_WITH_LONG_RANDOM_TOKEN"
+  }
+}
