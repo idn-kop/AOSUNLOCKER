@@ -14,6 +14,11 @@ type PublicCategoryRecord = {
   label?: string
   brandId?: BrandId
   brandLabel?: string
+  parentCategoryId?: string
+  parentCategoryLabel?: string
+  fullLabel?: string
+  depth?: number
+  hasChildren?: boolean
 }
 
 type PublicFileRecord = DownloadListFile & {
@@ -123,6 +128,82 @@ const toDisplayLabel = (value: string) =>
     .replace(/[-_]+/g, ' ')
     .replace(/\b\w/g, (char) => char.toUpperCase())
     .trim()
+
+const buildCategoryDescription = (brandLabel: string, fullTitle: string, hasChildren: boolean) =>
+  hasChildren
+    ? `${brandLabel} folder group for ${fullTitle}.`
+    : `${brandLabel} solution folder.`
+
+const decorateSolutionCategories = (categories: SolutionCategory[]): SolutionCategory[] => {
+  const normalized = categories.map((item) => ({
+    ...item,
+    id: String(item.id || '').trim(),
+    brandId: String(item.brandId || '').trim(),
+    brandLabel: String(item.brandLabel || brandLabelMap[item.brandId] || toDisplayLabel(item.brandId || '')).trim(),
+    title: String(item.title || '').trim(),
+    parentCategoryId: String(item.parentCategoryId || '').trim(),
+  }))
+
+  const categoryMap = new Map(normalized.map((item) => [item.id, item]))
+  const childCounts = new Map<string, number>()
+
+  normalized.forEach((item) => {
+    const parentId = String(item.parentCategoryId || '').trim()
+    if (!parentId) return
+    childCounts.set(parentId, (childCounts.get(parentId) || 0) + 1)
+  })
+
+  const buildFullTitle = (categoryId: string) => {
+    const seen = new Set<string>()
+    const parts: string[] = []
+    let currentId = String(categoryId || '').trim()
+
+    while (currentId && categoryMap.has(currentId) && !seen.has(currentId)) {
+      seen.add(currentId)
+      const current = categoryMap.get(currentId)!
+      parts.unshift(String(current.title || current.id).trim())
+      currentId = String(current.parentCategoryId || '').trim()
+    }
+
+    return parts.join(' / ')
+  }
+
+  const getDepth = (categoryId: string) => {
+    const seen = new Set<string>()
+    let depth = 0
+    let currentId = String(categoryId || '').trim()
+
+    while (currentId && categoryMap.has(currentId) && !seen.has(currentId)) {
+      seen.add(currentId)
+      const current = categoryMap.get(currentId)!
+      currentId = String(current.parentCategoryId || '').trim()
+      if (currentId) depth += 1
+    }
+
+    return depth
+  }
+
+  return normalized.map((item) => {
+    const parentId = String(item.parentCategoryId || '').trim()
+    const parent = parentId ? categoryMap.get(parentId) : null
+    const fullTitle = String(item.fullTitle || buildFullTitle(item.id)).trim() || item.title
+    const depth = typeof item.depth === 'number' ? item.depth : getDepth(item.id)
+    const hasChildren = typeof item.hasChildren === 'boolean' ? item.hasChildren : childCounts.has(item.id)
+
+    return {
+      ...item,
+      parentCategoryId: parentId,
+      parentCategoryLabel: String(item.parentCategoryLabel || parent?.title || '').trim(),
+      fullTitle,
+      depth,
+      hasChildren,
+      description: String(item.description || buildCategoryDescription(item.brandLabel, fullTitle, hasChildren)).trim(),
+    }
+  })
+}
+
+const findCategoryById = (categories: SolutionCategory[], categoryId: string) =>
+  categories.find((item) => String(item.id || '').trim() === String(categoryId || '').trim()) || null
 
 const readCache = <T>(key: string, options: { allowExpired?: boolean } = {}) => {
   const storageKey = `${LIVE_CACHE_PREFIX}${key}`
@@ -303,25 +384,61 @@ const fetchJsonCached = async <T>(
   return request
 }
 
-const buildFallbackCategory = (categoryId: string, brandId: BrandId): SolutionCategory => ({
-  id: String(categoryId || '').trim() || 'solution-folder',
-  brandId,
-  brandLabel: brandLabelMap[brandId] || toDisplayLabel(brandId),
-  title: toDisplayLabel(categoryId || 'solution-folder'),
-  description: `${brandLabelMap[brandId] || toDisplayLabel(brandId)} solution folder.`,
-})
+const buildFallbackCategory = (categoryId: string, brandId: BrandId, categoryLabel = ''): SolutionCategory => {
+  const title = String(categoryLabel || toDisplayLabel(categoryId || 'solution-folder')).trim() || 'Solution Folder'
+  const brandLabel = brandLabelMap[brandId] || toDisplayLabel(brandId)
 
-const normalizeCategory = (category: PublicCategoryRecord, brandId: BrandId): SolutionCategory => ({
-  id: String(category.id || ''),
-  brandId: category.brandId || brandId,
-  brandLabel: String(category.brandLabel || brandLabelMap[brandId]),
-  title: String(category.label || ''),
-  description: `${String(category.brandLabel || brandLabelMap[brandId])} solution folder.`,
-})
+  return {
+    id: String(categoryId || '').trim() || 'solution-folder',
+    brandId,
+    brandLabel,
+    title,
+    description: `${brandLabel} solution folder.`,
+    parentCategoryId: '',
+    parentCategoryLabel: '',
+    fullTitle: title,
+    depth: 0,
+    hasChildren: false,
+  }
+}
 
-const getLocalCategoriesByBrand = (brandId: BrandId) => solutionCategories.filter((item) => item.brandId === brandId)
+const normalizeCategory = (category: PublicCategoryRecord, brandId: BrandId): SolutionCategory => {
+  const resolvedBrandId = (String(category.brandId || '').trim() || brandId) as BrandId
+  const brandLabel = String(category.brandLabel || brandLabelMap[resolvedBrandId] || toDisplayLabel(resolvedBrandId)).trim()
+  const title = String(category.label || '').trim() || toDisplayLabel(String(category.id || ''))
+  const parentCategoryId = String(category.parentCategoryId || '').trim()
+  const parentCategoryLabel = String(category.parentCategoryLabel || '').trim()
+  const fullTitle = String(category.fullLabel || title).trim() || title
+  const depth = Number.isFinite(Number(category.depth)) ? Number(category.depth) : 0
+  const hasChildren = Boolean(category.hasChildren)
+
+  return {
+    id: String(category.id || '').trim(),
+    brandId: resolvedBrandId,
+    brandLabel,
+    title,
+    description: buildCategoryDescription(brandLabel, fullTitle, hasChildren),
+    parentCategoryId,
+    parentCategoryLabel,
+    fullTitle,
+    depth,
+    hasChildren,
+  }
+}
+
+const getLocalCategoriesByBrand = (brandId: BrandId) =>
+  decorateSolutionCategories(solutionCategories.filter((item) => item.brandId === brandId))
 
 const getLocalFilesByCategory = (categoryId: string) => solutionFilesByCategory[categoryId] ?? []
+
+const resolveKnownCategory = (categoryId: string, brandId: BrandId, fallbackLabel = '') => {
+  const knownCategories = peekCategoriesByBrand(brandId)?.categories ?? getLocalCategoriesByBrand(brandId)
+  const knownCategory = findCategoryById(knownCategories, categoryId)
+
+  if (knownCategory) return knownCategory
+
+  return buildFallbackCategory(categoryId, brandId, fallbackLabel)
+}
 
 const normalizeFile = (file: PublicFileRecord): DownloadListFile => ({
   id: String(file.id || ''),
@@ -365,12 +482,9 @@ const dedupeCategories = (categories: PublicCategoryRecord[]) => {
   const seen = new Set<string>()
 
   return categories.filter((item) => {
-    const brandKey = String(item.brandId || '').trim().toLowerCase()
-    const labelKey = String(item.label || item.id || '').trim().toLowerCase()
-    const key = `${brandKey}:${labelKey}`
-
-    if (!labelKey || seen.has(key)) return false
-    seen.add(key)
+    const categoryKey = String(item.id || '').trim().toLowerCase()
+    if (!categoryKey || seen.has(categoryKey)) return false
+    seen.add(categoryKey)
     return true
   })
 }
@@ -413,7 +527,7 @@ const buildSearchMeta = (parts: Array<string | undefined>) =>
   parts
     .map((part) => String(part || '').trim())
     .filter(Boolean)
-    .join(' • ')
+    .join(' | ')
 
 const localSearchCatalog = (() => {
   const entries: SearchCatalogEntry[] = []
@@ -428,12 +542,13 @@ const localSearchCatalog = (() => {
     })
   })
 
-  solutionCategories.forEach((category) => {
+  decorateSolutionCategories(solutionCategories).forEach((category) => {
+    const fullTitle = category.fullTitle || category.title
     entries.push({
-      title: category.title,
-      meta: buildSearchMeta([category.brandLabel, 'Solution folder']),
+      title: fullTitle,
+      meta: buildSearchMeta([category.brandLabel, category.parentCategoryId ? 'Subfolder' : 'Solution folder']),
       href: `/solution-files.html?brand=${category.brandId}&category=${category.id}`,
-      keywords: `${category.title} ${category.description} ${category.brandLabel} ${category.brandId}`.trim(),
+      keywords: `${fullTitle} ${category.title} ${category.description} ${category.brandLabel} ${category.brandId}`.trim(),
       icon: 'fa-folder-open',
     })
   })
@@ -494,7 +609,7 @@ const getLocalBrandFolders = () =>
     }))
 
 const getLocalFileById = (fileId: string) => {
-  for (const category of solutionCategories) {
+  for (const category of decorateSolutionCategories(solutionCategories)) {
     const file = (solutionFilesByCategory[category.id] ?? []).find((item) => item.id === fileId)
     if (file) {
       return {
@@ -548,7 +663,9 @@ export const peekCategoriesByBrand = (brandId: BrandId) => {
       : null
   }
 
-  const categories = dedupeCategories(cached.categories ?? []).map((item) => normalizeCategory(item, brandId))
+  const categories = decorateSolutionCategories(
+    dedupeCategories(cached.categories ?? []).map((item) => normalizeCategory(item, brandId)),
+  )
 
   return {
     source: 'cache' as const,
@@ -557,7 +674,9 @@ export const peekCategoriesByBrand = (brandId: BrandId) => {
 }
 
 export const peekFilesByCategory = (categoryId: string, brandId?: BrandId) => {
-  const fallbackCategory = solutionCategories.find((item) => item.id === categoryId) ?? buildFallbackCategory(categoryId, brandId ?? 'huawei')
+  const fallbackCategory =
+    resolveKnownCategory(categoryId, brandId ?? 'huawei') ??
+    buildFallbackCategory(categoryId, brandId ?? 'huawei')
   const requestBrandId = brandId ?? fallbackCategory.brandId
   const cached = readCache<PublicFilesResponse>(`files:${requestBrandId}:${categoryId}`)
   if (!cached) {
@@ -573,16 +692,12 @@ export const peekFilesByCategory = (categoryId: string, brandId?: BrandId) => {
 
   const liveFileRecords = dedupeFiles(cached.files ?? [])
   const liveFiles = liveFileRecords.map(normalizeFile)
-  const category =
-    liveFiles[0]
-      ? {
-          id: categoryId,
-          brandId: (liveFiles[0].brandId as BrandId | undefined) || requestBrandId,
-          brandLabel: String((liveFileRecords[0] as PublicFileRecord | undefined)?.brandLabel || brandLabelMap[requestBrandId] || toDisplayLabel(requestBrandId)),
-          title: String((liveFileRecords[0] as PublicFileRecord | undefined)?.categoryLabel || fallbackCategory.title),
-          description: `${String((liveFileRecords[0] as PublicFileRecord | undefined)?.brandLabel || brandLabelMap[requestBrandId] || toDisplayLabel(requestBrandId))} solution folder.`,
-        }
-      : fallbackCategory
+  const resolvedBrandId = (liveFiles[0]?.brandId as BrandId | undefined) || requestBrandId
+  const category = resolveKnownCategory(
+    categoryId,
+    resolvedBrandId,
+    String((liveFileRecords[0] as PublicFileRecord | undefined)?.categoryLabel || fallbackCategory.title),
+  )
 
   return {
     source: 'cache' as const,
@@ -606,7 +721,9 @@ export const loadCategoriesByBrand = async (brandId: BrandId) => {
     const data = await fetchJsonCached<PublicCategoriesResponse>(cacheKey, url, {
       preferFresh: true,
     })
-    const liveCategories = dedupeCategories(data.categories ?? []).map((item) => normalizeCategory(item, brandId))
+    const liveCategories = decorateSolutionCategories(
+      dedupeCategories(data.categories ?? []).map((item) => normalizeCategory(item, brandId)),
+    )
 
     return {
       source: 'live' as const,
@@ -747,17 +864,23 @@ export const loadGlobalSearchCatalog = async (): Promise<SearchCatalogEntry[]> =
         const fileId = String(file.id || '').trim()
         const displayTitle = String(file.title || file.subtitle || fileId).trim()
         const brandLabel = String(file.brandLabel || toBrandSearchLabel(file.brandId))
+        const category = resolveKnownCategory(
+          String(file.categoryId || ''),
+          ((file.brandId as BrandId | undefined) || 'huawei') as BrandId,
+          String(file.categoryLabel || ''),
+        )
         const href = `/download.html?file=${encodeURIComponent(fileId)}`
 
         return {
           title: displayTitle,
           meta: buildSearchMeta([
             brandLabel,
+            category?.fullTitle || category?.title || '',
             String(file.size || '').trim() ? `Size ${String(file.size || '').trim()}` : '',
             String(file.downloads || '').trim() ? `${String(file.downloads || '').trim()} downloads` : 'File',
           ]),
           href,
-          keywords: `${fileId} ${String(file.title || '')} ${String(file.subtitle || '')} ${String(file.summary || '')} ${brandLabel} ${String(file.brandId || '')} ${String(file.categoryLabel || '')}`.trim(),
+          keywords: `${fileId} ${String(file.title || '')} ${String(file.subtitle || '')} ${String(file.summary || '')} ${brandLabel} ${String(file.brandId || '')} ${String(file.categoryLabel || '')} ${category?.fullTitle || ''}`.trim(),
           icon: 'fa-file-archive',
         } satisfies SearchCatalogEntry
       })
@@ -777,7 +900,9 @@ export const loadGlobalSearchCatalog = async (): Promise<SearchCatalogEntry[]> =
 }
 
 export const loadFilesByCategory = async (categoryId: string, brandId?: BrandId) => {
-  const fallbackCategory = solutionCategories.find((item) => item.id === categoryId) ?? buildFallbackCategory(categoryId, brandId ?? 'huawei')
+  const fallbackCategory =
+    resolveKnownCategory(categoryId, brandId ?? 'huawei') ??
+    buildFallbackCategory(categoryId, brandId ?? 'huawei')
   const requestBrandId = brandId ?? fallbackCategory.brandId
   const url = buildApiUrl('files', { brand: requestBrandId, category: categoryId })
   const cacheKey = `files:${requestBrandId}:${categoryId}`
@@ -796,16 +921,12 @@ export const loadFilesByCategory = async (categoryId: string, brandId?: BrandId)
     })
     const liveFileRecords = dedupeFiles(data.files ?? [])
     const liveFiles = liveFileRecords.map(normalizeFile)
-    const liveCategory =
-      liveFiles[0]
-        ? {
-            id: categoryId,
-            brandId: (liveFiles[0].brandId as BrandId | undefined) || requestBrandId,
-            brandLabel: String((liveFileRecords[0] as PublicFileRecord | undefined)?.brandLabel || brandLabelMap[requestBrandId] || toDisplayLabel(requestBrandId)),
-            title: String((liveFileRecords[0] as PublicFileRecord | undefined)?.categoryLabel || fallbackCategory.title),
-            description: `${String((liveFileRecords[0] as PublicFileRecord | undefined)?.brandLabel || brandLabelMap[requestBrandId] || toDisplayLabel(requestBrandId))} solution folder.`,
-          }
-        : fallbackCategory
+    const resolvedBrandId = (liveFiles[0]?.brandId as BrandId | undefined) || requestBrandId
+    const liveCategory = resolveKnownCategory(
+      categoryId,
+      resolvedBrandId,
+      String((liveFileRecords[0] as PublicFileRecord | undefined)?.categoryLabel || fallbackCategory.title),
+    )
 
     return {
       source: 'live' as const,
@@ -827,8 +948,8 @@ export const loadFileById = async (fileId: string) => {
   const localFileMatch = getLocalFileById(fileId)
   const fallbackCategory =
     localFileMatch?.category ??
-    solutionCategories.find((category) => (solutionFilesByCategory[category.id] ?? []).some((item) => item.id === fileId)) ??
-    solutionCategories[0]
+    decorateSolutionCategories(solutionCategories).find((category) => (solutionFilesByCategory[category.id] ?? []).some((item) => item.id === fileId)) ??
+    decorateSolutionCategories(solutionCategories)[0]
 
   const url = buildApiUrl('file', { id: fileId })
   if (!url) {
@@ -873,9 +994,11 @@ export const loadFileById = async (fileId: string) => {
     return {
       source: 'live' as const,
       file: normalizeFile(file),
-      category:
-        solutionCategories.find((category) => category.id === file.categoryId) ??
-        buildFallbackCategory(String(file.categoryId || fallbackCategory.id), ((file.brandId as BrandId | undefined) || fallbackCategory.brandId)),
+      category: resolveKnownCategory(
+        String(file.categoryId || fallbackCategory.id),
+        (((file.brandId as BrandId | undefined) || fallbackCategory.brandId) as BrandId),
+        String(file.categoryLabel || fallbackCategory.title),
+      ),
       driveUrl: String(file.driveUrl || ''),
       price: String(file.price || ''),
       status: String(file.status || ''),
@@ -936,6 +1059,7 @@ export const warmRouteDataFromHref = (href: string, intent: 'hover' | 'navigatio
       const category = url.searchParams.get('category')
 
       if (category) {
+        void loadCategoriesByBrand(brand)
         void loadFilesByCategory(category, brand)
       } else {
         void loadCategoriesByBrand(brand)

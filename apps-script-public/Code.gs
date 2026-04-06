@@ -179,7 +179,7 @@ function getAllCategories_() {
     const headerLookup = createHeaderLookup_(headers);
     const hasBrandColumns = hasHeader_(headerLookup, 'brand_id');
 
-    return dedupeCategories_(values
+    return decorateCategories_(dedupeCategories_(values
       .slice(1)
       .map(function(row) {
         if (hasBrandColumns && row[0] && row[2] && row[3]) {
@@ -188,6 +188,7 @@ function getAllCategories_() {
             brandLabel: String(row[1] || '').trim(),
             id: String(row[2] || '').trim(),
             label: String(row[3] || '').trim(),
+            parentCategoryId: String(row[getHeaderIndex_(headerLookup, 'parent_category_id', 4)] || '').trim(),
           };
         }
 
@@ -197,6 +198,7 @@ function getAllCategories_() {
             brandLabel: 'Huawei',
             id: String(row[0] || '').trim(),
             label: String(row[1] || '').trim(),
+            parentCategoryId: '',
           };
         }
 
@@ -204,7 +206,7 @@ function getAllCategories_() {
       })
       .filter(function(item) {
         return item && item.id && item.label;
-      }));
+      })));
   });
 }
 
@@ -745,13 +747,75 @@ function dedupeCategories_(items) {
   const seen = {};
 
   return items.filter(function(item) {
-    const brandKey = String((item && item.brandId) || '').trim().toLowerCase();
-    const labelKey = String((item && (item.label || item.id)) || '').trim().toLowerCase();
-    const key = brandKey + ':' + labelKey;
-    if (!labelKey || seen[key]) return false;
-    seen[key] = true;
+    const categoryId = String((item && item.id) || '').trim().toLowerCase();
+    if (!categoryId || seen[categoryId]) return false;
+    seen[categoryId] = true;
     return true;
   });
+}
+
+function decorateCategories_(items) {
+  const map = {};
+  const childCounts = {};
+
+  items.forEach(function(item) {
+    const categoryId = String((item && item.id) || '').trim();
+    if (!categoryId) return;
+    map[categoryId] = Object.assign({}, item, {
+      parentCategoryId: String((item && item.parentCategoryId) || '').trim(),
+    });
+  });
+
+  Object.keys(map).forEach(function(categoryId) {
+    const parentCategoryId = String(map[categoryId].parentCategoryId || '').trim();
+    if (!parentCategoryId) return;
+    childCounts[parentCategoryId] = (childCounts[parentCategoryId] || 0) + 1;
+  });
+
+  return items.map(function(item) {
+    const categoryId = String((item && item.id) || '').trim();
+    const safeItem = map[categoryId];
+    const parentCategoryId = String((safeItem && safeItem.parentCategoryId) || '').trim();
+    const parentCategory = parentCategoryId ? map[parentCategoryId] : null;
+
+    return Object.assign({}, safeItem, {
+      parentCategoryId: parentCategoryId,
+      parentCategoryLabel: parentCategory ? String(parentCategory.label || '').trim() : '',
+      fullLabel: buildCategoryFullLabel_(categoryId, map),
+      depth: getCategoryDepth_(categoryId, map),
+      hasChildren: Boolean(childCounts[categoryId]),
+    });
+  });
+}
+
+function buildCategoryFullLabel_(categoryId, map) {
+  const parts = [];
+  const seen = {};
+  var currentId = String(categoryId || '').trim();
+
+  while (currentId && map[currentId] && !seen[currentId]) {
+    seen[currentId] = true;
+    parts.unshift(String(map[currentId].label || currentId).trim());
+    currentId = String(map[currentId].parentCategoryId || '').trim();
+  }
+
+  return parts.join(' / ');
+}
+
+function getCategoryDepth_(categoryId, map) {
+  var depth = 0;
+  var currentId = String(categoryId || '').trim();
+  var seen = {};
+
+  while (currentId && map[currentId] && !seen[currentId]) {
+    seen[currentId] = true;
+    currentId = String(map[currentId].parentCategoryId || '').trim();
+    if (currentId) {
+      depth += 1;
+    }
+  }
+
+  return depth;
 }
 
 function dedupeFiles_(items) {

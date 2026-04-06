@@ -70,7 +70,7 @@
         </div>
 
         <div class="side-card">
-          <p class="card-label">Add category</p>
+          <p class="card-label">Add folder</p>
           <form id="categoryForm" class="stack-form">
             <input type="hidden" name="originalCategoryId" />
             <label>
@@ -78,16 +78,21 @@
               <select name="brandId" id="categoryBrandId" required></select>
             </label>
             <label>
-              <span>Category label *</span>
+              <span>Parent folder</span>
+              <select name="parentCategoryId" id="categoryParentId"></select>
+              <small class="field-note">Leave empty for a top-level folder. Choose a parent to create a subfolder.</small>
+            </label>
+            <label>
+              <span>Folder label *</span>
               <input type="text" name="categoryLabel" placeholder="Removed ID" required />
             </label>
             <label>
-              <span>Custom category ID</span>
+              <span>Custom folder ID</span>
               <input type="text" name="categoryId" placeholder="honor-removed-id" />
               <small class="field-note">Leave empty to auto-generate the folder ID.</small>
             </label>
             <div class="actions">
-              <button type="submit" id="categorySaveButton">Add Category</button>
+              <button type="submit" id="categorySaveButton">Add Folder</button>
               <button type="button" id="cancelCategoryEditButton" class="ghost hidden">Cancel Edit</button>
             </div>
           </form>
@@ -160,8 +165,9 @@
               </label>
 
               <label>
-                <span>Category *</span>
+                <span>Folder *</span>
                 <select name="categoryId" id="categoryId" required></select>
+                <small class="field-note">Nested folders appear as full paths, for example: Removed ID / Kirin 710.</small>
               </label>
 
               <label>
@@ -243,10 +249,10 @@
             <div class="table-wrap">
               <table>
                 <thead>
-                  <tr>
-                    <th>Brand</th>
-                    <th>Category</th>
-                    <th>Title</th>
+                <tr>
+                  <th>Brand</th>
+                  <th>Folder</th>
+                  <th>Title</th>
                     <th>Date</th>
                     <th>Size</th>
                     <th>Price</th>
@@ -263,7 +269,7 @@
         <section class="panel" id="folderPanel">
           <div class="panel-head">
             <h3>Solution folders</h3>
-            <p>Edit or remove brand folders before filling file data.</p>
+            <p>Create top-level folders and subfolders here before filling file data.</p>
           </div>
 
           <div class="table-wrap">
@@ -271,8 +277,8 @@
               <thead>
                 <tr>
                   <th>Brand</th>
-                  <th>Category</th>
-                  <th>Category ID</th>
+                  <th>Folder path</th>
+                  <th>Folder ID</th>
                   <th>Action</th>
                 </tr>
               </thead>

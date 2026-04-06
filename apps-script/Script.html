@@ -31,6 +31,7 @@
     document.getElementById('cancelBrandEditButton').addEventListener('click', resetBrandFormState);
     document.getElementById('cancelCategoryEditButton').addEventListener('click', resetCategoryFormState);
     document.getElementById('brandId').addEventListener('change', renderCategories);
+    document.getElementById('categoryBrandId').addEventListener('change', renderCategoryParentOptions);
     document.getElementById('mobileAutofillShortcut').addEventListener('click', onAutofill);
     document.getElementById('mobileStickyAutofill').addEventListener('click', onAutofill);
     document.getElementById('mobileDriveFocusShortcut').addEventListener('click', () => focusField('driveUrl'));
@@ -114,18 +115,101 @@
 
     fileBrandSelect.value = nextFileValue;
     categoryBrandSelect.value = nextCategoryValue;
+    renderCategoryParentOptions();
+  }
+
+  function getCategoriesForBrand(brandId) {
+    return state.categories
+      .filter((item) => item.brandId === brandId)
+      .sort((left, right) => String(left.fullLabel || left.label || '').localeCompare(String(right.fullLabel || right.label || '')));
+  }
+
+  function getCategoryById(categoryId) {
+    const targetId = String(categoryId || '').trim();
+    return state.categories.find((item) => String(item.id || '').trim() === targetId) || null;
+  }
+
+  function getCategoryDescendantIds(categoryId) {
+    const targetId = String(categoryId || '').trim();
+    if (!targetId) return [];
+
+    const childMap = new Map();
+    state.categories.forEach((item) => {
+      const parentId = String(item.parentCategoryId || '').trim();
+      const itemId = String(item.id || '').trim();
+      if (!parentId || !itemId) return;
+      if (!childMap.has(parentId)) {
+        childMap.set(parentId, []);
+      }
+      childMap.get(parentId).push(itemId);
+    });
+
+    const descendants = [];
+    const seen = new Set();
+    const queue = [...(childMap.get(targetId) || [])];
+
+    while (queue.length) {
+      const currentId = String(queue.shift() || '').trim();
+      if (!currentId || seen.has(currentId)) continue;
+      seen.add(currentId);
+      descendants.push(currentId);
+      queue.push(...(childMap.get(currentId) || []));
+    }
+
+    return descendants;
+  }
+
+  function getCategoryLabel(item) {
+    return String((item && (item.fullLabel || item.label || item.id)) || '').trim();
+  }
+
+  function resolveCategoryPath(categoryId, fallbackLabel) {
+    const category = getCategoryById(categoryId);
+    return category ? getCategoryLabel(category) : String(fallbackLabel || categoryId || '-').trim() || '-';
   }
 
   function renderCategories() {
     const brandId = document.getElementById('brandId').value;
     const select = document.getElementById('categoryId');
-    const filtered = state.categories.filter((item) => item.brandId === brandId);
+    const currentValue = select.value;
+    const filtered = getCategoriesForBrand(brandId);
 
     select.innerHTML = filtered.length
       ? filtered
-        .map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.label)}</option>`)
+        .map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(getCategoryLabel(item))}</option>`)
         .join('')
       : '<option value="">No categories for this brand</option>';
+
+    if (filtered.length) {
+      const nextValue = filtered.some((item) => item.id === currentValue) ? currentValue : filtered[0].id;
+      select.value = nextValue;
+    }
+  }
+
+  function renderCategoryParentOptions() {
+    const brandId = document.getElementById('categoryBrandId').value;
+    const select = document.getElementById('categoryParentId');
+    if (!select) return;
+
+    const currentValue = select.value;
+    const blockedIds = new Set(
+      state.categoryEditId
+        ? [state.categoryEditId, ...getCategoryDescendantIds(state.categoryEditId)]
+        : [],
+    );
+    const filtered = getCategoriesForBrand(brandId).filter((item) => !blockedIds.has(item.id));
+    const editingItem = state.categoryEditId ? getCategoryById(state.categoryEditId) : null;
+
+    select.innerHTML = [
+      '<option value="">Top-level folder</option>',
+      ...filtered.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(getCategoryLabel(item))}</option>`),
+    ].join('');
+
+    const preferredValue = filtered.some((item) => item.id === currentValue)
+      ? currentValue
+      : String((editingItem && editingItem.parentCategoryId) || '').trim();
+
+    select.value = filtered.some((item) => item.id === preferredValue) ? preferredValue : '';
   }
 
   function getVisibleFiles() {
@@ -254,10 +338,10 @@
       .map((item) => `
         <tr>
           <td>${escapeHtml(item.brandLabel || capitalize(item.brandId || ''))}</td>
-          <td>${escapeHtml(item.categoryLabel)}</td>
+          <td>${escapeHtml(resolveCategoryPath(item.categoryId, item.categoryLabel))}</td>
           <td>
             <strong>${escapeHtml(item.title)}</strong>
-            <div class="finder-title-meta">${escapeHtml(item.id || '')}${item.rowNumber ? ` • Row ${escapeHtml(item.rowNumber)}` : ''}</div>
+            <div class="finder-title-meta">${escapeHtml(item.id || '')}${item.rowNumber ? ` | Row ${escapeHtml(item.rowNumber)}` : ''}</div>
           </td>
           <td>${escapeHtml(item.date || '-')}</td>
           <td>${escapeHtml(item.size || '-')}</td>
@@ -318,32 +402,40 @@
     const tbody = document.getElementById('categoryRows');
 
     if (!state.categories.length) {
-      tbody.innerHTML = '<tr><td colspan="4" class="muted">No categories yet.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="4" class="muted">No folders yet.</td></tr>';
       return;
     }
 
-    tbody.innerHTML = state.categories
-      .map((item, index) => `
+    tbody.innerHTML = [...state.categories]
+      .sort((left, right) => {
+        const leftKey = `${left.brandLabel || left.brandId} ${left.fullLabel || left.label || left.id}`;
+        const rightKey = `${right.brandLabel || right.brandId} ${right.fullLabel || right.label || right.id}`;
+        return leftKey.localeCompare(rightKey);
+      })
+      .map((item) => `
         <tr>
           <td>${escapeHtml(item.brandLabel || capitalize(item.brandId || ''))}</td>
-          <td>${escapeHtml(item.label)}</td>
+          <td>
+            <strong>${escapeHtml(getCategoryLabel(item))}</strong>
+            <div class="finder-title-meta">${item.parentCategoryLabel ? `Inside ${escapeHtml(item.parentCategoryLabel)}` : 'Top-level folder'}</div>
+          </td>
           <td><code>${escapeHtml(item.id)}</code></td>
           <td>
             <div class="row-actions">
-              <button type="button" class="row-action" data-category-edit-index="${index}">Edit</button>
-              <button type="button" class="row-action row-action-danger" data-category-delete-index="${index}">Delete</button>
+              <button type="button" class="row-action" data-category-edit-id="${escapeHtml(item.id || '')}">Edit</button>
+              <button type="button" class="row-action row-action-danger" data-category-delete-id="${escapeHtml(item.id || '')}">Delete</button>
             </div>
           </td>
         </tr>
       `)
       .join('');
 
-    tbody.querySelectorAll('[data-category-edit-index]').forEach((button) => {
-      button.addEventListener('click', () => startCategoryEdit(Number(button.getAttribute('data-category-edit-index'))));
+    tbody.querySelectorAll('[data-category-edit-id]').forEach((button) => {
+      button.addEventListener('click', () => startCategoryEdit(button.getAttribute('data-category-edit-id')));
     });
 
-    tbody.querySelectorAll('[data-category-delete-index]').forEach((button) => {
-      button.addEventListener('click', () => onDeleteCategory(Number(button.getAttribute('data-category-delete-index'))));
+    tbody.querySelectorAll('[data-category-delete-id]').forEach((button) => {
+      button.addEventListener('click', () => onDeleteCategory(button.getAttribute('data-category-delete-id')));
     });
   }
 
@@ -439,6 +531,7 @@
     const formData = new FormData(form);
     const payload = {
       brandId: formData.get('brandId'),
+      parentCategoryId: formData.get('parentCategoryId'),
       categoryLabel: formData.get('categoryLabel'),
       categoryId: formData.get('categoryId'),
       originalCategoryId: formData.get('originalCategoryId'),
@@ -456,8 +549,9 @@
         renderCategoryRows();
         form.reset();
         document.getElementById('categoryBrandId').value = state.brands[0] ? state.brands[0].id : 'huawei';
+        renderCategoryParentOptions();
         resetCategoryFormState();
-        showSuccess(response.message || 'Category added.');
+        showSuccess(response.message || 'Folder added.');
         refreshFileFinderIfNeeded();
         refreshIntegrityScan(true);
       })
@@ -590,7 +684,7 @@
     if (state.categories.length) {
       document.getElementById('brandId').value = state.brands[0] ? state.brands[0].id : 'huawei';
       renderCategories();
-      const defaultCategory = state.categories.find((item) => item.brandId === document.getElementById('brandId').value);
+      const defaultCategory = getCategoriesForBrand(document.getElementById('brandId').value)[0];
       document.getElementById('categoryId').value = defaultCategory ? defaultCategory.id : '';
     }
 
@@ -603,16 +697,18 @@
     hideFlash();
   }
 
-  function startCategoryEdit(index) {
-    const item = state.categories[index];
+  function startCategoryEdit(categoryId) {
+    const item = getCategoryById(categoryId);
     if (!item) return;
 
     state.categoryEditId = item.id;
     document.querySelector('#categoryForm [name="originalCategoryId"]').value = item.id || '';
     document.querySelector('#categoryForm [name="brandId"]').value = item.brandId || 'huawei';
+    renderCategoryParentOptions();
+    document.querySelector('#categoryForm [name="parentCategoryId"]').value = item.parentCategoryId || '';
     document.querySelector('#categoryForm [name="categoryLabel"]').value = item.label || '';
     document.querySelector('#categoryForm [name="categoryId"]').value = item.id || '';
-    document.getElementById('categorySaveButton').textContent = 'Update Category';
+    document.getElementById('categorySaveButton').textContent = 'Update Folder';
     document.getElementById('cancelCategoryEditButton').classList.remove('hidden');
     hideFlash();
   }
@@ -622,9 +718,10 @@
     const form = document.getElementById('categoryForm');
     form.reset();
     document.querySelector('#categoryForm [name="originalCategoryId"]').value = '';
-    document.getElementById('categorySaveButton').textContent = 'Add Category';
+    document.getElementById('categorySaveButton').textContent = 'Add Folder';
     document.getElementById('cancelCategoryEditButton').classList.add('hidden');
     document.getElementById('categoryBrandId').value = state.brands[0] ? state.brands[0].id : 'huawei';
+    renderCategoryParentOptions();
   }
 
   async function onDeleteBrand(index) {
@@ -664,15 +761,15 @@
       .deleteBrand(item.id);
   }
 
-  async function onDeleteCategory(index) {
-    const item = state.categories[index];
+  async function onDeleteCategory(categoryId) {
+    const item = getCategoryById(categoryId);
     if (!item) return;
 
     const confirmed = await showConfirmDialog({
-      eyebrow: 'Delete Category',
-      title: `Delete ${item.label}?`,
-      message: `Remove category from ${item.brandLabel || capitalize(item.brandId || '')}. This only works when no files are linked.`,
-      confirmLabel: 'Delete Category',
+      eyebrow: 'Delete Folder',
+      title: `Delete ${getCategoryLabel(item)}?`,
+      message: `Remove this folder from ${item.brandLabel || capitalize(item.brandId || '')}. This only works when no files or subfolders are linked.`,
+      confirmLabel: 'Delete Folder',
       danger: true,
     });
     if (!confirmed) return;
@@ -687,7 +784,7 @@
         renderCategories();
         renderCategoryRows();
         resetCategoryFormState();
-        showSuccess(response.message || 'Category deleted.');
+        showSuccess(response.message || 'Folder deleted.');
         refreshFileFinderIfNeeded();
         refreshIntegrityScan(true);
       })

@@ -60,11 +60,45 @@ const getBrandHubSignature = (
   JSON.stringify(items.map((item) => [item.brandId || '', item.kind || '', item.title || '', item.description || '', item.href || '']))
 
 const getCategoryListSignature = (items: SolutionCategory[]) =>
-  JSON.stringify(items.map((item) => [item.brandId, item.id, item.title, item.description]))
+  JSON.stringify(
+    items.map((item) => [
+      item.brandId,
+      item.id,
+      item.title,
+      item.fullTitle || '',
+      item.parentCategoryId || '',
+      item.depth ?? 0,
+      item.hasChildren ? '1' : '0',
+      item.description,
+    ]),
+  )
 
-const getCategoryFileSignature = (category: SolutionCategory | null | undefined, files: DownloadListFile[]) =>
+const getCategoryViewSignature = (
+  category: SolutionCategory | null | undefined,
+  childCategories: SolutionCategory[],
+  files: DownloadListFile[],
+) =>
   JSON.stringify({
-    category: category ? [category.brandId, category.id, category.title, category.description] : null,
+    category: category
+      ? [
+          category.brandId,
+          category.id,
+          category.title,
+          category.fullTitle || '',
+          category.parentCategoryId || '',
+          category.hasChildren ? '1' : '0',
+          category.description,
+        ]
+      : null,
+    childCategories: childCategories.map((item) => [
+      item.brandId,
+      item.id,
+      item.title,
+      item.fullTitle || '',
+      item.parentCategoryId || '',
+      item.hasChildren ? '1' : '0',
+      item.description,
+    ]),
     files: files.map((file) => [
       file.id,
       file.brandId || '',
@@ -79,6 +113,81 @@ const getCategoryFileSignature = (category: SolutionCategory | null | undefined,
       file.featured ? '1' : '0',
     ]),
   })
+
+const sortSolutionCategories = (items: SolutionCategory[]) =>
+  [...items].sort((left, right) =>
+    String(left.fullTitle || left.title || left.id).localeCompare(String(right.fullTitle || right.title || right.id)),
+  )
+
+const findCategoryById = (items: SolutionCategory[], categoryId: string) =>
+  items.find((item) => String(item.id || '').trim() === String(categoryId || '').trim()) || null
+
+const getTopLevelCategories = (items: SolutionCategory[], brandId: BrandId) =>
+  sortSolutionCategories(
+    items.filter(
+      (item) =>
+        String(item.brandId || '').trim() === String(brandId || '').trim() &&
+        !String(item.parentCategoryId || '').trim(),
+    ),
+  )
+
+const getChildCategories = (items: SolutionCategory[], parentCategoryId: string) =>
+  sortSolutionCategories(
+    items.filter((item) => String(item.parentCategoryId || '').trim() === String(parentCategoryId || '').trim()),
+  )
+
+const getCategoryTrail = (items: SolutionCategory[], categoryId: string) => {
+  const categoryMap = new Map(items.map((item) => [String(item.id || '').trim(), item]))
+  const trail: SolutionCategory[] = []
+  const seen = new Set<string>()
+  let currentId = String(categoryId || '').trim()
+
+  while (currentId && categoryMap.has(currentId) && !seen.has(currentId)) {
+    seen.add(currentId)
+    const current = categoryMap.get(currentId)!
+    trail.unshift(current)
+    currentId = String(current.parentCategoryId || '').trim()
+  }
+
+  return trail
+}
+
+const buildCategoryHref = (brandId: BrandId, categoryId: string) =>
+  `/solution-files.html?brand=${encodeURIComponent(brandId)}&category=${encodeURIComponent(categoryId)}`
+
+const getCategoryCardDescription = (item: SolutionCategory) => {
+  if (item.hasChildren) {
+    return `Open ${item.fullTitle || item.title} subfolders and linked files.`
+  }
+
+  if (item.parentCategoryLabel) {
+    return `Open ${item.fullTitle || item.title} files inside ${item.parentCategoryLabel}.`
+  }
+
+  return item.description
+}
+
+const renderCategoryFolderGrid = (brandId: BrandId, categories: SolutionCategory[]) =>
+  categories.length
+    ? `<div class="download-home-grid">${categories
+        .map((item) =>
+          renderDownloadHomeCard({
+            title: item.title,
+            description: getCategoryCardDescription(item),
+            href: buildCategoryHref(brandId, item.id),
+            kind: 'folder',
+          }),
+        )
+        .join('')}</div>`
+    : ''
+
+const getBrandLandingCategories = (items: SolutionCategory[], brandId: BrandId) => {
+  const brandCategories = sortSolutionCategories(
+    items.filter((item) => String(item.brandId || '').trim() === String(brandId || '').trim()),
+  )
+  const topLevelCategories = getTopLevelCategories(items, brandId)
+  return topLevelCategories.length ? topLevelCategories : brandCategories
+}
 
 type DownloadCurrent = {
   title: string
@@ -244,17 +353,17 @@ const warmCategoryFileCache = (brandId: BrandId, categoryIds: string[]) => {
   })
 }
 
-const renderSolutionCategoryStage = (brandId: BrandId, brandLabel: string, categoryTitle: string, body: string) => `
+const renderSolutionCategoryStage = (
+  breadcrumbs: Array<{ label: string; href?: string }>,
+  backLabel: string,
+  backHref: string,
+  body: string,
+) => `
   <main class="download-flow-page">
     <div class="container py-4">
-      ${renderDownloadBreadcrumbs([
-        { label: 'Home', href: '/index.html' },
-        { label: 'Downloads', href: '/downloads.html' },
-        { label: brandLabel, href: `/solution-files.html?brand=${brandId}` },
-        { label: categoryTitle },
-      ])}
+      ${renderDownloadBreadcrumbs(breadcrumbs)}
       <section class="download-stage-card">
-        ${renderDownloadHeaderBar(brandLabel, `/solution-files.html?brand=${brandId}`)}
+        ${renderDownloadHeaderBar(backLabel, backHref)}
         ${body}
       </section>
     </div>
@@ -427,143 +536,45 @@ export const renderSolutionFilesPage = async () => {
   const initialSortOrder = normalizeSortOrder(params.get('order'))
   const initialView = normalizeViewMode(params.get('view'))
   const brand = getBrandMeta(brandId)
-  const cachedCategoryResult = !categoryId ? peekCategoriesByBrand(brandId) : null
+  const cachedCategoryResult = peekCategoriesByBrand(brandId)
+  const cachedCategories = cachedCategoryResult?.categories ?? []
   const cachedFileResult = categoryId ? peekFilesByCategory(categoryId, brandId) : null
-  const cachedCategorySignature = getCategoryListSignature(cachedCategoryResult?.categories ?? [])
-  const cachedFileSignature = getCategoryFileSignature(cachedFileResult?.category ?? null, cachedFileResult?.files ?? [])
+  const cachedActiveCategory = categoryId
+    ? findCategoryById(cachedCategories, categoryId) ?? cachedFileResult?.category ?? null
+    : null
+  const cachedChildCategories = cachedActiveCategory ? getChildCategories(cachedCategories, cachedActiveCategory.id) : []
+  const cachedCategorySignature = getCategoryListSignature(cachedCategories)
+  const cachedViewSignature = getCategoryViewSignature(
+    cachedActiveCategory,
+    cachedChildCategories,
+    cachedFileResult?.files ?? [],
+  )
 
   document.title = `${brand.label} Solution Files | Huawei - Honor Downloads`
 
-  if (!categoryId) {
-    if (cachedCategoryResult) {
-      const categories = cachedCategoryResult.categories
-      warmCategoryFileCache(
-        brandId,
-        categories.map((item) => item.id),
-      )
-      app.innerHTML = renderSiteChrome(
-        renderSolutionBrandStage(
-          brand.label,
-          brand.description,
-          categories.length
-            ? `<div class="download-home-grid">${categories
-                .map(
-                  (item) =>
-                    renderDownloadHomeCard({
-                      title: item.title,
-                      description: item.description,
-                      href: `/solution-files.html?brand=${brandId}&category=${item.id}`,
-                      kind: 'folder',
-                    }),
-                )
-                .join('')}</div>`
-            : renderDownloadEmptyState(
-                `No ${brand.label} folders yet`,
-                `There are no ${brand.label} solution folders connected yet.`,
-              ),
-        ),
-        undefined,
-        true,
-      )
-    } else {
-      app.innerHTML = renderSiteChrome(
-        renderSolutionBrandStage(
-          brand.label,
-          brand.description,
-          renderDownloadLoadingState(
-            `Loading ${brand.label} folders`,
-            `Preparing ${brand.label} solution folders and categories.`,
-          ),
-        ),
-        undefined,
-        true,
-      )
-    }
-  } else {
-    if (cachedFileResult) {
-      app.innerHTML = renderSiteChrome(
-        renderSolutionCategoryStage(
-          brandId,
-          brand.label,
-          cachedFileResult.category.title,
-          `
-            <div class="download-stage-head">
-              <h1>${cachedFileResult.category.title}</h1>
-              <p>${brand.label} ${cachedFileResult.category.description}</p>
-            </div>
-            <div id="solutionToolbar"></div>
-            <div id="solutionResults"></div>
-          `,
-        ),
-        undefined,
-        true,
-      )
-    } else {
-      app.innerHTML = renderSiteChrome(
-        renderSolutionCategoryStage(
-          brandId,
-          brand.label,
-          'Loading...',
-          `
-            <div class="download-stage-head">
-              <h1>Loading folder</h1>
-              <p>Preparing files for ${brand.label}.</p>
-            </div>
-            ${renderDownloadLoadingState(
-              'Loading folder',
-              `Preparing files for ${brand.label}.`,
-            )}
-          `,
-        ),
-        undefined,
-        true,
-      )
-    }
-  }
-
-  setupSearchAndScroll()
-
-  await versionSyncPromise
-
-  if (!categoryId) {
-    const categoryResult = await loadCategoriesByBrand(brandId)
-    const categories = categoryResult.categories
-    const liveCategorySignature = getCategoryListSignature(categories)
-
+  const renderBrandScreen = (categories: SolutionCategory[]) => {
+    const visibleCategories = getBrandLandingCategories(categories, brandId)
     warmCategoryFileCache(
       brandId,
-      categories.map((item) => item.id),
+      visibleCategories.map((item) => item.id),
     )
 
-    if (liveCategorySignature !== cachedCategorySignature) {
-      app.innerHTML = renderSiteChrome(
-        renderSolutionBrandStage(
-          brand.label,
-          brand.description,
-          categories.length
-            ? `<div class="download-home-grid">${categories
-                .map(
-                  (item) =>
-                    renderDownloadHomeCard({
-                      title: item.title,
-                      description: item.description,
-                      href: `/solution-files.html?brand=${brandId}&category=${item.id}`,
-                      kind: 'folder',
-                    }),
-                )
-                .join('')}</div>`
-            : renderDownloadEmptyState(
-                `No ${brand.label} folders yet`,
-                `There are no ${brand.label} solution folders connected yet.`,
-              ),
-        ),
-        undefined,
-        true,
-      )
+    app.innerHTML = renderSiteChrome(
+      renderSolutionBrandStage(
+        brand.label,
+        brand.description,
+        visibleCategories.length
+          ? renderCategoryFolderGrid(brandId, visibleCategories)
+          : renderDownloadEmptyState(
+              `No ${brand.label} folders yet`,
+              `There are no ${brand.label} solution folders connected yet.`,
+            ),
+      ),
+      undefined,
+      true,
+    )
 
-      setupSearchAndScroll()
-    }
-    return
+    setupSearchAndScroll()
   }
 
   const state = {
@@ -572,37 +583,126 @@ export const renderSolutionFilesPage = async () => {
     view: initialView,
   }
 
-  let activeCategory = cachedFileResult?.category ?? null
-  let activeFiles = cachedFileResult?.files ?? []
-
   const syncUrl = () => {
     const nextParams = new URLSearchParams(window.location.search)
     nextParams.set('brand', brandId)
-    nextParams.set('category', categoryId)
-    nextParams.set('sort', state.sortField)
-    nextParams.set('order', state.sortOrder)
-    nextParams.set('view', state.view)
+    if (categoryId) {
+      nextParams.set('category', categoryId)
+      nextParams.set('sort', state.sortField)
+      nextParams.set('order', state.sortOrder)
+      nextParams.set('view', state.view)
+    }
     const nextUrl = `${window.location.pathname}?${nextParams.toString()}`
     window.history.replaceState({}, '', nextUrl)
   }
 
-  const renderCategoryScreen = () => {
-    if (!activeCategory) return
+  const renderCategoryScreen = (
+    allCategories: SolutionCategory[],
+    activeCategory: SolutionCategory | null,
+    activeFiles: DownloadListFile[],
+  ) => {
+    if (!activeCategory) {
+      app.innerHTML = renderSiteChrome(
+        renderSolutionCategoryStage(
+          [
+            { label: 'Home', href: '/index.html' },
+            { label: 'Downloads', href: '/downloads.html' },
+            { label: brand.label, href: `/solution-files.html?brand=${brandId}` },
+            { label: 'Folder' },
+          ],
+          brand.label,
+          `/solution-files.html?brand=${encodeURIComponent(brandId)}`,
+          renderDownloadEmptyState(
+            'Folder not found',
+            `The selected ${brand.label} folder is not available right now.`,
+          ),
+        ),
+        undefined,
+        true,
+      )
+      setupSearchAndScroll()
+      return
+    }
 
-    document.title = `${brand.label} ${activeCategory.title} | Downloads`
+    const childCategories = getChildCategories(allCategories, activeCategory.id)
+    const trail = getCategoryTrail(allCategories, activeCategory.id)
+    const breadcrumbTrail = [
+      { label: 'Home', href: '/index.html' },
+      { label: 'Downloads', href: '/downloads.html' },
+      { label: brand.label, href: `/solution-files.html?brand=${encodeURIComponent(brandId)}` },
+      ...trail.map((item, index) =>
+        index === trail.length - 1
+          ? { label: item.title }
+          : { label: item.title, href: buildCategoryHref(brandId, item.id) },
+      ),
+    ]
+    const parentCategory = trail.length > 1 ? trail[trail.length - 2] : null
+    const backLabel = parentCategory ? parentCategory.title : brand.label
+    const backHref = parentCategory
+      ? buildCategoryHref(brandId, parentCategory.id)
+      : `/solution-files.html?brand=${encodeURIComponent(brandId)}`
+
+    if (childCategories.length) {
+      warmCategoryFileCache(
+        brandId,
+        childCategories.map((item) => item.id),
+      )
+    }
+
+    document.title = `${brand.label} ${activeCategory.fullTitle || activeCategory.title} | Downloads`
 
     app.innerHTML = renderSiteChrome(
       renderSolutionCategoryStage(
-        brandId,
-        brand.label,
-        activeCategory.title,
+        breadcrumbTrail,
+        backLabel,
+        backHref,
         `
           <div class="download-stage-head">
-            <h1>${activeCategory.title}</h1>
-            <p>${brand.label} ${activeCategory.description}</p>
+            <h1>${activeCategory.fullTitle || activeCategory.title}</h1>
+            <p>${
+              activeCategory.parentCategoryLabel
+                ? `${brand.label} folder inside ${activeCategory.parentCategoryLabel}.`
+                : activeCategory.description
+            }</p>
           </div>
-          <div id="solutionToolbar"></div>
-          <div id="solutionResults"></div>
+          ${
+            childCategories.length
+              ? `
+                <div class="download-stage-section">
+                  <div class="download-stage-subhead">
+                    <h2>${activeFiles.length ? 'Subfolders' : 'Choose a Folder'}</h2>
+                    <p>${childCategories.length} subfolder${childCategories.length === 1 ? '' : 's'} found inside ${activeCategory.title}.</p>
+                  </div>
+                  ${renderCategoryFolderGrid(brandId, childCategories)}
+                </div>
+              `
+              : ''
+          }
+          ${
+            activeFiles.length
+              ? `
+                <div class="download-stage-section">
+                  ${
+                    childCategories.length
+                      ? `
+                        <div class="download-stage-subhead">
+                          <h2>Files</h2>
+                          <p>Published files linked to ${activeCategory.title}.</p>
+                        </div>
+                      `
+                      : ''
+                  }
+                  <div id="solutionToolbar"></div>
+                  <div id="solutionResults"></div>
+                </div>
+              `
+              : !childCategories.length
+                ? renderDownloadEmptyState(
+                    `No ${activeCategory.title} files yet`,
+                    'No published files are available in this folder yet.',
+                  )
+                : ''
+          }
         `,
       ),
       undefined,
@@ -636,13 +736,14 @@ export const renderSolutionFilesPage = async () => {
     }
 
     const renderInteractiveSection = () => {
+      if (!toolbarMount || !resultsMount) {
+        syncUrl()
+        return
+      }
+
       const sortedFiles = sortDownloadFiles(activeFiles, state.sortField, state.sortOrder)
-      if (toolbarMount) {
-        toolbarMount.innerHTML = renderDownloadToolbar(state.sortField, state.sortOrder, state.view)
-      }
-      if (resultsMount) {
-        resultsMount.innerHTML = renderSolutionFileResults(sortedFiles, state.view, activeCategory?.title || 'Files')
-      }
+      toolbarMount.innerHTML = renderDownloadToolbar(state.sortField, state.sortOrder, state.view)
+      resultsMount.innerHTML = renderSolutionFileResults(sortedFiles, state.view, activeCategory.title)
       bindToolbar()
       syncUrl()
     }
@@ -651,17 +752,78 @@ export const renderSolutionFilesPage = async () => {
     setupSearchAndScroll()
   }
 
-  if (activeCategory) {
-    renderCategoryScreen()
+  if (!categoryId) {
+    if (cachedCategories.length) {
+      renderBrandScreen(cachedCategories)
+    } else {
+      app.innerHTML = renderSiteChrome(
+        renderSolutionBrandStage(
+          brand.label,
+          brand.description,
+          renderDownloadLoadingState(
+            `Loading ${brand.label} folders`,
+            `Preparing ${brand.label} solution folders and categories.`,
+          ),
+        ),
+        undefined,
+        true,
+      )
+      setupSearchAndScroll()
+    }
+  } else if (cachedActiveCategory || cachedFileResult) {
+    renderCategoryScreen(cachedCategories, cachedActiveCategory ?? cachedFileResult?.category ?? null, cachedFileResult?.files ?? [])
+  } else {
+    app.innerHTML = renderSiteChrome(
+      renderSolutionCategoryStage(
+        [
+          { label: 'Home', href: '/index.html' },
+          { label: 'Downloads', href: '/downloads.html' },
+          { label: brand.label, href: `/solution-files.html?brand=${encodeURIComponent(brandId)}` },
+          { label: 'Loading...' },
+        ],
+        brand.label,
+        `/solution-files.html?brand=${encodeURIComponent(brandId)}`,
+        `
+          <div class="download-stage-head">
+            <h1>Loading folder</h1>
+            <p>Preparing folders and files for ${brand.label}.</p>
+          </div>
+          ${renderDownloadLoadingState(
+            'Loading folder',
+            `Preparing folders and files for ${brand.label}.`,
+          )}
+        `,
+      ),
+      undefined,
+      true,
+    )
+    setupSearchAndScroll()
   }
 
-  const result = await loadFilesByCategory(categoryId, brandId)
-  const liveFileSignature = getCategoryFileSignature(result.category, result.files)
-  activeCategory = result.category
-  activeFiles = result.files
+  await versionSyncPromise
 
-  if (!cachedFileResult || liveFileSignature !== cachedFileSignature) {
-    renderCategoryScreen()
+  if (!categoryId) {
+    const categoryResult = await loadCategoriesByBrand(brandId)
+    const categories = categoryResult.categories
+    const liveCategorySignature = getCategoryListSignature(categories)
+
+    if (liveCategorySignature !== cachedCategorySignature) {
+      renderBrandScreen(categories)
+    }
+    return
+  }
+
+  const [categoryResult, fileResult] = await Promise.all([
+    loadCategoriesByBrand(brandId),
+    loadFilesByCategory(categoryId, brandId),
+  ])
+  const liveCategories = categoryResult.categories
+  const liveActiveCategory = findCategoryById(liveCategories, categoryId) ?? fileResult.category
+  const liveChildCategories = liveActiveCategory ? getChildCategories(liveCategories, liveActiveCategory.id) : []
+  const liveViewSignature = getCategoryViewSignature(liveActiveCategory, liveChildCategories, fileResult.files)
+
+  if (liveViewSignature !== cachedViewSignature) {
+    renderCategoryScreen(liveCategories, liveActiveCategory, fileResult.files)
   }
 }
 
@@ -880,7 +1042,7 @@ export const renderDownloadFlowDetailPage = async () => {
     downloads: liveCurrent.downloads,
     price: liveResult.price,
     featured: liveCurrent.featured,
-    backLabel: activeSolutionCategory?.title ?? 'Solution Files',
+    backLabel: activeSolutionCategory?.fullTitle ?? activeSolutionCategory?.title ?? 'Solution Files',
     backHref: `/solution-files.html?brand=${activeSolutionCategory?.brandId ?? 'huawei'}&category=${activeSolutionCategory?.id ?? 'fix-reboot'}`,
   }
 

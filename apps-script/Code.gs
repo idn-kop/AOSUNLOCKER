@@ -3,7 +3,7 @@ const SETTINGS_SHEET_NAME = 'Settings';
 const BRANDS_SHEET_NAME = 'Brands';
 const META_SHEET_NAME = 'Meta';
 const BRANDS_HEADERS = ['brand_id', 'brand_label'];
-const SETTINGS_HEADERS = ['brand_id', 'brand_label', 'category_id', 'category_label'];
+const SETTINGS_HEADERS = ['brand_id', 'brand_label', 'category_id', 'category_label', 'parent_category_id'];
 const META_HEADERS = ['key', 'value'];
 const PUBLIC_CACHE_VERSION_KEY = 'public_cache_version';
 const LAST_ADMIN_UPDATE_KEY = 'last_admin_update';
@@ -37,14 +37,14 @@ const DEFAULT_BRANDS = [
 ];
 
 const DEFAULT_CATEGORIES = [
-  { brandId: 'huawei', brandLabel: 'Huawei', id: 'huawei-removed-id', label: 'Removed ID' },
-  { brandId: 'huawei', brandLabel: 'Huawei', id: 'repair-chip-damage', label: 'Repair Chip Damage' },
-  { brandId: 'huawei', brandLabel: 'Huawei', id: 'fix-reboot', label: 'Fix Reboot' },
-  { brandId: 'huawei', brandLabel: 'Huawei', id: 'xml-qualcomm', label: 'XML Qualcomm' },
-  { brandId: 'honor', brandLabel: 'Honor', id: 'honor-removed-id', label: 'Removed ID' },
-  { brandId: 'honor', brandLabel: 'Honor', id: 'honor-fix-reboot', label: 'Fix Reboot' },
-  { brandId: 'honor', brandLabel: 'Honor', id: 'honor-otg-file', label: 'OTG File' },
-  { brandId: 'honor', brandLabel: 'Honor', id: 'honor-repair-imei', label: 'Repair IMEI' },
+  { brandId: 'huawei', brandLabel: 'Huawei', id: 'huawei-removed-id', label: 'Removed ID', parentCategoryId: '' },
+  { brandId: 'huawei', brandLabel: 'Huawei', id: 'repair-chip-damage', label: 'Repair Chip Damage', parentCategoryId: '' },
+  { brandId: 'huawei', brandLabel: 'Huawei', id: 'fix-reboot', label: 'Fix Reboot', parentCategoryId: '' },
+  { brandId: 'huawei', brandLabel: 'Huawei', id: 'xml-qualcomm', label: 'XML Qualcomm', parentCategoryId: '' },
+  { brandId: 'honor', brandLabel: 'Honor', id: 'honor-removed-id', label: 'Removed ID', parentCategoryId: '' },
+  { brandId: 'honor', brandLabel: 'Honor', id: 'honor-fix-reboot', label: 'Fix Reboot', parentCategoryId: '' },
+  { brandId: 'honor', brandLabel: 'Honor', id: 'honor-otg-file', label: 'OTG File', parentCategoryId: '' },
+  { brandId: 'honor', brandLabel: 'Honor', id: 'honor-repair-imei', label: 'Repair IMEI', parentCategoryId: '' },
 ];
 
 function doGet(e) {
@@ -157,8 +157,9 @@ function runIntegrityScan() {
     const brandLabel = String(hasBrandColumns ? row[1] : 'Huawei').trim();
     const categoryId = String(hasBrandColumns ? row[2] : row[0] || '').trim();
     const categoryLabel = String(hasBrandColumns ? row[3] : row[1] || '').trim();
+    const parentCategoryId = String(hasBrandColumns ? row[4] || '' : '').trim();
 
-    if (!brandId && !categoryId && !categoryLabel) return;
+    if (!brandId && !categoryId && !categoryLabel && !parentCategoryId) return;
 
     if (!brandId || !categoryId || !categoryLabel) {
       addIssue(
@@ -168,6 +169,14 @@ function runIntegrityScan() {
         { code: 'incomplete_category_row', fixableCategoryRow: true },
       );
       return;
+    }
+
+    if (parentCategoryId && parentCategoryId === categoryId) {
+      addIssue(
+        'critical',
+        'Category points to itself',
+        'Category "' + categoryLabel + '" in row ' + rowNumber + ' uses itself as the parent folder.',
+      );
     }
 
     if (!brandRegistry[brandId]) {
@@ -189,6 +198,7 @@ function runIntegrityScan() {
         brandId: brandId,
         label: categoryLabel,
         rows: [rowNumber],
+        parentCategoryId: parentCategoryId,
       };
       return;
     }
@@ -213,6 +223,50 @@ function runIntegrityScan() {
         'warning',
         'Category label mismatch',
         'Category ID "' + categoryId + '" stores different labels in rows ' + categoryRegistry[categoryId].rows.join(', ') + '.',
+      );
+    }
+
+    if (categoryRegistry[categoryId].parentCategoryId !== parentCategoryId) {
+      addIssue(
+        'warning',
+        'Category parent mismatch',
+        'Category ID "' + categoryId + '" stores different parent folders in rows ' + categoryRegistry[categoryId].rows.join(', ') + '.',
+      );
+    }
+  });
+
+  Object.keys(categoryRegistry).forEach(function(categoryId) {
+    const category = categoryRegistry[categoryId];
+    if (!category || !category.parentCategoryId) return;
+
+    const parentCategory = categoryRegistry[category.parentCategoryId];
+    if (!parentCategory) {
+      addIssue(
+        'critical',
+        'Category points to missing parent',
+        'Folder "' + category.label + '" points to missing parent "' + category.parentCategoryId + '".',
+      );
+      return;
+    }
+
+    if (parentCategory.brandId !== category.brandId) {
+      addIssue(
+        'critical',
+        'Parent folder brand mismatch',
+        'Folder "' + category.label + '" belongs to "' + category.brandId + '" but parent "' + parentCategory.label + '" belongs to "' + parentCategory.brandId + '".',
+      );
+    }
+  });
+
+  Object.keys(categoryRegistry).forEach(function(categoryId) {
+    const category = categoryRegistry[categoryId];
+    if (!category || !category.parentCategoryId) return;
+
+    if (hasCategoryCycleInRegistry_(categoryId, categoryRegistry)) {
+      addIssue(
+        'critical',
+        'Folder loop detected',
+        'Folder "' + category.label + '" creates a circular parent chain. Review the parent folder links.',
       );
     }
   });
@@ -521,11 +575,12 @@ function addCategory(payload) {
   const brandLabel = getBrandLabel_(brandId);
   const categoryLabel = String(payload.categoryLabel || '').trim();
   const customCategoryId = String(payload.categoryId || '').trim();
+  const parentCategoryId = String(payload.parentCategoryId || '').trim();
 
   if (!brandId) throw new Error('Brand is required.');
   if (!categoryLabel) throw new Error('Category label is required.');
 
-  const categoryId = customCategoryId || buildCategoryId_(brandId, categoryLabel);
+  const categoryId = customCategoryId || buildCategoryId_(brandId, categoryLabel, parentCategoryId);
   const categories = getCategories_();
   const exists = categories.some(function(item) {
     return String(item.id || '').trim() === categoryId;
@@ -535,8 +590,26 @@ function addCategory(payload) {
     throw new Error('Category ID already exists.');
   }
 
+  if (parentCategoryId) {
+    const parentCategory = categories.find(function(item) {
+      return String(item.id || '').trim() === parentCategoryId;
+    });
+
+    if (!parentCategory) {
+      throw new Error('Parent folder was not found.');
+    }
+
+    if (String(parentCategory.brandId || '').trim().toLowerCase() !== brandId) {
+      throw new Error('Parent folder belongs to a different brand.');
+    }
+
+    if (parentCategoryId === categoryId) {
+      throw new Error('Folder cannot be its own parent.');
+    }
+  }
+
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SETTINGS_SHEET_NAME);
-  sheet.appendRow([brandId, brandLabel, categoryId, categoryLabel]);
+  sheet.appendRow([brandId, brandLabel, categoryId, categoryLabel, parentCategoryId]);
   touchPublicCacheVersion_();
 
   return {
@@ -559,12 +632,13 @@ function updateCategory(payload) {
   const brandLabel = getBrandLabel_(brandId);
   const categoryLabel = String(payload.categoryLabel || '').trim();
   const customCategoryId = String(payload.categoryId || '').trim();
+  const parentCategoryId = String(payload.parentCategoryId || '').trim();
 
   if (!originalCategoryId) throw new Error('Original category ID is missing.');
   if (!brandId) throw new Error('Brand is required.');
   if (!categoryLabel) throw new Error('Category label is required.');
 
-  const nextCategoryId = customCategoryId || buildCategoryId_(brandId, categoryLabel);
+  const nextCategoryId = customCategoryId || buildCategoryId_(brandId, categoryLabel, parentCategoryId);
   const settingsSheet = getSettingsSheet_();
   const values = settingsSheet.getDataRange().getValues();
   const rowIndex = values.findIndex(function(row, index) {
@@ -577,6 +651,10 @@ function updateCategory(payload) {
   }
 
   const categories = getCategories_();
+  const currentCategory = categories.find(function(item) {
+    return item.id === originalCategoryId;
+  });
+  const descendantIds = getCategoryDescendantIds_(categories, originalCategoryId);
   const duplicate = categories.some(function(item) {
     return item.id === nextCategoryId && item.id !== originalCategoryId;
   });
@@ -585,7 +663,36 @@ function updateCategory(payload) {
     throw new Error('Category ID already exists.');
   }
 
-  settingsSheet.getRange(rowIndex + 1, 1, 1, 4).setValues([[brandId, brandLabel, nextCategoryId, categoryLabel]]);
+  if (parentCategoryId === originalCategoryId || parentCategoryId === nextCategoryId) {
+    throw new Error('Folder cannot be its own parent.');
+  }
+
+  if (parentCategoryId && descendantIds.indexOf(parentCategoryId) >= 0) {
+    throw new Error("Parent folder cannot be one of this folder's children.");
+  }
+
+  if (descendantIds.length && currentCategory && currentCategory.brandId !== brandId) {
+    throw new Error('Move or delete subfolders first before changing this folder to another brand.');
+  }
+
+  if (parentCategoryId) {
+    const parentCategory = categories.find(function(item) {
+      return item.id === parentCategoryId;
+    });
+
+    if (!parentCategory) {
+      throw new Error('Parent folder was not found.');
+    }
+
+    if (String(parentCategory.brandId || '').trim().toLowerCase() !== brandId) {
+      throw new Error('Parent folder belongs to a different brand.');
+    }
+  }
+
+  settingsSheet.getRange(rowIndex + 1, 1, 1, SETTINGS_HEADERS.length).setValues([[brandId, brandLabel, nextCategoryId, categoryLabel, parentCategoryId]]);
+  if (originalCategoryId !== nextCategoryId) {
+    syncSettingsCategoryParentUpdate_(originalCategoryId, nextCategoryId);
+  }
   syncDownloadsCategoryUpdate_(originalCategoryId, nextCategoryId, categoryLabel, brandId, brandLabel);
   touchPublicCacheVersion_();
 
@@ -617,9 +724,14 @@ function deleteCategory(categoryId) {
   }
 
   const linkedFileCount = countFilesForCategory_(targetId);
+  const childFolderCount = countChildCategories_(targetId);
 
   if (linkedFileCount) {
     throw new Error('This category still has ' + linkedFileCount + ' files. Move or remove them first.');
+  }
+
+  if (childFolderCount) {
+    throw new Error('This category still has ' + childFolderCount + ' subfolder' + (childFolderCount === 1 ? '' : 's') + '. Remove them first.');
   }
 
   settingsSheet.deleteRow(rowIndex + 1);
@@ -868,8 +980,8 @@ function ensureSchema_() {
   }
 
   if (settingsSheet.getLastRow() === 1) {
-    const rows = DEFAULT_CATEGORIES.map((item) => [item.brandId, item.brandLabel, item.id, item.label]);
-    settingsSheet.getRange(2, 1, rows.length, 4).setValues(rows);
+    const rows = DEFAULT_CATEGORIES.map((item) => [item.brandId, item.brandLabel, item.id, item.label, item.parentCategoryId || '']);
+    settingsSheet.getRange(2, 1, rows.length, SETTINGS_HEADERS.length).setValues(rows);
   } else {
     ensureDefaultCategories_(settingsSheet);
   }
@@ -881,7 +993,7 @@ function getCategories_() {
   const headers = values[0] || [];
   const hasBrandColumns = headers.indexOf('brand_id') >= 0;
 
-  return dedupeCategories_(values
+  return decorateCategories_(dedupeCategories_(values
     .slice(1)
     .map(function(row) {
       if (hasBrandColumns && row[0] && row[2] && row[3]) {
@@ -890,6 +1002,7 @@ function getCategories_() {
           brandLabel: String(row[1]).trim(),
           id: String(row[2]).trim(),
           label: String(row[3]).trim(),
+          parentCategoryId: String(row[4] || '').trim(),
         };
       }
 
@@ -899,6 +1012,7 @@ function getCategories_() {
           brandLabel: 'Huawei',
           id: String(row[0]).trim(),
           label: String(row[1]).trim(),
+          parentCategoryId: '',
         };
       }
 
@@ -906,7 +1020,7 @@ function getCategories_() {
     })
     .filter(function(item) {
       return item && item.id && item.label;
-    }));
+    })));
 }
 
 function getBrands_() {
@@ -1024,6 +1138,16 @@ function syncDownloadsCategoryUpdate_(originalCategoryId, nextCategoryId, catego
   }
 }
 
+function syncSettingsCategoryParentUpdate_(originalCategoryId, nextCategoryId) {
+  const sheet = getSettingsSheet_();
+  const values = sheet.getDataRange().getValues();
+
+  for (var i = 1; i < values.length; i += 1) {
+    if (String(values[i][4] || '').trim() !== originalCategoryId) continue;
+    sheet.getRange(i + 1, 5).setValue(nextCategoryId);
+  }
+}
+
 function syncSettingsBrandUpdate_(originalBrandId, nextBrandId, brandLabel) {
   const sheet = getSettingsSheet_();
   const values = sheet.getDataRange().getValues();
@@ -1089,6 +1213,15 @@ function countFilesForCategory_(categoryId) {
   }
 
   return count;
+}
+
+function countChildCategories_(categoryId) {
+  const targetId = String(categoryId || '').trim();
+  if (!targetId) return 0;
+
+  return getCategories_().filter(function(item) {
+    return String(item.parentCategoryId || '').trim() === targetId;
+  }).length;
 }
 
 function countFilesForBrand_(brandId) {
@@ -1251,11 +1384,21 @@ function buildId_(categoryId, title) {
   return categoryId + '-' + base;
 }
 
-function buildCategoryId_(brandId, categoryLabel) {
+function buildCategoryId_(brandId, categoryLabel, parentCategoryId) {
   const base = String(categoryLabel || '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
+
+  const normalizedParentId = String(parentCategoryId || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  if (normalizedParentId) {
+    return normalizedParentId + '-' + base;
+  }
 
   return brandId === 'huawei' && (base === 'fix-reboot' || base === 'repair-chip-damage' || base === 'xml-qualcomm')
     ? base
@@ -1393,7 +1536,7 @@ function migrateLegacySettingsSheet_(sheet) {
       return row[0] && row[1];
     })
     .map(function(row) {
-      return ['huawei', 'Huawei', row[0], row[1]];
+      return ['huawei', 'Huawei', row[0], row[1], ''];
     });
 
   sheet.clearContents();
@@ -1420,7 +1563,7 @@ function ensureDefaultCategories_(sheet) {
       return existingIds.indexOf(item.id) === -1;
     })
     .map(function(item) {
-      return [item.brandId, item.brandLabel, item.id, item.label];
+      return [item.brandId, item.brandLabel, item.id, item.label, item.parentCategoryId || ''];
     });
 
   if (!missingRows.length) return;
@@ -1611,13 +1754,124 @@ function dedupeCategories_(items) {
   const seen = {};
 
   return items.filter(function(item) {
-    const brandKey = String((item && item.brandId) || '').trim().toLowerCase();
-    const labelKey = String((item && (item.label || item.id)) || '').trim().toLowerCase();
-    const key = brandKey + ':' + labelKey;
-    if (!labelKey || seen[key]) return false;
-    seen[key] = true;
+    const categoryId = String((item && item.id) || '').trim().toLowerCase();
+    if (!categoryId || seen[categoryId]) return false;
+    seen[categoryId] = true;
     return true;
   });
+}
+
+function decorateCategories_(items) {
+  const map = {};
+  const childCounts = {};
+
+  items.forEach(function(item) {
+    const categoryId = String((item && item.id) || '').trim();
+    if (!categoryId) return;
+    map[categoryId] = Object.assign({}, item, {
+      parentCategoryId: String((item && item.parentCategoryId) || '').trim(),
+    });
+  });
+
+  Object.keys(map).forEach(function(categoryId) {
+    const parentCategoryId = String(map[categoryId].parentCategoryId || '').trim();
+    if (!parentCategoryId) return;
+    childCounts[parentCategoryId] = (childCounts[parentCategoryId] || 0) + 1;
+  });
+
+  return items.map(function(item) {
+    const categoryId = String((item && item.id) || '').trim();
+    const safeItem = map[categoryId];
+    const parentCategoryId = String((safeItem && safeItem.parentCategoryId) || '').trim();
+    const parentCategory = parentCategoryId ? map[parentCategoryId] : null;
+
+    return Object.assign({}, safeItem, {
+      parentCategoryId: parentCategoryId,
+      parentCategoryLabel: parentCategory ? String(parentCategory.label || '').trim() : '',
+      fullLabel: buildCategoryFullLabel_(categoryId, map),
+      depth: getCategoryDepth_(categoryId, map),
+      hasChildren: Boolean(childCounts[categoryId]),
+    });
+  });
+}
+
+function buildCategoryFullLabel_(categoryId, map) {
+  const parts = [];
+  const seen = {};
+  var currentId = String(categoryId || '').trim();
+
+  while (currentId && map[currentId] && !seen[currentId]) {
+    seen[currentId] = true;
+    parts.unshift(String(map[currentId].label || currentId).trim());
+    currentId = String(map[currentId].parentCategoryId || '').trim();
+  }
+
+  return parts.join(' / ');
+}
+
+function getCategoryDepth_(categoryId, map) {
+  var depth = 0;
+  var currentId = String(categoryId || '').trim();
+  var seen = {};
+
+  while (currentId && map[currentId] && !seen[currentId]) {
+    seen[currentId] = true;
+    currentId = String(map[currentId].parentCategoryId || '').trim();
+    if (currentId) {
+      depth += 1;
+    }
+  }
+
+  return depth;
+}
+
+function getCategoryDescendantIds_(categories, parentCategoryId) {
+  const targetId = String(parentCategoryId || '').trim();
+  if (!targetId) return [];
+
+  const childMap = {};
+  (categories || []).forEach(function(item) {
+    const parentId = String((item && item.parentCategoryId) || '').trim();
+    const categoryId = String((item && item.id) || '').trim();
+    if (!parentId || !categoryId) return;
+    if (!childMap[parentId]) {
+      childMap[parentId] = [];
+    }
+    childMap[parentId].push(categoryId);
+  });
+
+  const descendants = [];
+  const seen = {};
+  const queue = (childMap[targetId] || []).slice();
+
+  while (queue.length) {
+    const currentId = String(queue.shift() || '').trim();
+    if (!currentId || seen[currentId]) continue;
+    seen[currentId] = true;
+    descendants.push(currentId);
+    (childMap[currentId] || []).forEach(function(childId) {
+      queue.push(childId);
+    });
+  }
+
+  return descendants;
+}
+
+function hasCategoryCycleInRegistry_(categoryId, registry) {
+  const seen = {};
+  var currentId = String(categoryId || '').trim();
+
+  while (currentId) {
+    if (seen[currentId]) {
+      return true;
+    }
+
+    seen[currentId] = true;
+    const item = registry[currentId];
+    currentId = item ? String(item.parentCategoryId || '').trim() : '';
+  }
+
+  return false;
 }
 
 function dedupeFiles_(items) {

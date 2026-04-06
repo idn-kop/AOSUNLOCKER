@@ -104,4 +104,9 @@ export type SolutionCategory = {
   brandLabel: string
   title: string
   description: string
+  parentCategoryId?: string
+  parentCategoryLabel?: string
+  fullTitle?: string
+  depth?: number
+  hasChildren?: boolean
 }
