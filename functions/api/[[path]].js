@@ -62,10 +62,24 @@ const extractBearerToken = (request) => {
   return match ? toText(match[1]) : '';
 };
 
-const assertAdmin = (request, env) => {
-  const configuredToken = toText(env.ADMIN_TOKEN);
+const resolveConfiguredAdminToken = async (db, env) => {
+  const runtimeToken = toText(env.ADMIN_TOKEN);
+  if (runtimeToken) {
+    return runtimeToken;
+  }
+
+  const dbToken = await getMetaValue(db, 'admin_token');
+  if (dbToken) {
+    return dbToken;
+  }
+
+  return '';
+};
+
+const assertAdmin = async (request, env, db) => {
+  const configuredToken = await resolveConfiguredAdminToken(db, env);
   if (!configuredToken) {
-    return errorResponse(500, 'ADMIN_TOKEN is not configured in Cloudflare environment variables.');
+    return errorResponse(500, 'Admin token is not configured in Cloudflare runtime or D1 meta.');
   }
 
   if (extractBearerToken(request) !== configuredToken) {
@@ -1028,12 +1042,12 @@ const handleAdminFileDelete = async (db, fileId) => {
 };
 
 const handleAdminRequest = async (context, url, pathParts) => {
-  const authError = assertAdmin(context.request, context.env);
+  const db = context.env.DB;
+  const authError = await assertAdmin(context.request, context.env, db);
   if (authError) {
     return authError;
   }
 
-  const db = context.env.DB;
   await db.exec('PRAGMA foreign_keys = ON;');
 
   if (context.request.method === 'GET' && pathParts.length === 3 && pathParts[2] === 'bootstrap') {

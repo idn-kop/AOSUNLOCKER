@@ -87,11 +87,7 @@ for (const brand of brands) {
 const categories = dedupeById(allCategories)
 const files = dedupeById(allFiles)
 
-const lines = [
-  'BEGIN TRANSACTION;',
-  '',
-  '-- Brands',
-]
+const lines = []
 
 for (const brand of brands) {
   lines.push(
@@ -102,22 +98,18 @@ for (const brand of brands) {
   lines.push(`ON CONFLICT(id) DO UPDATE SET label = excluded.label, updated_at = CURRENT_TIMESTAMP;`)
 }
 
-lines.push('', '-- Categories')
-
 for (const category of categories) {
   lines.push(
     `INSERT INTO categories (id, brand_id, label, parent_category_id, created_at, updated_at) VALUES (${sqlValue(
       category.id,
-    )}, ${sqlValue(category.brandId)}, ${sqlValue(category.label || category.id)}, ${
-      toText(category.parentCategoryId) ? sqlValue(category.parentCategoryId) : 'NULL'
-    }, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+    )}, ${sqlValue(category.brandId)}, ${sqlValue(category.label || category.id)}, ${sqlValue(
+      category.parentCategoryId || '',
+    )}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
   )
   lines.push(
     `ON CONFLICT(id) DO UPDATE SET brand_id = excluded.brand_id, label = excluded.label, parent_category_id = excluded.parent_category_id, updated_at = CURRENT_TIMESTAMP;`,
   )
 }
-
-lines.push('', '-- Files')
 
 for (const file of files) {
   const featured = file.featured ? 1 : 0
@@ -142,15 +134,10 @@ for (const file of files) {
 }
 
 lines.push(
-  '',
-  '-- Meta',
   `INSERT INTO meta (key, value, updated_at) VALUES ('public_cache_version', '${Date.now()}', CURRENT_TIMESTAMP)`,
   `ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at;`,
   `INSERT INTO meta (key, value, updated_at) VALUES ('last_admin_update', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
   `ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at;`,
-  '',
-  'COMMIT;',
-  '',
 )
 
 await mkdir(path.dirname(outFile), { recursive: true })
