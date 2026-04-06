@@ -55,7 +55,7 @@ const renderAssetImage = ({
 const getBrandArtwork = (brandId?: string) => {
   if (brandId === 'huawei') {
     return {
-      src: '/huawei-solutions.webp',
+      src: '/huawei-solutions.png',
       alt: 'Huawei logo',
       className: 'download-brand-logo',
       width: 700,
