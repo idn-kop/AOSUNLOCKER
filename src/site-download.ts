@@ -549,11 +549,14 @@ export const renderSolutionFilesPage = async () => {
     cachedChildCategories,
     cachedFileResult?.files ?? [],
   )
+  let lastCategorySignature = cachedCategorySignature
+  let lastViewSignature = cachedViewSignature
 
   document.title = `${brand.label} Solution Files | Huawei - Honor Downloads`
 
   const renderBrandScreen = (categories: SolutionCategory[]) => {
     const visibleCategories = getBrandLandingCategories(categories, brandId)
+    lastCategorySignature = getCategoryListSignature(categories)
     warmCategoryFileCache(
       brandId,
       visibleCategories.map((item) => item.id),
@@ -602,6 +605,7 @@ export const renderSolutionFilesPage = async () => {
     activeFiles: DownloadListFile[],
   ) => {
     if (!activeCategory) {
+      lastViewSignature = getCategoryViewSignature(null, [], [])
       app.innerHTML = renderSiteChrome(
         renderSolutionCategoryStage(
           [
@@ -625,6 +629,7 @@ export const renderSolutionFilesPage = async () => {
     }
 
     const childCategories = getChildCategories(allCategories, activeCategory.id)
+    lastViewSignature = getCategoryViewSignature(activeCategory, childCategories, activeFiles)
     const trail = getCategoryTrail(allCategories, activeCategory.id)
     const breadcrumbTrail = [
       { label: 'Home', href: '/index.html' },
@@ -752,6 +757,71 @@ export const renderSolutionFilesPage = async () => {
     setupSearchAndScroll()
   }
 
+  let routeRefreshTimer: number | null = null
+  let routeRefreshInFlight = false
+
+  const refreshRouteFromLive = async () => {
+    if (routeRefreshInFlight) return
+    routeRefreshInFlight = true
+
+    try {
+      const changed = await syncLiveCacheVersion()
+      if (!changed) return
+
+      if (!categoryId) {
+        const categoryResult = await loadCategoriesByBrand(brandId)
+        const nextSignature = getCategoryListSignature(categoryResult.categories)
+        if (nextSignature !== lastCategorySignature) {
+          renderBrandScreen(categoryResult.categories)
+        }
+        return
+      }
+
+      const [categoryResult, fileResult] = await Promise.all([
+        loadCategoriesByBrand(brandId),
+        loadFilesByCategory(categoryId, brandId),
+      ])
+      const nextActiveCategory = findCategoryById(categoryResult.categories, categoryId) ?? fileResult.category
+      const nextChildCategories = nextActiveCategory ? getChildCategories(categoryResult.categories, nextActiveCategory.id) : []
+      const nextSignature = getCategoryViewSignature(nextActiveCategory, nextChildCategories, fileResult.files)
+
+      if (nextSignature !== lastViewSignature) {
+        renderCategoryScreen(categoryResult.categories, nextActiveCategory, fileResult.files)
+      }
+    } finally {
+      routeRefreshInFlight = false
+    }
+  }
+
+  const scheduleRouteRefresh = (delay = 90) => {
+    if (typeof window === 'undefined') return
+
+    if (routeRefreshTimer !== null) {
+      window.clearTimeout(routeRefreshTimer)
+    }
+
+    routeRefreshTimer = window.setTimeout(() => {
+      routeRefreshTimer = null
+      void refreshRouteFromLive()
+    }, delay)
+  }
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('focus', () => {
+      scheduleRouteRefresh(40)
+    })
+
+    window.addEventListener('pageshow', () => {
+      scheduleRouteRefresh(20)
+    })
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        scheduleRouteRefresh(40)
+      }
+    })
+  }
+
   if (!categoryId) {
     if (cachedCategories.length) {
       renderBrandScreen(cachedCategories)
@@ -807,7 +877,7 @@ export const renderSolutionFilesPage = async () => {
     const categories = categoryResult.categories
     const liveCategorySignature = getCategoryListSignature(categories)
 
-    if (liveCategorySignature !== cachedCategorySignature) {
+    if (liveCategorySignature !== lastCategorySignature) {
       renderBrandScreen(categories)
     }
     return
@@ -822,7 +892,7 @@ export const renderSolutionFilesPage = async () => {
   const liveChildCategories = liveActiveCategory ? getChildCategories(liveCategories, liveActiveCategory.id) : []
   const liveViewSignature = getCategoryViewSignature(liveActiveCategory, liveChildCategories, fileResult.files)
 
-  if (liveViewSignature !== cachedViewSignature) {
+  if (liveViewSignature !== lastViewSignature) {
     renderCategoryScreen(liveCategories, liveActiveCategory, fileResult.files)
   }
 }
