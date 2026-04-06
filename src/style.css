@@ -760,13 +760,16 @@ a {
   top: 0;
   z-index: 50;
   backdrop-filter: blur(12px);
-  background: rgba(4, 6, 10, 0.98);
+  background:
+    radial-gradient(circle at 16% 50%, rgba(41, 198, 255, 0.08), rgba(41, 198, 255, 0) 24%),
+    radial-gradient(circle at 84% 50%, rgba(25, 132, 255, 0.06), rgba(25, 132, 255, 0) 22%),
+    linear-gradient(180deg, rgba(6, 11, 18, 0.985), rgba(4, 8, 14, 0.985));
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.07),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.05),
-    0 10px 22px rgba(1, 4, 9, 0.16);
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    inset 0 1px 0 rgba(177, 235, 255, 0.08),
+    inset 0 -1px 0 rgba(75, 201, 255, 0.08),
+    0 10px 22px rgba(1, 4, 9, 0.18);
+  border-top: 1px solid rgba(125, 216, 255, 0.1);
+  border-bottom: 1px solid rgba(86, 205, 255, 0.12);
 }
 
 .nav-grid {
@@ -814,7 +817,7 @@ a {
   bottom: 7px;
   height: 2px;
   border-radius: 999px;
-  background: linear-gradient(90deg, rgba(255, 123, 114, 0), rgba(255, 123, 114, 0.9), rgba(255, 123, 114, 0));
+  background: linear-gradient(90deg, rgba(81, 226, 255, 0), rgba(81, 226, 255, 0.94), rgba(81, 226, 255, 0));
   opacity: 0;
   transform: translateY(3px);
   transition: opacity 0.22s ease, transform 0.22s ease;
@@ -822,10 +825,14 @@ a {
 
 .nav-link:hover,
 .nav-link.active {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.06);
+  background:
+    linear-gradient(180deg, rgba(81, 226, 255, 0.08), rgba(81, 226, 255, 0.025)),
+    rgba(255, 255, 255, 0.02);
+  border-color: rgba(81, 226, 255, 0.14);
   color: var(--text-strong);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  box-shadow:
+    inset 0 1px 0 rgba(195, 241, 255, 0.06),
+    0 0 0 1px rgba(81, 226, 255, 0.03);
 }
 
 .nav-link:hover::after,
