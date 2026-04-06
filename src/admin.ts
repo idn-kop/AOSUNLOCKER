@@ -566,7 +566,7 @@ const renderSidebarMarkup = () => `
     <div class="admin-sidebar-brand">
       <p class="admin-eyebrow">AOSUNLOCKER</p>
       <h1 class="admin-sidebar-title">Admin Panel</h1>
-      <p class="admin-copy">Kelola brand, folder, subfolder, file, link, dan price dari panel yang lebih ringkas.</p>
+      <p class="admin-copy">Kelola brand, folder, subfolder, file, link, dan price dari panel yang lebih ringkas dan lebih enak dipakai dari HP.</p>
     </div>
 
     <nav class="admin-sidebar-nav" aria-label="Admin sections">
@@ -593,29 +593,26 @@ const renderSidebarMarkup = () => `
       <p class="admin-footer-note">Current target: <span class="admin-kbd" id="currentApiTarget">/api/admin</span></p>
     </section>
 
-    <section class="admin-sidebar-section">
-      <div class="admin-card-head">
-        <div>
-          <p class="admin-eyebrow">Connection</p>
-          <h2 class="admin-section-title admin-section-title-sm">Admin Gateway</h2>
-        </div>
+    <details class="admin-disclosure admin-side-toggle"${state.token ? '' : ' open'}>
+      <summary class="admin-disclosure-summary">Connection & token</summary>
+      <div class="admin-disclosure-content">
+        <form id="connectionForm" class="admin-form-grid" data-columns="1">
+          <label class="admin-field">
+            <span class="admin-label">Admin API base</span>
+            <input id="adminApiBase" class="admin-input" type="text" placeholder="/api/admin" />
+          </label>
+          <label class="admin-field">
+            <span class="admin-label">Admin token</span>
+            <input id="adminToken" class="admin-input" type="password" placeholder="Paste ADMIN_TOKEN" />
+          </label>
+          <div class="admin-action-row">
+            <button id="saveConnectionButton" class="admin-button admin-button-primary" type="submit">Connect</button>
+            <button id="refreshBootstrapButton" class="admin-button admin-button-secondary" type="button">Reload</button>
+            <button id="clearTokenButton" class="admin-button admin-button-ghost" type="button">Clear</button>
+          </div>
+        </form>
       </div>
-      <form id="connectionForm" class="admin-form-grid" data-columns="1">
-        <label class="admin-field">
-          <span class="admin-label">Admin API base</span>
-          <input id="adminApiBase" class="admin-input" type="text" placeholder="/api/admin" />
-        </label>
-        <label class="admin-field">
-          <span class="admin-label">Admin token</span>
-          <input id="adminToken" class="admin-input" type="password" placeholder="Paste ADMIN_TOKEN" />
-        </label>
-        <div class="admin-action-row">
-          <button id="saveConnectionButton" class="admin-button admin-button-primary" type="submit">Connect</button>
-          <button id="refreshBootstrapButton" class="admin-button admin-button-secondary" type="button">Reload</button>
-          <button id="clearTokenButton" class="admin-button admin-button-ghost" type="button">Clear</button>
-        </div>
-      </form>
-    </section>
+    </details>
   </aside>
 `
 
@@ -690,16 +687,20 @@ const renderEditorMarkup = () => `
       <section class="admin-composer-panel" data-composer-panel="file" hidden>
         <p class="admin-eyebrow">File</p>
         <h2 class="admin-section-title" id="fileFormTitle">Create File</h2>
-        <p class="admin-section-copy">Field utama ditampilkan langsung. Buka detail tambahan hanya saat perlu subtitle, notes, size, price, atau counter.</p>
+        <p class="admin-section-copy">Field penting dibuat singkat supaya tambah file dari HP lebih cepat. Detail lain tetap ada di bagian advanced.</p>
         <form id="fileForm" class="admin-form-grid">
-          <label class="admin-field">
-            <span class="admin-label">File ID</span>
-            <input id="fileId" class="admin-input" type="text" placeholder="auto-generated if blank" />
-          </label>
-          <label class="admin-field">
+          <label class="admin-field admin-span-2">
             <span class="admin-label">Title</span>
             <input id="fileTitle" class="admin-input" type="text" placeholder="Huawei Mate50..." />
           </label>
+          <label class="admin-field admin-span-2">
+            <span class="admin-label">Drive URL</span>
+            <input id="fileDriveUrl" class="admin-input" type="url" placeholder="https://drive.google.com/file/d/..." />
+          </label>
+          <div class="admin-action-row admin-span-2 admin-inline-helper-row">
+            <button id="fileAutofillButton" class="admin-button admin-button-secondary" type="button">Autofill dari Link</button>
+            <span class="admin-subtle">Tempel link dulu, lalu klik tombol ini untuk bantu isi title dan ID kalau URL mendukung.</span>
+          </div>
           <label class="admin-field">
             <span class="admin-label">Brand</span>
             <select id="fileBrand" class="admin-select"></select>
@@ -708,14 +709,6 @@ const renderEditorMarkup = () => `
             <span class="admin-label">Folder</span>
             <select id="fileCategory" class="admin-select"></select>
           </label>
-          <label class="admin-field admin-span-2">
-            <span class="admin-label">Drive URL</span>
-            <input id="fileDriveUrl" class="admin-input" type="url" placeholder="https://drive.google.com/file/d/..." />
-          </label>
-          <div class="admin-action-row admin-span-2 admin-inline-helper-row">
-            <button id="fileAutofillButton" class="admin-button admin-button-secondary" type="button">Autofill dari Link</button>
-            <span class="admin-subtle">Cocok untuk link yang punya nama file di URL. Kalau Google Drive tidak membawa nama file, isi title manual.</span>
-          </div>
           <label class="admin-field">
             <span class="admin-label">Status</span>
             <select id="fileStatus" class="admin-select">
@@ -726,6 +719,10 @@ const renderEditorMarkup = () => `
           <details id="fileAdvancedDetails" class="admin-disclosure admin-span-2">
             <summary class="admin-disclosure-summary">Advanced file details</summary>
             <div class="admin-disclosure-content admin-form-grid">
+              <label class="admin-field admin-span-2">
+                <span class="admin-label">File ID</span>
+                <input id="fileId" class="admin-input" type="text" placeholder="auto-generated if blank" />
+              </label>
               <label class="admin-field admin-span-2">
                 <span class="admin-label">Subtitle</span>
                 <input id="fileSubtitle" class="admin-input" type="text" placeholder="Short subtitle for the download list" />
@@ -853,7 +850,7 @@ const renderCatalogMarkup = () => `
         </div>
         <div id="catalogSelectionMeta" class="admin-pill-row"></div>
         <div class="admin-table-shell admin-table-shell-medium">
-          <table class="admin-table">
+          <table class="admin-table admin-table-responsive">
             <thead>
               <tr>
                 <th>File</th>
@@ -905,7 +902,7 @@ const renderFilesMarkup = () => `
         </label>
       </div>
       <div class="admin-table-shell admin-table-shell-tall">
-        <table class="admin-table">
+        <table class="admin-table admin-table-responsive">
           <thead>
             <tr>
               <th>File</th>
@@ -920,6 +917,15 @@ const renderFilesMarkup = () => `
       </div>
     </article>
   </section>
+`
+
+const renderMobileQuickbarMarkup = () => `
+  <nav class="admin-mobile-quickbar" aria-label="Mobile quick actions">
+    <button class="admin-button admin-button-primary" type="button" data-composer-mode="file" data-composer-reset="true" data-open-workspace="catalog">Tambah File</button>
+    <button class="admin-button admin-button-secondary" type="button" data-composer-mode="category" data-composer-reset="true" data-open-workspace="catalog">Tambah Folder</button>
+    <button class="admin-button admin-button-secondary" type="button" data-workspace-mode="catalog">Lihat Catalog</button>
+    <button class="admin-button admin-button-secondary" type="button" data-workspace-mode="files">Lihat Files</button>
+  </nav>
 `
 
 const renderToolsMarkup = () => `
@@ -1312,6 +1318,7 @@ const renderShell = () => {
             </div>
           </header>
 
+          ${renderMobileQuickbarMarkup()}
           ${renderDashboardMarkup()}
           ${renderCatalogMarkup()}
           ${renderFilesMarkup()}
@@ -1537,7 +1544,7 @@ const renderCatalogExplorer = () => {
             <span class="admin-folder-bullet"></span>
             <span>
               <strong>${escapeHtml(category.label)}</strong>
-              <span class="admin-folder-meta">${fileCount} file / ${children.length} subfolder</span>
+              <span class="admin-folder-meta">${fileCount} file · ${children.length} subfolder</span>
             </span>
           </button>
         </div>
@@ -1562,10 +1569,12 @@ const renderCatalogExplorer = () => {
       ${brands
         .map((brand) => {
           const isActive = activeBrand?.id === brand.id
+          const brandFolders = getCategoriesForBrand(brand.id).length
+          const brandFiles = countIndexedFilesForBrand(brand.id)
           return `
             <button class="admin-brand-pill${isActive ? ' is-active' : ''}" type="button" data-action="focus-brand" data-id="${escapeHtml(brand.id)}">
               <span>${escapeHtml(brand.label)}</span>
-              <small>${countIndexedFilesForBrand(brand.id)} files</small>
+              <small>${brandFolders} folder · ${brandFiles} file</small>
             </button>
           `
         })
@@ -1612,10 +1621,10 @@ const renderCatalogInspector = () => {
 
   if (!activeBrand) {
     title.textContent = 'Belum ada brand aktif'
-      copy.textContent = 'Connect dulu, lalu pilih brand agar isi file tampil di sini.'
+    copy.textContent = 'Connect dulu, lalu pilih brand agar isi file tampil di sini.'
     meta.innerHTML = ''
     actions.innerHTML = ''
-    body.innerHTML = `<tr><td colspan="5" class="admin-subtle">No brand selected yet.</td></tr>`
+    body.innerHTML = `<tr><td colspan="5" class="admin-subtle admin-table-empty">No brand selected yet.</td></tr>`
     return
   }
 
@@ -1646,7 +1655,7 @@ const renderCatalogInspector = () => {
       `
 
   if (!files.length) {
-    body.innerHTML = `<tr><td colspan="5" class="admin-subtle">Belum ada file di pilihan ini.</td></tr>`
+    body.innerHTML = `<tr><td colspan="5" class="admin-subtle admin-table-empty">Belum ada file di pilihan ini.</td></tr>`
     return
   }
 
@@ -1654,18 +1663,18 @@ const renderCatalogInspector = () => {
     .map(
       (file) => `
         <tr>
-          <td>
+          <td data-label="File">
             <div class="admin-file-title">${escapeHtml(file.title)}</div>
             <div class="admin-file-meta">${escapeHtml(file.categoryLabel)}</div>
           </td>
-          <td>${escapeHtml(file.price || 'free')}</td>
-          <td>
+          <td data-label="Price">${escapeHtml(file.price || 'free')}</td>
+          <td data-label="Status">
             <span class="admin-file-chip" data-tone="${escapeHtml(file.status)}">${escapeHtml(file.status)}</span>
           </td>
-          <td>
+          <td data-label="Link">
             <a class="admin-link-button" href="${escapeHtml(file.driveUrl || '#')}" target="_blank" rel="noreferrer">Open Link</a>
           </td>
-          <td>
+          <td data-label="Actions">
             <div class="admin-actions">
               <button class="admin-button admin-button-secondary" type="button" data-action="inspect-edit-file" data-id="${escapeHtml(file.id)}">Edit</button>
               <button class="admin-button admin-button-danger" type="button" data-action="inspect-delete-file" data-id="${escapeHtml(file.id)}">Delete</button>
@@ -1749,12 +1758,12 @@ const renderFileTableLegacy = () => {
   if (!mount) return
 
   if (state.filesLoading) {
-    mount.innerHTML = `<tr><td colspan="5" class="admin-subtle">Loading files from D1...</td></tr>`
+    mount.innerHTML = `<tr><td colspan="5" class="admin-subtle admin-table-empty">Loading files from D1...</td></tr>`
     return
   }
 
   if (!state.files.length) {
-    mount.innerHTML = `<tr><td colspan="5" class="admin-subtle">No files match the current filter.</td></tr>`
+    mount.innerHTML = `<tr><td colspan="5" class="admin-subtle admin-table-empty">No files match the current filter.</td></tr>`
     return
   }
 
@@ -1810,24 +1819,24 @@ const renderFileTable = () => {
     .map(
       (file) => `
         <tr>
-          <td>
+          <td data-label="File">
             <div class="admin-file-title">${escapeHtml(file.title)}</div>
             <div class="admin-file-meta">${escapeHtml(file.subtitle || '-')}</div>
             <div class="admin-subtle">ID <span class="admin-kbd">${escapeHtml(file.id)}</span></div>
           </td>
-          <td>
+          <td data-label="Folder">
             <div class="admin-file-title">${escapeHtml(file.categoryLabel)}</div>
             <div class="admin-file-meta">${escapeHtml(file.brandLabel)} / ${escapeHtml(file.size || '-')}</div>
           </td>
-          <td>
+          <td data-label="Status">
             <span class="admin-file-chip" data-tone="${escapeHtml(file.status)}">${escapeHtml(file.status)}</span>
             ${file.featured ? `<div class="admin-subtle" style="margin-top:8px">Featured</div>` : ''}
           </td>
-          <td>
+          <td data-label="Traffic">
             <div class="admin-file-title">${escapeHtml(file.downloads)} downloads</div>
             <div class="admin-file-meta">${escapeHtml(file.visits)} visits / ${escapeHtml(file.price || 'free')}</div>
           </td>
-          <td>
+          <td data-label="Actions">
             <div class="admin-actions">
               <button class="admin-button admin-button-secondary" type="button" data-action="edit-file" data-id="${escapeHtml(file.id)}">Edit</button>
               <a class="admin-link-button" href="${escapeHtml(file.driveUrl || '#')}" target="_blank" rel="noreferrer">Open Link</a>
