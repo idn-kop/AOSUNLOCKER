@@ -761,15 +761,15 @@ a {
   z-index: 50;
   backdrop-filter: blur(12px);
   background:
-    radial-gradient(circle at 16% 50%, rgba(41, 198, 255, 0.08), rgba(41, 198, 255, 0) 24%),
-    radial-gradient(circle at 84% 50%, rgba(25, 132, 255, 0.06), rgba(25, 132, 255, 0) 22%),
-    linear-gradient(180deg, rgba(6, 11, 18, 0.985), rgba(4, 8, 14, 0.985));
+    radial-gradient(circle at 14% 50%, rgba(41, 198, 255, 0.16), rgba(41, 198, 255, 0) 28%),
+    radial-gradient(circle at 86% 50%, rgba(25, 132, 255, 0.12), rgba(25, 132, 255, 0) 26%),
+    linear-gradient(180deg, rgba(5, 15, 23, 0.99), rgba(4, 10, 18, 0.99));
   box-shadow:
-    inset 0 1px 0 rgba(177, 235, 255, 0.08),
-    inset 0 -1px 0 rgba(75, 201, 255, 0.08),
-    0 10px 22px rgba(1, 4, 9, 0.18);
-  border-top: 1px solid rgba(125, 216, 255, 0.1);
-  border-bottom: 1px solid rgba(86, 205, 255, 0.12);
+    inset 0 1px 0 rgba(204, 246, 255, 0.12),
+    inset 0 -1px 0 rgba(69, 215, 255, 0.14),
+    0 12px 26px rgba(1, 4, 9, 0.2);
+  border-top: 1px solid rgba(125, 216, 255, 0.16);
+  border-bottom: 1px solid rgba(86, 205, 255, 0.18);
 }
 
 .nav-grid {
@@ -817,7 +817,7 @@ a {
   bottom: 7px;
   height: 2px;
   border-radius: 999px;
-  background: linear-gradient(90deg, rgba(81, 226, 255, 0), rgba(81, 226, 255, 0.94), rgba(81, 226, 255, 0));
+  background: linear-gradient(90deg, rgba(81, 226, 255, 0), rgba(81, 226, 255, 1), rgba(81, 226, 255, 0));
   opacity: 0;
   transform: translateY(3px);
   transition: opacity 0.22s ease, transform 0.22s ease;
@@ -826,13 +826,14 @@ a {
 .nav-link:hover,
 .nav-link.active {
   background:
-    linear-gradient(180deg, rgba(81, 226, 255, 0.08), rgba(81, 226, 255, 0.025)),
+    linear-gradient(180deg, rgba(81, 226, 255, 0.14), rgba(81, 226, 255, 0.045)),
     rgba(255, 255, 255, 0.02);
-  border-color: rgba(81, 226, 255, 0.14);
+  border-color: rgba(81, 226, 255, 0.22);
   color: var(--text-strong);
   box-shadow:
-    inset 0 1px 0 rgba(195, 241, 255, 0.06),
-    0 0 0 1px rgba(81, 226, 255, 0.03);
+    inset 0 1px 0 rgba(219, 248, 255, 0.1),
+    0 0 0 1px rgba(81, 226, 255, 0.08),
+    0 8px 18px rgba(24, 146, 255, 0.08);
 }
 
 .nav-link:hover::after,
