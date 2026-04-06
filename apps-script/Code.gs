@@ -982,8 +982,6 @@ function ensureSchema_() {
   if (settingsSheet.getLastRow() === 1) {
     const rows = DEFAULT_CATEGORIES.map((item) => [item.brandId, item.brandLabel, item.id, item.label, item.parentCategoryId || '']);
     settingsSheet.getRange(2, 1, rows.length, SETTINGS_HEADERS.length).setValues(rows);
-  } else {
-    ensureDefaultCategories_(settingsSheet);
   }
 }
 
