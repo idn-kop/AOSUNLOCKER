@@ -73,6 +73,16 @@ const getBrandArtwork = (brandId?: string) => {
     }
   }
 
+  if (brandId === 'aos-firmware') {
+    return {
+      src: '/solution-logo.svg',
+      alt: 'Solution logo',
+      className: 'download-brand-logo download-brand-logo-solution',
+      width: 320,
+      height: 320,
+    }
+  }
+
   return {
     src: '/folder.svg',
     alt: 'Folder icon',
