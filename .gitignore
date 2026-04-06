@@ -15,7 +15,6 @@ dist-ssr
 .tmp-lh/
 .lighthouse-*.json
 .wrangler/
-wrangler.jsonc
 
 # Editor directories and files
 .vscode/*
