@@ -773,6 +773,31 @@ a {
   gap: 8px;
 }
 
+.admin-inline-helper-row {
+  align-items: center;
+}
+
+.admin-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+.admin-confirm-overlay[hidden] {
+  display: none !important;
+}
+
+.admin-confirm-card {
+  position: relative;
+  z-index: 1;
+  width: min(460px, calc(100vw - 28px));
+  display: grid;
+  gap: 12px;
+}
+
 .admin-workspace-panel[hidden],
 .admin-composer-panel[hidden] {
   display: none !important;
@@ -854,6 +879,10 @@ a {
   }
 
   .admin-editor-overlay {
+    padding: 10px;
+  }
+
+  .admin-confirm-overlay {
     padding: 10px;
   }
 }

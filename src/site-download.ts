@@ -664,19 +664,18 @@ export const renderSolutionFilesPage = async () => {
         `
           <div class="download-stage-head">
             <h1>${activeCategory.fullTitle || activeCategory.title}</h1>
-            <p>${
-              activeCategory.parentCategoryLabel
-                ? `${brand.label} folder inside ${activeCategory.parentCategoryLabel}.`
-                : activeCategory.description
-            }</p>
+            ${
+              activeCategory.description
+                ? `<p>${activeCategory.description}</p>`
+                : ''
+            }
           </div>
           ${
             childCategories.length
               ? `
                 <div class="download-stage-section">
                   <div class="download-stage-subhead">
-                    <h2>${activeFiles.length ? 'Subfolders' : 'Choose a Folder'}</h2>
-                    <p>${childCategories.length} subfolder${childCategories.length === 1 ? '' : 's'} found inside ${activeCategory.title}.</p>
+                    <h2>Subfolder</h2>
                   </div>
                   ${renderCategoryFolderGrid(brandId, childCategories)}
                 </div>
@@ -692,7 +691,6 @@ export const renderSolutionFilesPage = async () => {
                       ? `
                         <div class="download-stage-subhead">
                           <h2>Files</h2>
-                          <p>Published files linked to ${activeCategory.title}.</p>
                         </div>
                       `
                       : ''

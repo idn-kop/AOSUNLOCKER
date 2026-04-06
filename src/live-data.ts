@@ -134,10 +134,7 @@ const toDisplayLabel = (value: string) =>
     .replace(/\b\w/g, (char) => char.toUpperCase())
     .trim()
 
-const buildCategoryDescription = (brandLabel: string, fullTitle: string, hasChildren: boolean) =>
-  hasChildren
-    ? `${brandLabel} folder group for ${fullTitle}.`
-    : `${brandLabel} solution folder.`
+const buildCategoryDescription = (_brandLabel?: string, _fullTitle?: string, _hasChildren?: boolean) => ''
 
 const decorateSolutionCategories = (categories: SolutionCategory[]): SolutionCategory[] => {
   const normalized = categories.map((item) => ({

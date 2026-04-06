@@ -130,6 +130,8 @@ const state = {
   editorOpen: false,
 }
 
+let confirmResolver: ((value: boolean) => void) | null = null
+
 const byId = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null
 
 const escapeHtml = (value: string) =>
@@ -345,6 +347,117 @@ const revealComposer = (
 const closeComposer = () => {
   state.editorOpen = false
   syncViewModes()
+}
+
+const openConfirmDialog = (title: string, message: string, confirmLabel = 'Delete') =>
+  new Promise<boolean>((resolve) => {
+    confirmResolver = resolve
+
+    const overlay = byId<HTMLDivElement>('adminConfirmOverlay')
+    const titleMount = byId<HTMLHeadingElement>('confirmDialogTitle')
+    const messageMount = byId<HTMLParagraphElement>('confirmDialogMessage')
+    const acceptButton = byId<HTMLButtonElement>('confirmDialogAccept')
+
+    if (!overlay || !titleMount || !messageMount || !acceptButton) {
+      resolve(window.confirm(message))
+      return
+    }
+
+    titleMount.textContent = title
+    messageMount.textContent = message
+    acceptButton.textContent = confirmLabel
+    overlay.hidden = false
+    document.body.classList.add('admin-lock-scroll')
+  })
+
+const closeConfirmDialog = (value: boolean) => {
+  const overlay = byId<HTMLDivElement>('adminConfirmOverlay')
+  if (overlay) {
+    overlay.hidden = true
+  }
+
+  if (!state.editorOpen) {
+    document.body.classList.remove('admin-lock-scroll')
+  }
+
+  const resolver = confirmResolver
+  confirmResolver = null
+  resolver?.(value)
+}
+
+const slugifyId = (value: string) =>
+  String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+const deriveFileLabelFromUrl = (rawUrl: string) => {
+  try {
+    const url = new URL(rawUrl)
+    const queryHints = ['filename', 'file', 'name', 'title']
+
+    for (const key of queryHints) {
+      const candidate = toText(url.searchParams.get(key) || '')
+      if (candidate) {
+        return candidate.replace(/\.[a-z0-9]{1,8}$/i, '')
+      }
+    }
+
+    const segments = url.pathname
+      .split('/')
+      .map((segment) => decodeURIComponent(segment))
+      .filter(Boolean)
+
+    const lastSegment = segments[segments.length - 1] || ''
+    if (lastSegment && !['view', 'download', 'file'].includes(lastSegment.toLowerCase())) {
+      return lastSegment.replace(/\.[a-z0-9]{1,8}$/i, '')
+    }
+  } catch {
+    return ''
+  }
+
+  return ''
+}
+
+const autofillFileFieldsFromLink = () => {
+  const driveUrl = getInputValue('fileDriveUrl')
+  if (!driveUrl) {
+    setBanner('Paste link dulu, baru klik Autofill.', 'warning')
+    return
+  }
+
+  const guessedRaw = deriveFileLabelFromUrl(driveUrl)
+  const guessed = guessedRaw
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  if (!guessed) {
+    setBanner('Nama file tidak bisa dibaca otomatis dari link ini. Isi title manual ya.', 'warning')
+    return
+  }
+
+  if (!getInputValue('fileTitle')) {
+    setInputValue('fileTitle', guessed)
+  }
+
+  if (!getInputValue('fileSubtitle')) {
+    setInputValue('fileSubtitle', guessed)
+  }
+
+  if (!getInputValue('fileSummary')) {
+    setInputValue('fileSummary', guessed)
+  }
+
+  if (!state.editingFileId && !getInputValue('fileId')) {
+    const category = getCategoryById(getInputValue('fileCategory'))
+    const prefix = category?.id || getInputValue('fileBrand') || 'file'
+    setInputValue('fileId', `${prefix}-${slugifyId(guessed)}`)
+  }
+
+  state.fileAdvancedOpen = true
+  syncViewModes()
+  setBanner(`Autofill selesai untuk "${guessed}".`, 'success')
 }
 
 const revealWorkspace = (mode: WorkspaceMode, options: { scroll?: boolean } = {}) => {
@@ -599,6 +712,10 @@ const renderEditorMarkup = () => `
             <span class="admin-label">Drive URL</span>
             <input id="fileDriveUrl" class="admin-input" type="url" placeholder="https://drive.google.com/file/d/..." />
           </label>
+          <div class="admin-action-row admin-span-2 admin-inline-helper-row">
+            <button id="fileAutofillButton" class="admin-button admin-button-secondary" type="button">Autofill dari Link</button>
+            <span class="admin-subtle">Cocok untuk link yang punya nama file di URL. Kalau Google Drive tidak membawa nama file, isi title manual.</span>
+          </div>
           <label class="admin-field">
             <span class="admin-label">Status</span>
             <select id="fileStatus" class="admin-select">
@@ -652,6 +769,21 @@ const renderEditorMarkup = () => `
           </div>
         </form>
       </section>
+    </article>
+  </div>
+`
+
+const renderConfirmDialogMarkup = () => `
+  <div id="adminConfirmOverlay" class="admin-confirm-overlay" hidden>
+    <button class="admin-editor-backdrop" type="button" data-close-confirm="true" aria-label="Close confirm"></button>
+    <article class="admin-card admin-panel-card admin-confirm-card" role="dialog" aria-modal="true">
+      <p class="admin-eyebrow">Confirm Action</p>
+      <h2 id="confirmDialogTitle" class="admin-section-title admin-section-title-sm">Confirm delete</h2>
+      <p id="confirmDialogMessage" class="admin-section-copy">Please confirm this action.</p>
+      <div class="admin-action-row">
+        <button id="confirmDialogAccept" class="admin-button admin-button-danger" type="button">Delete</button>
+        <button id="confirmDialogCancel" class="admin-button admin-button-secondary" type="button">Cancel</button>
+      </div>
     </article>
   </div>
 `
@@ -1187,6 +1319,7 @@ const renderShell = () => {
         </section>
       </div>
       ${renderEditorMarkup()}
+      ${renderConfirmDialogMarkup()}
     </main>
   `
 }
@@ -2337,7 +2470,12 @@ const submitFileForm = async (button: HTMLButtonElement | null) => {
 const deleteBrand = async (brandId: string) => {
   const brand = getBrandById(brandId)
   if (!brand) return
-  if (!window.confirm(`Delete brand "${brand.label}"? This only works when it has no folders or files.`)) return
+  const confirmed = await openConfirmDialog(
+    'Hapus brand',
+    `Hapus brand "${brand.label}"? Ini hanya bisa jalan kalau brand sudah tidak punya folder dan file.`,
+    'Hapus Brand',
+  )
+  if (!confirmed) return
 
   const nextState = await requestAdmin<BootstrapResponse>(`brands/${encodeURIComponent(brandId)}`, {
     method: 'DELETE',
@@ -2353,7 +2491,12 @@ const deleteBrand = async (brandId: string) => {
 const deleteCategory = async (categoryId: string) => {
   const category = getCategoryById(categoryId)
   if (!category) return
-  if (!window.confirm(`Delete folder "${category.fullLabel || category.label}"? Make sure it has no subfolders and no files.`)) return
+  const confirmed = await openConfirmDialog(
+    'Hapus folder',
+    `Hapus folder "${category.fullLabel || category.label}"? Pastikan folder ini sudah tidak punya subfolder dan file.`,
+    'Hapus Folder',
+  )
+  if (!confirmed) return
 
   const nextState = await requestAdmin<BootstrapResponse>(`categories/${encodeURIComponent(categoryId)}`, {
     method: 'DELETE',
@@ -2369,7 +2512,8 @@ const deleteCategory = async (categoryId: string) => {
 const deleteFile = async (fileId: string) => {
   const file = getKnownFiles().find((item) => item.id === fileId)
   if (!file) return
-  if (!window.confirm(`Delete file "${file.title}"?`)) return
+  const confirmed = await openConfirmDialog('Hapus file', `Hapus file "${file.title}"?`, 'Hapus File')
+  if (!confirmed) return
 
   const nextState = await requestAdmin<BootstrapResponse>(`files/${encodeURIComponent(fileId)}`, {
     method: 'DELETE',
@@ -2524,6 +2668,10 @@ const bindStaticEventsLegacy = () => {
     setBanner('Stored token cleared from this browser.', 'warning')
   })
 
+  byId<HTMLButtonElement>('fileAutofillButton')?.addEventListener('click', () => {
+    autofillFileFieldsFromLink()
+  })
+
   byId<HTMLButtonElement>('closeComposerButton')?.addEventListener('click', () => {
     closeComposer()
   })
@@ -2538,6 +2686,26 @@ const bindStaticEventsLegacy = () => {
   window.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && state.editorOpen) {
       closeComposer()
+      return
+    }
+
+    if (event.key === 'Escape' && confirmResolver) {
+      closeConfirmDialog(false)
+    }
+  })
+
+  byId<HTMLButtonElement>('confirmDialogAccept')?.addEventListener('click', () => {
+    closeConfirmDialog(true)
+  })
+
+  byId<HTMLButtonElement>('confirmDialogCancel')?.addEventListener('click', () => {
+    closeConfirmDialog(false)
+  })
+
+  byId<HTMLDivElement>('adminConfirmOverlay')?.addEventListener('click', (event) => {
+    const target = event.target as HTMLElement
+    if (target.closest('[data-close-confirm="true"]')) {
+      closeConfirmDialog(false)
     }
   })
 
