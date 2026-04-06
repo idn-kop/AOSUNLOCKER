@@ -229,8 +229,17 @@ export const renderPage = async (pageKey: SitePageKey) => {
           ${
             page.key === 'home'
               ? `
-                <div class="downloads-home-head">
-                  <p class="eyebrow">Download Folders</p>
+                <div class="downloads-home-head downloads-home-head-brand">
+                  <div class="downloads-home-head-copy">
+                    <p class="eyebrow">Download Folders</p>
+                    <h2 class="section-title"><i class="fas fa-layer-group me-2 text-primary"></i>AOSUNLOCKER Brand Access</h2>
+                    <p class="downloads-home-copy">Clean entry points for Huawei, Honor, and solution repair files, arranged as focused brand spaces instead of a crowded template-style directory.</p>
+                  </div>
+                  <div class="downloads-home-brand-rail" aria-label="Primary AOSUNLOCKER brands">
+                    <span class="brand-rail-chip brand-rail-chip-huawei">Huawei</span>
+                    <span class="brand-rail-chip brand-rail-chip-honor">Honor</span>
+                    <span class="brand-rail-chip brand-rail-chip-solution">Solution</span>
+                  </div>
                 </div>
                 <div class="downloads-home-shell" id="homeBrandMount">${renderBrandHomeGrid(getOrderedHomeBrands(downloadHomeCategories))}</div>
               `

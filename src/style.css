@@ -1586,8 +1586,9 @@ a {
   inset: 0 0 auto 0;
   height: 320px;
   background:
-    linear-gradient(180deg, rgba(8, 14, 26, 0.42), rgba(9, 12, 17, 0)),
-    radial-gradient(circle at center top, rgba(90, 128, 199, 0.08), transparent 40%);
+    linear-gradient(180deg, rgba(8, 14, 26, 0.56), rgba(9, 12, 17, 0)),
+    radial-gradient(circle at center top, rgba(90, 128, 199, 0.1), transparent 40%),
+    radial-gradient(circle at 86% 10%, rgba(255, 123, 114, 0.05), transparent 18%);
   pointer-events: none;
 }
 
@@ -2569,20 +2570,109 @@ h6 {
 }
 
 .downloads-home-head {
-  margin-bottom: 0.82rem;
+  position: relative;
+  margin-bottom: 0.92rem;
   max-width: none;
   display: grid;
-  gap: 0.28rem;
+  gap: 0.72rem;
+  padding: 1rem 1.08rem 0.98rem;
+  border-radius: 1.6rem;
+  border: 1px solid rgba(120, 150, 210, 0.08);
+  background:
+    radial-gradient(circle at top left, rgba(81, 226, 255, 0.08), transparent 28%),
+    radial-gradient(circle at 88% 20%, rgba(255, 123, 114, 0.06), transparent 22%),
+    linear-gradient(180deg, rgba(12, 18, 31, 0.84), rgba(7, 11, 18, 0.92));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 14px 34px rgba(1, 4, 9, 0.16);
+  overflow: hidden;
+}
+
+.downloads-home-head::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 26px;
+  right: 26px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(81, 226, 255, 0), rgba(81, 226, 255, 0.62), rgba(255, 123, 114, 0.22), rgba(81, 226, 255, 0.62), rgba(81, 226, 255, 0));
+  opacity: 0.72;
+}
+
+.downloads-home-head::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border-radius: calc(1.6rem - 1px);
+  border: 1px solid rgba(255, 255, 255, 0.02);
+  pointer-events: none;
+}
+
+.downloads-home-head-brand {
+  grid-template-columns: minmax(0, 1.4fr) auto;
+  align-items: end;
+}
+
+.downloads-home-head-copy {
+  display: grid;
+  gap: 0.3rem;
 }
 
 .downloads-home-head .eyebrow {
   margin-bottom: 0;
-  background: rgba(255, 255, 255, 0.02);
-  border-color: rgba(120, 150, 210, 0.07);
+  background: rgba(255, 255, 255, 0.028);
+  border-color: rgba(120, 150, 210, 0.1);
 }
 
 .downloads-home-head .section-title {
   margin-bottom: 0;
+  max-width: 16ch;
+}
+
+.downloads-home-brand-rail {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-self: start;
+  gap: 0.48rem;
+  max-width: 100%;
+}
+
+.brand-rail-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0.5rem 0.78rem;
+  border-radius: 999px;
+  border: 1px solid rgba(120, 150, 210, 0.1);
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--text-strong);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 10px 20px rgba(1, 4, 9, 0.1);
+}
+
+.brand-rail-chip-huawei {
+  border-color: rgba(229, 83, 75, 0.18);
+  background: linear-gradient(180deg, rgba(229, 83, 75, 0.12), rgba(229, 83, 75, 0.04));
+  color: #ffd2cc;
+}
+
+.brand-rail-chip-honor {
+  border-color: rgba(72, 157, 255, 0.2);
+  background: linear-gradient(180deg, rgba(72, 157, 255, 0.12), rgba(72, 157, 255, 0.04));
+  color: #d5e9ff;
+}
+
+.brand-rail-chip-solution {
+  border-color: rgba(108, 182, 255, 0.22);
+  background: linear-gradient(180deg, rgba(146, 104, 255, 0.14), rgba(55, 123, 255, 0.04));
+  color: #d8e6ff;
 }
 
 .downloads-home-shell {
@@ -2637,6 +2727,13 @@ h6 {
   transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
 }
 
+.download-home-card-brand {
+  border-color: rgba(120, 150, 210, 0.1);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.018),
+    0 10px 24px rgba(1, 4, 9, 0.11);
+}
+
 .download-home-card::before,
 .brand-download-card::before,
 .model-folder-card::before {
@@ -2650,12 +2747,81 @@ h6 {
   opacity: 0.28;
 }
 
+.download-home-card-brand::before {
+  height: 2px;
+  left: 18px;
+  right: 18px;
+  opacity: 0.56;
+}
+
+.download-home-card-brand-huawei {
+  background:
+    radial-gradient(circle at top left, rgba(229, 83, 75, 0.14), transparent 26%),
+    linear-gradient(180deg, rgba(24, 17, 23, 0.96), rgba(10, 12, 19, 0.94));
+  border-color: rgba(229, 83, 75, 0.12);
+}
+
+.download-home-card-brand-honor {
+  background:
+    radial-gradient(circle at top left, rgba(72, 157, 255, 0.14), transparent 26%),
+    linear-gradient(180deg, rgba(13, 18, 31, 0.96), rgba(9, 12, 20, 0.94));
+  border-color: rgba(72, 157, 255, 0.12);
+}
+
+.download-home-card-brand-aos-firmware,
+.download-home-card-brand-solution {
+  background:
+    radial-gradient(circle at top left, rgba(127, 93, 255, 0.18), transparent 26%),
+    radial-gradient(circle at bottom right, rgba(81, 226, 255, 0.08), transparent 22%),
+    linear-gradient(180deg, rgba(18, 19, 38, 0.96), rgba(8, 12, 24, 0.94));
+  border-color: rgba(108, 182, 255, 0.16);
+}
+
+.download-home-card-brand-huawei::before {
+  background: linear-gradient(90deg, rgba(229, 83, 75, 0), rgba(255, 140, 127, 0.95), rgba(229, 83, 75, 0));
+}
+
+.download-home-card-brand-honor::before {
+  background: linear-gradient(90deg, rgba(72, 157, 255, 0), rgba(148, 210, 255, 0.95), rgba(72, 157, 255, 0));
+}
+
+.download-home-card-brand-aos-firmware::before,
+.download-home-card-brand-solution::before {
+  background: linear-gradient(90deg, rgba(108, 182, 255, 0), rgba(168, 200, 255, 0.95), rgba(108, 182, 255, 0));
+}
+
 .download-home-card:hover {
   transform: translateY(-1px);
   border-color: rgba(120, 150, 210, 0.11);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.016),
     0 10px 22px rgba(1, 4, 9, 0.1);
+}
+
+.download-home-card-brand:hover {
+  transform: translateY(-3px);
+}
+
+.download-home-card-brand-huawei:hover {
+  border-color: rgba(229, 83, 75, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.024),
+    0 16px 30px rgba(125, 35, 31, 0.16);
+}
+
+.download-home-card-brand-honor:hover {
+  border-color: rgba(72, 157, 255, 0.2);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.024),
+    0 16px 30px rgba(35, 72, 133, 0.16);
+}
+
+.download-home-card-brand-aos-firmware:hover,
+.download-home-card-brand-solution:hover {
+  border-color: rgba(108, 182, 255, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.024),
+    0 18px 34px rgba(44, 71, 132, 0.18);
 }
 
 .download-home-card::after {
@@ -3661,6 +3827,19 @@ h6 {
     justify-content: center;
   }
 
+  .downloads-home-head-brand {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .downloads-home-head .section-title {
+    max-width: none;
+  }
+
+  .downloads-home-brand-rail {
+    justify-content: flex-start;
+  }
+
   .download-home-grid,
   .brand-download-grid,
   .model-folder-grid,
@@ -3724,6 +3903,31 @@ h6 {
     gap: 0.3rem;
     line-height: 1.28;
     text-align: center;
+  }
+
+  .downloads-home-head {
+    padding: 0.88rem 0.88rem 0.84rem;
+    border-radius: 1.3rem;
+    gap: 0.58rem;
+  }
+
+  .downloads-home-head::before {
+    left: 18px;
+    right: 18px;
+  }
+
+  .downloads-home-head-copy {
+    gap: 0.24rem;
+  }
+
+  .downloads-home-brand-rail {
+    gap: 0.4rem;
+  }
+
+  .brand-rail-chip {
+    min-height: 34px;
+    padding: 0.42rem 0.66rem;
+    font-size: 0.68rem;
   }
 
   .eyebrow {

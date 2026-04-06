@@ -385,7 +385,7 @@ const getDownloadHomeKicker = (item: DownloadCategoryCard) => {
 }
 
 export const renderDownloadHomeCard = (item: DownloadCategoryCard) => `
-  <a class="download-home-card" href="${item.href}">
+  <a class="download-home-card ${item.kind === 'brand' ? `download-home-card-brand download-home-card-brand-${item.brandId}` : ''}" href="${item.href}">
     <div class="download-home-icon ${item.kind === 'android' ? 'download-home-icon-android' : ''} ${item.kind === 'brand' ? `download-home-icon-brand download-home-icon-brand-${item.brandId}` : ''}">
       ${
         item.kind === 'android'
