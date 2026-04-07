@@ -230,7 +230,7 @@ export const renderPage = async (pageKey: SitePageKey) => {
             page.key === 'home'
               ? `
                 <div class="downloads-home-head">
-                  <p class="eyebrow">Download Folders</p>
+                  <p class="eyebrow">Download Firmware</p>
                 </div>
                 <div class="downloads-home-shell" id="homeBrandMount">${renderBrandHomeGrid(getOrderedHomeBrands(downloadHomeCategories))}</div>
               `
