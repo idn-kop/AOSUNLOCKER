@@ -17,6 +17,8 @@ const errorResponse = (status, message) =>
     { status },
   );
 
+const PUBLIC_ROUTE_ALIASES = new Set(['status', 'brands', 'categories', 'files', 'file', 'increment']);
+
 const nowIso = () => new Date().toISOString();
 
 const normalizeId = (value) =>
@@ -1134,6 +1136,30 @@ const handleAdminRequest = async (context, url, pathParts) => {
   return errorResponse(404, 'Admin route was not found.');
 };
 
+const normalizePublicRoute = (url, pathParts) => {
+  const requestedView = toText(url.searchParams.get('view'));
+  if (requestedView) {
+    return requestedView;
+  }
+
+  const routeKey = toText(pathParts[1]);
+  if (!routeKey) {
+    return 'catalog';
+  }
+
+  if (!PUBLIC_ROUTE_ALIASES.has(routeKey)) {
+    return '';
+  }
+
+  url.searchParams.set('view', routeKey);
+
+  if ((routeKey === 'file' || routeKey === 'increment') && !toText(url.searchParams.get('id')) && pathParts[2]) {
+    url.searchParams.set('id', toText(pathParts[2]));
+  }
+
+  return routeKey;
+};
+
 export const onRequest = async (context) => {
   try {
     const url = new URL(context.request.url);
@@ -1149,6 +1175,11 @@ export const onRequest = async (context) => {
 
     if (context.request.method !== 'GET') {
       return errorResponse(405, 'Only GET is allowed on public API routes.');
+    }
+
+    const publicView = normalizePublicRoute(url, pathParts);
+    if (!publicView) {
+      return errorResponse(404, 'Public API route was not found.');
     }
 
     return await handlePublicGet(context, url);
