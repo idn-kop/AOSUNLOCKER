@@ -62,6 +62,11 @@ const isToolsBrand = (brandId?: string) => {
   return normalized === 'tools'
 }
 
+const isFreeBrand = (brandId?: string) => {
+  const normalized = String(brandId || '').trim().toLowerCase()
+  return normalized === 'free-download' || normalized === 'free'
+}
+
 const getBrandArtwork = (brandId?: string) => {
   if (brandId === 'huawei') {
     return {
@@ -100,6 +105,16 @@ const getBrandArtwork = (brandId?: string) => {
       className: 'download-brand-logo download-brand-logo-solution',
       width: 900,
       height: 1035,
+    }
+  }
+
+  if (isFreeBrand(brandId)) {
+    return {
+      src: '/free-download-mark.svg',
+      alt: 'Free download mark',
+      className: 'download-brand-logo download-brand-logo-free',
+      width: 256,
+      height: 256,
     }
   }
 
@@ -381,6 +396,10 @@ const renderLogoWordmark = () => `
 
 const getDownloadHomeKicker = (item: DownloadCategoryCard) => {
   if (item.kind === 'brand') {
+    if (item.brandId === 'free-download') {
+      return 'Free Files'
+    }
+
     if (item.brandId === 'honor') {
       return 'Honor Files'
     }
@@ -397,6 +416,14 @@ const getDownloadHomeKicker = (item: DownloadCategoryCard) => {
   }
 
   return 'Download Files'
+}
+
+const getDownloadHomeTitle = (item: DownloadCategoryCard) => {
+  if (item.kind === 'brand' && item.brandId === 'free-download') {
+    return 'Free Download'
+  }
+
+  return item.title
 }
 
 export const renderDownloadHomeCard = (item: DownloadCategoryCard) => `
@@ -429,7 +456,7 @@ export const renderDownloadHomeCard = (item: DownloadCategoryCard) => `
     </div>
     <div class="download-home-copy">
       <span class="download-home-kicker">${getDownloadHomeKicker(item)}</span>
-      <h3>${item.title}</h3>
+      <h3>${getDownloadHomeTitle(item)}</h3>
       <p>${item.description}</p>
     </div>
     <span class="download-home-arrow" aria-hidden="true"><i class="fas fa-arrow-up-right"></i></span>

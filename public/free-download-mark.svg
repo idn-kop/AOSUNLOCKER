@@ -1,0 +1,32 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="36" y1="28" x2="216" y2="224" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#162533"/>
+      <stop offset="1" stop-color="#0A1119"/>
+    </linearGradient>
+    <linearGradient id="outline" x1="52" y1="44" x2="204" y2="212" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#89F0B7"/>
+      <stop offset="1" stop-color="#66C4FF"/>
+    </linearGradient>
+    <linearGradient id="arrow" x1="128" y1="86" x2="128" y2="176" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F5FFFB"/>
+      <stop offset="1" stop-color="#BDF3DD"/>
+    </linearGradient>
+    <radialGradient id="glowA" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(84 74) rotate(48.6) scale(114.464 122.761)">
+      <stop stop-color="#73F7BC" stop-opacity="0.24"/>
+      <stop offset="1" stop-color="#73F7BC" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowB" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(188 192) rotate(137.121) scale(95.0248 112.805)">
+      <stop stop-color="#6AB8FF" stop-opacity="0.2"/>
+      <stop offset="1" stop-color="#6AB8FF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="20" y="20" width="216" height="216" rx="56" fill="url(#bg)"/>
+  <rect x="20" y="20" width="216" height="216" rx="56" fill="url(#glowA)"/>
+  <rect x="20" y="20" width="216" height="216" rx="56" fill="url(#glowB)"/>
+  <rect x="21" y="21" width="214" height="214" rx="55" stroke="url(#outline)" stroke-opacity="0.28" stroke-width="2"/>
+  <rect x="66" y="42" width="124" height="34" rx="17" fill="#121D29" stroke="#274456" stroke-width="1.5"/>
+  <text x="128" y="64" text-anchor="middle" fill="#DFF6EA" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" letter-spacing="2">FREE</text>
+  <path d="M128 86C134.627 86 140 91.3726 140 98V139.029L153.515 125.515C158.201 120.828 165.799 120.828 170.485 125.515C175.172 130.201 175.172 137.799 170.485 142.485L136.485 176.485C131.799 181.172 124.201 181.172 119.515 176.485L85.5147 142.485C80.8284 137.799 80.8284 130.201 85.5147 125.515C90.201 120.828 97.799 120.828 102.485 125.515L116 139.029V98C116 91.3726 121.373 86 128 86Z" fill="url(#arrow)"/>
+  <rect x="80" y="188" width="96" height="16" rx="8" fill="#173042" stroke="#274D60" stroke-width="1.2"/>
+</svg>

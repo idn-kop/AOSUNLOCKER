@@ -137,6 +137,10 @@ const toDisplayLabel = (value: string) =>
 const getBrandCardDescription = (brandId: string) => {
   const normalized = String(brandId || '').trim().toLowerCase()
 
+  if (normalized === 'free-download' || normalized === 'free') {
+    return 'Free files and support.'
+  }
+
   if (normalized === 'tools') {
     return 'Tools, repair packs, and support files.'
   }
