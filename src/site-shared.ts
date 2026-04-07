@@ -208,11 +208,20 @@ const renderMiniSocialLinks = (extraClass = '') => `
 
 const renderHeaderSupportPanel = () => `
   <a class="header-support-panel" href="https://wa.me/6282234370999" target="_blank" rel="noreferrer" aria-label="Direct support via WhatsApp">
-    <span class="header-support-icon"><i class="fas fa-headset"></i></span>
+    <span class="header-support-icon">
+      ${renderAssetImage({
+        src: '/SUPPORT.png',
+        alt: 'Support logo',
+        className: 'header-support-logo',
+        loading: 'eager',
+        decoding: 'async',
+        fetchPriority: 'high',
+      })}
+    </span>
     <span class="header-support-copy">
       <span class="header-support-label">Direct Support</span>
-      <strong>WhatsApp & Remote</strong>
-      <span class="header-support-meta">Fast reply for file and service requests</span>
+      <strong>WhatsApp + Remote</strong>
+      <span class="header-support-meta">Fast help for file access and service requests.</span>
     </span>
   </a>
 `
