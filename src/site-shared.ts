@@ -509,7 +509,7 @@ export const renderDownloadHomeCard = (item: DownloadCategoryCard) => `
       <h3>${getDownloadHomeTitle(item)}</h3>
       <p>${item.description}</p>
     </div>
-    <span class="download-home-arrow" aria-hidden="true"><i class="fas fa-arrow-up-right"></i></span>
+    <span class="download-home-arrow" aria-hidden="true"><i class="fas fa-arrow-right"></i></span>
   </a>
 `
 
@@ -527,7 +527,7 @@ export const renderBrandDownloadCard = (item: DownloadBrandCard) => `
       <h3>${item.title}</h3>
       <p>${item.subtitle}</p>
     </div>
-    <span class="brand-download-arrow" aria-hidden="true"><i class="fas fa-arrow-up-right"></i></span>
+    <span class="brand-download-arrow" aria-hidden="true"><i class="fas fa-arrow-right"></i></span>
   </a>
 `
 
@@ -549,7 +549,7 @@ export const renderModelFolderCard = (item: DownloadModelFolder) => `
       <h3>${item.title}</h3>
       <p>${item.subtitle}</p>
     </div>
-    <span class="model-folder-arrow" aria-hidden="true"><i class="fas fa-arrow-up-right"></i></span>
+    <span class="model-folder-arrow" aria-hidden="true"><i class="fas fa-arrow-right"></i></span>
   </a>
 `
 
