@@ -113,14 +113,14 @@ const renderRemoteServiceSection = (groups: Array<[string, string[]]>) => {
         <div class="remote-service-shell">
           <div class="remote-service-list-head">
             <div>
-              <p class="eyebrow">Service List</p>
-              <h2 class="section-title"><i class="fas fa-laptop-medical me-2 text-primary"></i>Choose platform and start service</h2>
-              <p class="remote-service-copy">Setiap platform sekarang tampil sebagai list yang lebih ringan. Pilih platform Qualcomm yang cocok, lalu langsung tekan Do Job atau Buy.</p>
+              <p class="eyebrow">Supported Platforms</p>
+              <h2 class="section-title"><i class="fas fa-laptop-medical me-2 text-primary"></i>Choose your platform</h2>
+              <p class="remote-service-copy">Pick the matching Qualcomm platform below, then continue straight to Do Job or Buy.</p>
             </div>
             <div class="remote-service-list-summary">
               <strong>${platformFamilies}</strong>
-              <span>platform families</span>
-              <small>${remoteServiceQualcommEntries.length} supported model groups</small>
+              <span>supported platforms</span>
+              <small>${remoteServiceQualcommEntries.length} model groups ready</small>
             </div>
           </div>
           <div class="remote-service-list">
@@ -148,8 +148,8 @@ export const renderRemoteServicePage = () => {
             <div class="remote-service-hero-shell">
               <div class="remote-service-hero-copy">
                 <p class="eyebrow">Remote Service</p>
-                <h1 class="remote-service-hero-title">Qualcomm ID remote service for Huawei and Honor devices.</h1>
-                <p class="remote-service-hero-text">Halaman ini saya ringkas supaya lebih enak dibaca. Tidak pakai tabel padat lagi. Cukup pilih platform Qualcomm di bawah, lalu langsung tekan Do Job atau Buy.</p>
+                <h1 class="remote-service-hero-title">Qualcomm ID service for supported Huawei and Honor devices.</h1>
+                <p class="remote-service-hero-text">Choose the matching Qualcomm platform below, then continue with Do Job or Buy for a faster order flow.</p>
                 <div class="remote-service-hero-cta">
                   <a class="hero-cta-button hero-cta-button-amber" href="https://wa.me/6282234370999?text=Hello%20bro%2C%20I%20want%20Qualcomm%20ID%20remote%20service." target="_blank" rel="noreferrer">Do Job</a>
                   <a class="hero-cta-button hero-cta-button-light" href="https://wa.me/6282234370999?text=Hello%20bro%2C%20I%20want%20to%20buy%20Qualcomm%20ID%20remote%20service." target="_blank" rel="noreferrer">Buy</a>
@@ -165,12 +165,12 @@ export const renderRemoteServicePage = () => {
                 <article class="remote-hero-stat-card">
                   <span class="remote-hero-stat-label">Platforms</span>
                   <strong>${groups.length}</strong>
-                  <p>Qualcomm families ready</p>
+                  <p>platform lines available</p>
                 </article>
                 <article class="remote-hero-stat-card">
                   <span class="remote-hero-stat-label">Flow</span>
                   <strong>Fast</strong>
-                  <p>Do Job or Buy directly</p>
+                  <p>direct order ready</p>
                 </article>
               </div>
             </div>
