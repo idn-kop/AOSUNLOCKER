@@ -588,7 +588,7 @@ const validateFilePayload = async (db, payload, originalId = '') => {
     throw new Error('Selected folder belongs to a different brand.');
   }
 
-  const fileId = customId || buildFileId(categoryId, title);
+  const fileId = customId || toText(originalId) || buildFileId(categoryId, title);
   const duplicate = await queryFirst(db, 'SELECT id FROM files WHERE id = ? LIMIT 1', [fileId]);
   if (duplicate && toText(duplicate.id) !== toText(originalId)) {
     throw new Error('A file with the same generated ID already exists.');
@@ -846,7 +846,8 @@ const handleAdminCategoryUpdate = async (db, categoryId, payload) => {
   const brandId = normalizeId(payload.brandId);
   const categoryLabel = toText(payload.categoryLabel || payload.label);
   const parentCategoryId = toText(payload.parentCategoryId);
-  const nextCategoryId = toText(payload.categoryId) || buildCategoryId(brandId, categoryLabel, parentCategoryId);
+  const requestedCategoryId = toText(payload.categoryId);
+  const nextCategoryId = requestedCategoryId || originalCategoryId;
 
   if (!brandId) {
     return errorResponse(400, 'Brand is required.');
@@ -863,6 +864,7 @@ const handleAdminCategoryUpdate = async (db, categoryId, payload) => {
 
   const categories = await getAllCategories(db);
   const descendants = getCategoryDescendantIds(categories, originalCategoryId);
+  const directFileCount = await queryFirst(db, 'SELECT COUNT(*) AS count FROM files WHERE category_id = ?', [originalCategoryId]);
 
   if (parentCategoryId && (parentCategoryId === originalCategoryId || parentCategoryId === nextCategoryId)) {
     return errorResponse(409, 'Folder cannot be its own parent.');
@@ -870,6 +872,13 @@ const handleAdminCategoryUpdate = async (db, categoryId, payload) => {
 
   if (parentCategoryId && descendants.includes(parentCategoryId)) {
     return errorResponse(409, "Parent folder cannot be one of this folder's children.");
+  }
+
+  if (
+    nextCategoryId !== originalCategoryId &&
+    (descendants.length > 0 || Number(directFileCount?.count || 0) > 0)
+  ) {
+    return errorResponse(409, 'Folder ID cannot be changed while this folder still has linked files or subfolders.');
   }
 
   if (descendants.length && normalizeId(current.brandId) !== brandId) {
