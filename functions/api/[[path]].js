@@ -835,15 +835,15 @@ const handleAdminCacheRefresh = async (db) => {
 };
 
 const handleAdminBrandCreate = async (db, payload) => {
-  const brandId = normalizeId(payload.brandId || payload.label);
   const brandLabel = toText(payload.brandLabel || payload.label);
-
-  if (!brandId) {
-    return errorResponse(400, 'Brand ID is required.');
-  }
+  const brandId = slugify(payload.brandId || brandLabel || payload.label);
 
   if (!brandLabel) {
     return errorResponse(400, 'Brand label is required.');
+  }
+
+  if (!brandId) {
+    return errorResponse(400, 'Brand ID could not be generated. Use letters or numbers in the brand name.');
   }
 
   if (!/^[a-z0-9-]+$/.test(brandId)) {

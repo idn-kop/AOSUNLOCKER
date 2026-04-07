@@ -374,7 +374,7 @@ const getDownloadHomeKicker = (item: DownloadCategoryCard) => {
       return 'Huawei Files'
     }
 
-    return 'Service Files'
+    return `${item.title} Files`
   }
 
   if (item.kind === 'android') {

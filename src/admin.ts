@@ -137,6 +137,7 @@ const state = {
   activeWorkspace: 'catalog' as WorkspaceMode,
   fileAdvancedOpen: false,
   editorOpen: false,
+  brandIdManual: false,
 }
 
 let confirmResolver: ((value: boolean) => void) | null = null
@@ -399,6 +400,31 @@ const slugifyId = (value: string) =>
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
+
+const syncBrandIdFromLabel = (force = false) => {
+  if (state.editingBrandId) return
+
+  const brandIdInput = byId<HTMLInputElement>('brandId')
+  if (!brandIdInput) return
+
+  const currentValue = toText(brandIdInput.value)
+  const nextValue = slugifyId(getInputValue('brandLabel'))
+
+  if (force || !state.brandIdManual || !currentValue) {
+    brandIdInput.value = nextValue
+    state.brandIdManual = false
+  }
+}
+
+const normalizeBrandIdInput = () => {
+  const brandIdInput = byId<HTMLInputElement>('brandId')
+  if (!brandIdInput) return ''
+
+  const normalized = slugifyId(brandIdInput.value)
+  brandIdInput.value = normalized
+  state.brandIdManual = Boolean(normalized)
+  return normalized
+}
 
 const stripFileExtension = (value: string) => toText(value).replace(/\.[a-z0-9]{1,8}$/i, '')
 
@@ -722,7 +748,8 @@ const renderEditorMarkup = () => `
         <form id="brandForm" class="admin-form-grid" data-columns="1">
           <label class="admin-field">
             <span class="admin-label">Brand ID</span>
-            <input id="brandId" class="admin-input" type="text" placeholder="huawei" />
+            <input id="brandId" class="admin-input" type="text" placeholder="auto-generated if blank" />
+            <small class="admin-muted">Auto dibuat dari Brand label kalau dikosongkan.</small>
           </label>
           <label class="admin-field">
             <span class="admin-label">Brand label</span>
@@ -1114,7 +1141,8 @@ const renderShellLegacy = () => {
               <form id="brandForm" class="admin-form-grid" data-columns="1">
                 <label class="admin-field">
                   <span class="admin-label">Brand ID</span>
-                  <input id="brandId" class="admin-input" type="text" placeholder="huawei" />
+                  <input id="brandId" class="admin-input" type="text" placeholder="auto-generated if blank" />
+                  <small class="admin-muted">Auto dibuat dari Brand label kalau dikosongkan.</small>
                 </label>
                 <label class="admin-field">
                   <span class="admin-label">Brand label</span>
@@ -2190,11 +2218,16 @@ const syncBrandOptions = () => {
 const setBrandFormMode = (editing: boolean) => {
   const title = byId<HTMLHeadingElement>('brandFormTitle')
   const submit = byId<HTMLButtonElement>('brandSubmitButton')
+  const brandIdInput = byId<HTMLInputElement>('brandId')
   if (title) {
     title.textContent = editing ? 'Edit Brand' : 'Create Brand'
   }
   if (submit) {
     submit.textContent = editing ? 'Update Brand' : 'Save Brand'
+  }
+  if (brandIdInput) {
+    brandIdInput.readOnly = editing
+    brandIdInput.placeholder = editing ? 'locked after create' : 'auto-generated if blank'
   }
 }
 
@@ -2222,6 +2255,7 @@ const setFileFormMode = (editing: boolean) => {
 
 const resetBrandForm = () => {
   state.editingBrandId = ''
+  state.brandIdManual = false
   setInputValue('brandId', '')
   setInputValue('brandLabel', '')
   setBrandFormMode(false)
@@ -2307,6 +2341,7 @@ const prepareNewFileForm = (brandId = '', categoryId = '') => {
 
 const populateBrandForm = (brand: AdminBrand) => {
   state.editingBrandId = brand.id
+  state.brandIdManual = true
   setInputValue('brandId', brand.id)
   setInputValue('brandLabel', brand.label)
   setBrandFormMode(true)
@@ -2455,9 +2490,17 @@ const refreshAllData = async () => {
 }
 
 const submitBrandForm = async (button: HTMLButtonElement | null) => {
+  const brandLabel = getInputValue('brandLabel')
+  const brandId = state.editingBrandId ? getInputValue('brandId') : slugifyId(getInputValue('brandId') || brandLabel)
+
+  if (!state.editingBrandId) {
+    setInputValue('brandId', brandId)
+  }
+
   const payload = {
-    brandId: getInputValue('brandId'),
-    brandLabel: getInputValue('brandLabel'),
+    brandId,
+    brandLabel,
+    label: brandLabel,
   }
 
   const release = setButtonBusy(button, state.editingBrandId ? 'Updating...' : 'Saving...')
@@ -2811,6 +2854,14 @@ const bindStaticEventsLegacy = () => {
     resetBrandForm()
   })
 
+  byId<HTMLInputElement>('brandLabel')?.addEventListener('input', () => {
+    syncBrandIdFromLabel()
+  })
+
+  byId<HTMLInputElement>('brandId')?.addEventListener('input', () => {
+    normalizeBrandIdInput()
+  })
+
   byId<HTMLFormElement>('categoryForm')?.addEventListener('submit', async (event) => {
     event.preventDefault()
     try {
@@ -3129,6 +3180,14 @@ const bindStaticEvents = () => {
 
   byId<HTMLButtonElement>('brandResetButton')?.addEventListener('click', () => {
     resetBrandForm()
+  })
+
+  byId<HTMLInputElement>('brandLabel')?.addEventListener('input', () => {
+    syncBrandIdFromLabel()
+  })
+
+  byId<HTMLInputElement>('brandId')?.addEventListener('input', () => {
+    normalizeBrandIdInput()
   })
 
   byId<HTMLFormElement>('categoryForm')?.addEventListener('submit', async (event) => {
