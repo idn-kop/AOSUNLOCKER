@@ -798,8 +798,8 @@ const handleAdminBrandDelete = async (db, brandId) => {
 const handleAdminCategoryCreate = async (db, payload) => {
   const brandId = normalizeId(payload.brandId);
   const categoryLabel = toText(payload.categoryLabel || payload.label);
-  const parentCategoryId = toText(payload.parentCategoryId) || null;
-  const categoryId = toText(payload.categoryId) || buildCategoryId(brandId, categoryLabel, parentCategoryId || '');
+  const parentCategoryId = toText(payload.parentCategoryId);
+  const categoryId = toText(payload.categoryId) || buildCategoryId(brandId, categoryLabel, parentCategoryId);
 
   if (!brandId) {
     return errorResponse(400, 'Brand is required.');
@@ -845,8 +845,8 @@ const handleAdminCategoryUpdate = async (db, categoryId, payload) => {
   const originalCategoryId = toText(categoryId);
   const brandId = normalizeId(payload.brandId);
   const categoryLabel = toText(payload.categoryLabel || payload.label);
-  const parentCategoryId = toText(payload.parentCategoryId) || null;
-  const nextCategoryId = toText(payload.categoryId) || buildCategoryId(brandId, categoryLabel, parentCategoryId || '');
+  const parentCategoryId = toText(payload.parentCategoryId);
+  const nextCategoryId = toText(payload.categoryId) || buildCategoryId(brandId, categoryLabel, parentCategoryId);
 
   if (!brandId) {
     return errorResponse(400, 'Brand is required.');
