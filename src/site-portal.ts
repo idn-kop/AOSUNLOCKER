@@ -82,7 +82,7 @@ const renderBrandHomeGrid = (content = downloadHomeCategories) =>
       )
 
 const getOrderedHomeBrands = <T extends { brandId?: string }>(items: T[]) => {
-  const preferred = ['huawei', 'honor', 'aos-firmware', 'solution']
+  const preferred = ['huawei', 'honor', 'aos-firmware', 'solution', 'tools']
   const seen = new Set<string>()
   const normalized = items.filter((item): item is T & { brandId: string } => Boolean(String(item.brandId || '').trim()))
 

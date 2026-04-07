@@ -57,6 +57,11 @@ const isSolutionBrand = (brandId?: string) => {
   return normalized === 'aos-firmware' || normalized === 'solution'
 }
 
+const isToolsBrand = (brandId?: string) => {
+  const normalized = String(brandId || '').trim().toLowerCase()
+  return normalized === 'tools'
+}
+
 const getBrandArtwork = (brandId?: string) => {
   if (brandId === 'huawei') {
     return {
@@ -85,6 +90,16 @@ const getBrandArtwork = (brandId?: string) => {
       className: 'download-brand-logo download-brand-logo-solution',
       width: 512,
       height: 512,
+    }
+  }
+
+  if (isToolsBrand(brandId)) {
+    return {
+      src: '/TOOLS.png',
+      alt: 'Tools logo',
+      className: 'download-brand-logo download-brand-logo-solution',
+      width: 900,
+      height: 1035,
     }
   }
 
