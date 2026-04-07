@@ -134,6 +134,20 @@ const toDisplayLabel = (value: string) =>
     .replace(/\b\w/g, (char) => char.toUpperCase())
     .trim()
 
+const getBrandCardDescription = (brandId: string) => {
+  const normalized = String(brandId || '').trim().toLowerCase()
+
+  if (normalized === 'tools') {
+    return 'Tools, repair packs, and support files.'
+  }
+
+  if (normalized === 'solution' || normalized === 'aos-firmware') {
+    return 'Repair packs, firmware, and service files.'
+  }
+
+  return 'Firmware, repair packs, and support files.'
+}
+
 const buildCategoryDescription = (_brandLabel?: string, _fullTitle?: string, _hasChildren?: boolean) => ''
 
 const decorateSolutionCategories = (categories: SolutionCategory[]): SolutionCategory[] => {
@@ -725,7 +739,7 @@ export const peekBrandFolders = () => {
       const title = String(item.label || toDisplayLabel(brandId))
       return {
         title,
-        description: `Open ${title} firmware files, repair packages, and service downloads.`,
+        description: getBrandCardDescription(brandId),
         href: `/solution-files.html?brand=${brandId}`,
         kind: 'brand' as const,
         brandId,
@@ -849,7 +863,7 @@ export const loadBrandFolders = async () => {
         const title = String(item.label || toDisplayLabel(brandId))
         return {
           title,
-          description: `Open ${title} firmware files, repair packages, and service downloads.`,
+          description: getBrandCardDescription(brandId),
           href: `/solution-files.html?brand=${brandId}`,
           kind: 'brand' as const,
           brandId,
