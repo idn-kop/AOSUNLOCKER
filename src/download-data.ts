@@ -9,21 +9,21 @@ import type {
 export const downloadHomeCategories: DownloadCategoryCard[] = [
   {
     title: 'Huawei',
-    description: 'Open Huawei solution folders, service categories, and repair files.',
+    description: 'Open Huawei firmware files, repair packages, and service downloads.',
     href: '/solution-files.html?brand=huawei',
     kind: 'brand',
     brandId: 'huawei',
   },
   {
     title: 'Honor',
-    description: 'Open Honor-only folders, targeted recovery flows, and download files.',
+    description: 'Open Honor firmware files, repair packages, and service downloads.',
     href: '/solution-files.html?brand=honor',
     kind: 'brand',
     brandId: 'honor',
   },
   {
     title: 'SOLUTION',
-    description: 'Open SOLUTION folders, service categories, and download files.',
+    description: 'Open SOLUTION files, repair packages, and service downloads.',
     href: '/solution-files.html?brand=solution',
     kind: 'brand',
     brandId: 'solution',

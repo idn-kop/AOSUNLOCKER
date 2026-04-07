@@ -238,7 +238,7 @@ export const renderPage = async (pageKey: SitePageKey) => {
                 <div class="section-head">
                   <div>
                     <p class="eyebrow">Portal Pages</p>
-                    <h2 class="section-title"><i class="fas fa-compass me-2 text-primary"></i>Browse Focused Sections</h2>
+                    <h2 class="section-title"><i class="fas fa-compass me-2 text-primary"></i>Browse Main Sections</h2>
                   </div>
                 </div>
                 <div class="row g-4">

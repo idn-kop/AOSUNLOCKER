@@ -2545,6 +2545,19 @@ h6 {
   font-size: 1rem;
 }
 
+.download-stage-subhead {
+  margin-bottom: 0.8rem;
+}
+
+.download-stage-subhead h2 {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
 .live-state-chip {
   display: inline-flex;
   align-items: center;

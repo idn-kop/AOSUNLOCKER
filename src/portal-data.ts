@@ -22,7 +22,7 @@ export const topFiles: TickerItem[] = [
 ]
 
 export const stats = [
-  { value: 'Focused', label: 'Huawei, Honor, and custom folders', icon: 'fa-signal', tone: 'primary' },
+  { value: 'Organized', label: 'Huawei, Honor, and custom folders', icon: 'fa-signal', tone: 'primary' },
   { value: 'Brand-First', label: 'Structured browsing by brand and solution', icon: 'fa-folder-tree', tone: 'success' },
   { value: 'Direct', label: 'Fast file access and support flow', icon: 'fa-hard-drive', tone: 'info' },
   { value: 'Trusted', label: 'Clean delivery for service-side work', icon: 'fa-shield-halved', tone: 'warning' },
@@ -288,7 +288,7 @@ const harmonyPackages: FirmwareCard[] = [
 const homeFeatures: FeatureCard[] = [
   {
     title: 'Huawei & Honor Firmware',
-    description: 'Focused firmware library for Huawei and Honor models, including board software and recovery packages.',
+    description: 'Firmware library for Huawei and Honor models, including board software and recovery packages.',
     icon: 'fa-file-download',
     tone: 'primary',
   },
@@ -306,7 +306,7 @@ const homeFeatures: FeatureCard[] = [
   },
   {
     title: 'Qualcomm Support',
-    description: 'EDL-focused resources for supported Huawei and Honor models built on Qualcomm platforms.',
+    description: 'EDL resources for supported Huawei and Honor models built on Qualcomm platforms.',
     icon: 'fa-headset',
     tone: 'info',
   },
@@ -333,7 +333,7 @@ const huaweiFeatures: FeatureCard[] = [
   },
   {
     title: 'Remote Help',
-    description: 'Support-focused files and service-oriented delivery for Huawei repair cases.',
+    description: 'Support files and service delivery for Huawei repair cases.',
     icon: 'fa-headset',
     tone: 'info',
   },
@@ -348,7 +348,7 @@ const honorFeatures: FeatureCard[] = [
   },
   {
     title: 'FRP and ID Jobs',
-    description: 'Service-focused entries for lock removal, account-related jobs, and supported Honor workflows.',
+    description: 'Entries for lock removal, account-related jobs, and supported Honor workflows.',
     icon: 'fa-user-lock',
     tone: 'warning',
   },
@@ -396,7 +396,7 @@ const kirinFeatures: FeatureCard[] = [
 const harmonyFeatures: FeatureCard[] = [
   {
     title: 'Clean OTA Access',
-    description: 'HarmonyOS-focused package sets with OTA, restore, and system update entry points.',
+    description: 'HarmonyOS package sets with OTA, restore, and system update entry points.',
     icon: 'fa-arrows-rotate',
     tone: 'primary',
   },
@@ -414,7 +414,7 @@ const harmonyFeatures: FeatureCard[] = [
   },
   {
     title: 'Service-Centered Layout',
-    description: 'A direct page for HarmonyOS resources so the content stays simple, focused, and easy to browse.',
+    description: 'A direct page for HarmonyOS resources so the content stays simple and easy to browse.',
     icon: 'fa-folder-open',
     tone: 'info',
   },
@@ -439,7 +439,7 @@ export const pages: Record<SitePageKey, SitePage> = {
     featureItems: homeFeatures,
     ctaEyebrow: 'Huawei Focus',
     ctaTitle: 'Everything here is now tuned around Huawei, Honor, Kirin, HarmonyOS, and Qualcomm repair work.',
-    ctaCopy: 'Use the focused pages above to jump into the exact area you want to build out next.',
+    ctaCopy: 'Use the pages above to jump into the exact area you want to open next.',
   },
   huawei: {
     key: 'huawei',
@@ -455,7 +455,7 @@ export const pages: Record<SitePageKey, SitePage> = {
     packageTitle: 'Huawei Board and Recovery Packages',
     packageItems: huaweiPackages,
     featureEyebrow: 'Huawei Support',
-    featureTitle: 'Why This Huawei Section Stays Focused',
+    featureTitle: 'Why This Huawei Section Works Better',
     featureItems: huaweiFeatures,
     ctaEyebrow: 'Huawei Work',
     ctaTitle: 'Board software, XML support, and restore flows stay together here for faster Huawei browsing.',
@@ -466,7 +466,7 @@ export const pages: Record<SitePageKey, SitePage> = {
     title: 'Honor Files | AOSUNLOCKER Huawei Lab',
     eyebrow: 'Honor Section',
     heroTitle: 'Honor Firmware, FRP Jobs, OTA Bundles, and Service Packages',
-    heroCopy: 'A focused page for Honor service work, including OTA recovery packages, service firmware, FRP-related jobs, and repair-centered package browsing.',
+    heroCopy: 'A clean page for Honor service work, including OTA recovery packages, service firmware, FRP-related jobs, and repair package browsing.',
     quickLabel: 'Honor Files',
     primaryEyebrow: 'Honor Workflow',
     primaryTitle: 'Honor Service and Unlock Access',
@@ -498,7 +498,7 @@ export const pages: Record<SitePageKey, SitePage> = {
     featureTitle: 'Built for Kirin Board-Level Work',
     featureItems: kirinFeatures,
     ctaEyebrow: 'Kirin Work',
-    ctaTitle: 'Loader access, secure boot support, and board-focused notes stay grouped here for Kirin jobs.',
+    ctaTitle: 'Loader access, secure boot support, and board notes stay grouped here for Kirin jobs.',
     ctaCopy: 'This page is meant to feel like a technician shelf for Kirin work rather than a generic mobile tools dump.',
   },
   harmony: {

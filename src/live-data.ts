@@ -725,7 +725,7 @@ export const peekBrandFolders = () => {
       const title = String(item.label || toDisplayLabel(brandId))
       return {
         title,
-        description: `Open ${title} solution folders, service categories, and download files.`,
+        description: `Open ${title} firmware files, repair packages, and service downloads.`,
         href: `/solution-files.html?brand=${brandId}`,
         kind: 'brand' as const,
         brandId,
@@ -849,7 +849,7 @@ export const loadBrandFolders = async () => {
         const title = String(item.label || toDisplayLabel(brandId))
         return {
           title,
-          description: `Open ${title} solution folders, service categories, and download files.`,
+          description: `Open ${title} firmware files, repair packages, and service downloads.`,
           href: `/solution-files.html?brand=${brandId}`,
           kind: 'brand' as const,
           brandId,

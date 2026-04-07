@@ -344,7 +344,7 @@ const renderBackBlock = (title: string, href: string) => `
     <span class="download-back-icon"><i class="fas fa-caret-left"></i></span>
     <span>
       <strong>${title}</strong>
-      <small>Go Back</small>
+      <small>Back</small>
     </span>
   </a>
 `
@@ -381,7 +381,7 @@ const getDownloadHomeKicker = (item: DownloadCategoryCard) => {
     return 'Android Access'
   }
 
-  return 'Folder Access'
+  return 'Download Files'
 }
 
 export const renderDownloadHomeCard = (item: DownloadCategoryCard) => `
@@ -775,7 +775,7 @@ export const renderSiteChrome = (mainContent: string, activeKey?: NavKey, downlo
         <div>
           <p class="eyebrow">AOSUNLOCKER</p>
           <h3 class="text-white h4 mb-3">Huawei and Honor service portal</h3>
-          <p class="text-white-50 mb-0">Focused on Kirin repair work, HarmonyOS recovery packages, Qualcomm rescue access, and Huawei-specific service flows.</p>
+          <p class="text-white-50 mb-0">Built for Kirin repair work, HarmonyOS recovery packages, Qualcomm rescue access, and Huawei-specific service flows.</p>
         </div>
         <div>
           <h4 class="footer-title">Pages</h4>

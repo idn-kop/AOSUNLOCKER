@@ -50,7 +50,7 @@ const getBrandMeta = (brandId: BrandId) => {
 
   return {
     label,
-    description: `Open ${label}-focused solution folders, repair categories, and service packages.`,
+    description: `Open ${label} firmware files, repair packages, and service downloads.`,
   }
 }
 
@@ -157,11 +157,11 @@ const buildCategoryHref = (brandId: BrandId, categoryId: string) =>
 
 const getCategoryCardDescription = (item: SolutionCategory) => {
   if (item.hasChildren) {
-    return `Open ${item.fullTitle || item.title} subfolders and linked files.`
+    return `Open ${item.fullTitle || item.title} folders and download files.`
   }
 
   if (item.parentCategoryLabel) {
-    return `Open ${item.fullTitle || item.title} files inside ${item.parentCategoryLabel}.`
+    return `Download firmware and files for ${item.fullTitle || item.title}.`
   }
 
   return item.description
@@ -410,7 +410,7 @@ export const renderDownloadPage = () => {
           <div>
             <p class="eyebrow">Download Page</p>
             <h1 class="logo-title">${file.title}</h1>
-            <div class="logo-note"><i class="fas fa-circle-check"></i>Focused download detail for Huawei and Honor service files</div>
+            <div class="logo-note"><i class="fas fa-circle-check"></i>Download detail for Huawei and Honor service files</div>
           </div>
         </div>
         <a class="download-link" href="/index.html">Back Home</a>
@@ -675,7 +675,7 @@ export const renderSolutionFilesPage = async () => {
               ? `
                 <div class="download-stage-section">
                   <div class="download-stage-subhead">
-                    <h2>Subfolder</h2>
+                    <h2>Download Firmware</h2>
                   </div>
                   ${renderCategoryFolderGrid(brandId, childCategories)}
                 </div>
