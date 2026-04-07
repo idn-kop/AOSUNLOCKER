@@ -391,6 +391,25 @@ const slugifyId = (value: string) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
 
+const getDriveFileToken = (rawUrl: string) => {
+  try {
+    const url = new URL(rawUrl)
+    const directId = toText(url.searchParams.get('id'))
+    if (directId) {
+      return directId
+    }
+
+    const match = url.pathname.match(/\/file\/d\/([^/]+)/i)
+    if (match?.[1]) {
+      return toText(match[1])
+    }
+  } catch {
+    return ''
+  }
+
+  return ''
+}
+
 const deriveFileLabelFromUrl = (rawUrl: string) => {
   try {
     const url = new URL(rawUrl)
@@ -427,37 +446,52 @@ const autofillFileFieldsFromLink = () => {
   }
 
   const guessedRaw = deriveFileLabelFromUrl(driveUrl)
+  const driveToken = getDriveFileToken(driveUrl)
   const guessed = guessedRaw
     .replace(/[_-]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
+  const existingTitle = getInputValue('fileTitle').trim()
+  const fallbackLabel = guessed || existingTitle
 
-  if (!guessed) {
-    setBanner('Nama file tidak bisa dibaca otomatis dari link ini. Isi title manual ya.', 'warning')
-    return
-  }
-
-  if (!getInputValue('fileTitle')) {
+  if (guessed && !getInputValue('fileTitle')) {
     setInputValue('fileTitle', guessed)
   }
 
-  if (!getInputValue('fileSubtitle')) {
-    setInputValue('fileSubtitle', guessed)
+  if (fallbackLabel && !getInputValue('fileSubtitle')) {
+    setInputValue('fileSubtitle', fallbackLabel)
   }
 
-  if (!getInputValue('fileSummary')) {
-    setInputValue('fileSummary', guessed)
+  if (fallbackLabel && !getInputValue('fileSummary')) {
+    setInputValue('fileSummary', fallbackLabel)
   }
 
   if (!state.editingFileId && !getInputValue('fileId')) {
     const category = getCategoryById(getInputValue('fileCategory'))
     const prefix = category?.id || getInputValue('fileBrand') || 'file'
-    setInputValue('fileId', `${prefix}-${slugifyId(guessed)}`)
+    const slugBase = slugifyId(fallbackLabel)
+
+    if (slugBase) {
+      setInputValue('fileId', `${prefix}-${slugBase}`)
+    } else if (driveToken) {
+      setInputValue('fileId', `${prefix}-${driveToken.toLowerCase().slice(0, 16)}`)
+    }
   }
 
   state.fileAdvancedOpen = true
   syncViewModes()
-  setBanner(`Autofill selesai untuk "${guessed}".`, 'success')
+
+  if (guessed) {
+    setBanner(`Autofill selesai untuk "${guessed}".`, 'success')
+    return
+  }
+
+  if (fallbackLabel || driveToken) {
+    setBanner('Nama file tidak terbaca dari link, tapi field lain sudah dibantu isi dari data yang ada.', 'warning')
+    return
+  }
+
+  setBanner('Nama file tidak bisa dibaca otomatis dari link ini. Isi title manual ya.', 'warning')
 }
 
 const revealWorkspace = (mode: WorkspaceMode, options: { scroll?: boolean } = {}) => {
