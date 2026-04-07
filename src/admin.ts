@@ -74,6 +74,15 @@ type SearchResponse = {
   results: AdminFile[]
 }
 
+type LinkPreviewResponse = {
+  ok: boolean
+  title?: string
+  label?: string
+  size?: string
+  sizeBytes?: number
+  driveFileId?: string
+}
+
 type IntegrityResponse = {
   ok: boolean
   checkedAt: string
@@ -391,6 +400,14 @@ const slugifyId = (value: string) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
 
+const stripFileExtension = (value: string) => toText(value).replace(/\.[a-z0-9]{1,8}$/i, '')
+
+const prettifyFileLabel = (value: string) =>
+  stripFileExtension(value)
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
 const getDriveFileToken = (rawUrl: string) => {
   try {
     const url = new URL(rawUrl)
@@ -418,7 +435,7 @@ const deriveFileLabelFromUrl = (rawUrl: string) => {
     for (const key of queryHints) {
       const candidate = toText(url.searchParams.get(key) || '')
       if (candidate) {
-        return candidate.replace(/\.[a-z0-9]{1,8}$/i, '')
+        return stripFileExtension(candidate)
       }
     }
 
@@ -429,69 +446,97 @@ const deriveFileLabelFromUrl = (rawUrl: string) => {
 
     const lastSegment = segments[segments.length - 1] || ''
     if (lastSegment && !['view', 'download', 'file'].includes(lastSegment.toLowerCase())) {
-      return lastSegment.replace(/\.[a-z0-9]{1,8}$/i, '')
+      return stripFileExtension(lastSegment)
     }
   } catch {
     return ''
   }
-
+  
   return ''
 }
-
-const autofillFileFieldsFromLink = () => {
+const autofillFileFieldsFromLink = async (button?: HTMLButtonElement | null) => {
   const driveUrl = getInputValue('fileDriveUrl')
   if (!driveUrl) {
     setBanner('Paste link dulu, baru klik Autofill.', 'warning')
     return
   }
 
-  const guessedRaw = deriveFileLabelFromUrl(driveUrl)
-  const driveToken = getDriveFileToken(driveUrl)
-  const guessed = guessedRaw
-    .replace(/[_-]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
+  const guessedTitle = stripFileExtension(deriveFileLabelFromUrl(driveUrl))
+  let driveToken = getDriveFileToken(driveUrl)
+  let previewTitle = ''
+  let previewLabel = ''
+  let previewSize = ''
   const existingTitle = getInputValue('fileTitle').trim()
-  const fallbackLabel = guessed || existingTitle
 
-  if (guessed && !getInputValue('fileTitle')) {
-    setInputValue('fileTitle', guessed)
-  }
+  const release = setButtonBusy(button || byId<HTMLButtonElement>('fileAutofillButton'), 'Reading link...')
 
-  if (fallbackLabel && !getInputValue('fileSubtitle')) {
-    setInputValue('fileSubtitle', fallbackLabel)
-  }
-
-  if (fallbackLabel && !getInputValue('fileSummary')) {
-    setInputValue('fileSummary', fallbackLabel)
-  }
-
-  if (!state.editingFileId && !getInputValue('fileId')) {
-    const category = getCategoryById(getInputValue('fileCategory'))
-    const prefix = category?.id || getInputValue('fileBrand') || 'file'
-    const slugBase = slugifyId(fallbackLabel)
-
-    if (slugBase) {
-      setInputValue('fileId', `${prefix}-${slugBase}`)
-    } else if (driveToken) {
-      setInputValue('fileId', `${prefix}-${driveToken.toLowerCase().slice(0, 16)}`)
+  try {
+    try {
+      const params = new URLSearchParams()
+      params.set('url', driveUrl)
+      const preview = await requestAdmin<LinkPreviewResponse>('link-preview', { method: 'GET' }, params)
+      previewTitle = stripFileExtension(preview.title || '')
+      previewLabel = prettifyFileLabel(preview.label || preview.title || '')
+      previewSize = toText(preview.size || '')
+      driveToken = toText(preview.driveFileId || driveToken)
+    } catch (error) {
+      console.warn('Link preview autofill fell back to client-side parsing.', error)
     }
+
+    const resolvedTitle = previewTitle || guessedTitle || existingTitle
+    const resolvedLabel = previewLabel || prettifyFileLabel(guessedTitle || existingTitle)
+
+    if (resolvedTitle && !getInputValue('fileTitle')) {
+      setInputValue('fileTitle', resolvedTitle)
+    }
+
+    if (resolvedLabel && !getInputValue('fileSubtitle')) {
+      setInputValue('fileSubtitle', resolvedLabel)
+    }
+
+    if (resolvedLabel && !getInputValue('fileSummary')) {
+      setInputValue('fileSummary', resolvedLabel)
+    }
+
+    if (previewSize && !getInputValue('fileSize')) {
+      setInputValue('fileSize', previewSize)
+    }
+
+    if (!state.editingFileId && !getInputValue('fileId')) {
+      const category = getCategoryById(getInputValue('fileCategory'))
+      const prefix = category?.id || getInputValue('fileBrand') || 'file'
+      const slugBase = slugifyId(resolvedTitle || resolvedLabel)
+
+      if (slugBase) {
+        setInputValue('fileId', `${prefix}-${slugBase}`)
+      } else if (driveToken) {
+        setInputValue('fileId', `${prefix}-${driveToken.toLowerCase().slice(0, 16)}`)
+      }
+    }
+
+    state.fileAdvancedOpen = true
+    syncViewModes()
+
+    const appliedParts = [
+      resolvedTitle ? 'title' : '',
+      previewSize ? 'size' : '',
+      getInputValue('fileId') ? 'ID' : '',
+    ].filter(Boolean)
+
+    if (previewSize) {
+      setBanner(`Autofill berhasil. ${appliedParts.join(', ')} sudah dibantu isi dari link.`, 'success')
+      return
+    }
+
+    if (resolvedTitle || driveToken) {
+      setBanner('Nama file terbaca, tapi ukuran file belum tersedia dari link ini. Size bisa diisi manual.', 'warning')
+      return
+    }
+
+    setBanner('Nama file tidak bisa dibaca otomatis dari link ini. Isi title manual ya.', 'warning')
+  } finally {
+    release()
   }
-
-  state.fileAdvancedOpen = true
-  syncViewModes()
-
-  if (guessed) {
-    setBanner(`Autofill selesai untuk "${guessed}".`, 'success')
-    return
-  }
-
-  if (fallbackLabel || driveToken) {
-    setBanner('Nama file tidak terbaca dari link, tapi field lain sudah dibantu isi dari data yang ada.', 'warning')
-    return
-  }
-
-  setBanner('Nama file tidak bisa dibaca otomatis dari link ini. Isi title manual ya.', 'warning')
 }
 
 const revealWorkspace = (mode: WorkspaceMode, options: { scroll?: boolean } = {}) => {
@@ -733,7 +778,7 @@ const renderEditorMarkup = () => `
           </label>
           <div class="admin-action-row admin-span-2 admin-inline-helper-row">
             <button id="fileAutofillButton" class="admin-button admin-button-secondary" type="button">Autofill dari Link</button>
-            <span class="admin-subtle">Tempel link dulu, lalu klik tombol ini untuk bantu isi title dan ID kalau URL mendukung.</span>
+            <span class="admin-subtle">Tempel link dulu, lalu klik tombol ini untuk bantu isi title, size, dan ID kalau metadata link tersedia.</span>
           </div>
           <label class="admin-field">
             <span class="admin-label">Brand</span>
@@ -2712,7 +2757,7 @@ const bindStaticEventsLegacy = () => {
   })
 
   byId<HTMLButtonElement>('fileAutofillButton')?.addEventListener('click', () => {
-    autofillFileFieldsFromLink()
+    void autofillFileFieldsFromLink(byId<HTMLButtonElement>('fileAutofillButton'))
   })
 
   byId<HTMLButtonElement>('closeComposerButton')?.addEventListener('click', () => {
@@ -3032,7 +3077,7 @@ const bindStaticEvents = () => {
   })
 
   byId<HTMLButtonElement>('fileAutofillButton')?.addEventListener('click', () => {
-    autofillFileFieldsFromLink()
+    void autofillFileFieldsFromLink(byId<HTMLButtonElement>('fileAutofillButton'))
   })
 
   byId<HTMLButtonElement>('closeComposerButton')?.addEventListener('click', () => {

@@ -40,6 +40,112 @@ const slugify = (value) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 
+const stripFileExtension = (value) => toText(value).replace(/\.[a-z0-9]{1,8}$/i, '');
+
+const prettifyFileLabel = (value) =>
+  stripFileExtension(value)
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const decodeHtmlEntities = (value) =>
+  toText(value)
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+
+const extractDriveFileIdFromUrl = (rawUrl) => {
+  try {
+    const url = new URL(rawUrl);
+    const directId = toText(url.searchParams.get('id'));
+    if (directId) {
+      return directId;
+    }
+
+    const shareMatch = url.pathname.match(/\/file\/d\/([^/]+)/i);
+    if (shareMatch?.[1]) {
+      return toText(shareMatch[1]);
+    }
+  } catch {
+    return '';
+  }
+
+  return '';
+};
+
+const formatBytesLabel = (rawBytes) => {
+  const bytes = Number(rawBytes || 0);
+  if (!Number.isFinite(bytes) || bytes <= 0) {
+    return '';
+  }
+
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const power = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const value = bytes / 1024 ** power;
+  const digits = power >= 2 ? 2 : 0;
+
+  return `${value.toFixed(digits)} ${units[power]}`;
+};
+
+const extractDrivePreviewFromHtml = (html, driveFileId) => {
+  const safeHtml = String(html || '');
+  const ogTitleMatch = safeHtml.match(/<meta\s+property="og:title"\s+content="([^"]+)"/i);
+  const rawTitle = decodeHtmlEntities(ogTitleMatch?.[1] || '');
+  const itemJsonMatch = safeHtml.match(/itemJson:\s*\[(.*?)\]\s*};/s);
+  const itemJsonSlice = itemJsonMatch?.[1] || '';
+  const sizeMatch = itemJsonSlice.match(/\[null,null,"(\d{6,})"\]/);
+  const sizeBytes = Number.parseInt(sizeMatch?.[1] || '', 10);
+
+  return {
+    ok: true,
+    driveFileId: toText(driveFileId),
+    title: stripFileExtension(rawTitle),
+    label: prettifyFileLabel(rawTitle),
+    sizeBytes: Number.isFinite(sizeBytes) ? sizeBytes : 0,
+    size: formatBytesLabel(sizeBytes),
+  };
+};
+
+const handleAdminLinkPreview = async (rawUrl) => {
+  const sourceUrl = toText(rawUrl);
+  if (!sourceUrl) {
+    return errorResponse(400, 'Link URL is required.');
+  }
+
+  const driveFileId = extractDriveFileIdFromUrl(sourceUrl);
+  if (!driveFileId) {
+    return json({
+      ok: true,
+      driveFileId: '',
+      title: '',
+      label: '',
+      sizeBytes: 0,
+      size: '',
+    });
+  }
+
+  const response = await fetch(`https://drive.google.com/file/d/${encodeURIComponent(driveFileId)}/view?usp=sharing`, {
+    headers: {
+      'user-agent': 'Mozilla/5.0 (compatible; AOSUNLOCKER/1.0; +https://aosunlocker.com)',
+    },
+  });
+
+  if (!response.ok) {
+    return errorResponse(422, 'Metadata Google Drive tidak bisa dibaca dari link ini.');
+  }
+
+  const html = await response.text();
+  const preview = extractDrivePreviewFromHtml(html, driveFileId);
+
+  if (!preview.title && !preview.size) {
+    return errorResponse(422, 'Metadata Google Drive tidak tersedia untuk link ini.');
+  }
+
+  return json(preview);
+};
+
 const buildCategoryId = (brandId, categoryLabel, parentCategoryId) => {
   const base = slugify(categoryLabel);
   const normalizedParentId = slugify(parentCategoryId);
@@ -1100,6 +1206,10 @@ const handleAdminRequest = async (context, url, pathParts) => {
     const categories = await getCategories(db, '');
     const files = await getFiles(db, { publishedOnly: false });
     return json(runIntegrityScan(brands, categories, files));
+  }
+
+  if (context.request.method === 'GET' && pathParts.length === 3 && pathParts[2] === 'link-preview') {
+    return await handleAdminLinkPreview(url.searchParams.get('url'));
   }
 
   if (context.request.method === 'POST' && pathParts.length === 3 && pathParts[2] === 'cache-refresh') {
