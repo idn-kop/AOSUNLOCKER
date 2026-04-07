@@ -551,12 +551,15 @@ export const renderSolutionFilesPage = async () => {
   )
   let lastCategorySignature = cachedCategorySignature
   let lastViewSignature = cachedViewSignature
+  let brandScreenPending = !categoryId && !cachedCategories.length
+  let categoryScreenPending = Boolean(categoryId) && !(cachedActiveCategory || cachedFileResult)
 
   document.title = `${brand.label} Solution Files | Huawei - Honor Downloads`
 
   const renderBrandScreen = (categories: SolutionCategory[]) => {
     const visibleCategories = getBrandLandingCategories(categories, brandId)
     lastCategorySignature = getCategoryListSignature(categories)
+    brandScreenPending = false
     warmCategoryFileCache(
       brandId,
       visibleCategories.map((item) => item.id),
@@ -604,6 +607,7 @@ export const renderSolutionFilesPage = async () => {
     activeCategory: SolutionCategory | null,
     activeFiles: DownloadListFile[],
   ) => {
+    categoryScreenPending = false
     if (!activeCategory) {
       lastViewSignature = getCategoryViewSignature(null, [], [])
       app.innerHTML = renderSiteChrome(
@@ -769,7 +773,7 @@ export const renderSolutionFilesPage = async () => {
       if (!categoryId) {
         const categoryResult = await loadCategoriesByBrand(brandId)
         const nextSignature = getCategoryListSignature(categoryResult.categories)
-        if (nextSignature !== lastCategorySignature) {
+        if (brandScreenPending || nextSignature !== lastCategorySignature) {
           renderBrandScreen(categoryResult.categories)
         }
         return
@@ -783,7 +787,7 @@ export const renderSolutionFilesPage = async () => {
       const nextChildCategories = nextActiveCategory ? getChildCategories(categoryResult.categories, nextActiveCategory.id) : []
       const nextSignature = getCategoryViewSignature(nextActiveCategory, nextChildCategories, fileResult.files)
 
-      if (nextSignature !== lastViewSignature) {
+      if (categoryScreenPending || nextSignature !== lastViewSignature) {
         renderCategoryScreen(categoryResult.categories, nextActiveCategory, fileResult.files)
       }
     } finally {
@@ -875,7 +879,7 @@ export const renderSolutionFilesPage = async () => {
     const categories = categoryResult.categories
     const liveCategorySignature = getCategoryListSignature(categories)
 
-    if (liveCategorySignature !== lastCategorySignature) {
+    if (brandScreenPending || liveCategorySignature !== lastCategorySignature) {
       renderBrandScreen(categories)
     }
     return
@@ -890,7 +894,7 @@ export const renderSolutionFilesPage = async () => {
   const liveChildCategories = liveActiveCategory ? getChildCategories(liveCategories, liveActiveCategory.id) : []
   const liveViewSignature = getCategoryViewSignature(liveActiveCategory, liveChildCategories, fileResult.files)
 
-  if (liveViewSignature !== lastViewSignature) {
+  if (categoryScreenPending || liveViewSignature !== lastViewSignature) {
     renderCategoryScreen(liveCategories, liveActiveCategory, fileResult.files)
   }
 }
