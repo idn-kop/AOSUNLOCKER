@@ -22,6 +22,57 @@ const groupRemoteServiceEntries = (entries: RemoteServiceEntry[]) =>
     }, {}),
   ).sort(([left], [right]) => left.localeCompare(right))
 
+const formatRemotePlatformLabel = (platform: string) => platform.replaceAll('_', ' ')
+
+const buildRemoteServiceMessageUrl = (
+  intent: 'job' | 'buy',
+  platform: string,
+  models: string[],
+) => {
+  const platformLabel = formatRemotePlatformLabel(platform)
+  const preview = models.slice(0, 3).join(', ')
+  const message =
+    intent === 'job'
+      ? `Hello bro, I want do job for ${platformLabel}. Model groups: ${preview || platformLabel}.`
+      : `Hello bro, I want buy access for ${platformLabel}. Model groups: ${preview || platformLabel}.`
+
+  return `https://wa.me/6282234370999?text=${encodeURIComponent(message)}`
+}
+
+const buildRemoteModelPreview = (models: string[], limit = 4) => {
+  const visible = models.slice(0, limit)
+  const extra = Math.max(0, models.length - visible.length)
+  if (!visible.length) return 'Supported Huawei and Honor model groups are available for this platform.'
+  return `${visible.join(', ')}${extra ? ` +${extra} more` : ''}`
+}
+
+const renderRemoteServiceRow = ([platform, models]: [string, string[]]) => {
+  const platformLabel = formatRemotePlatformLabel(platform)
+  const visibleModels = models.slice(0, 6)
+  const extraModels = Math.max(0, models.length - visibleModels.length)
+
+  return `
+    <article class="remote-service-item searchable">
+      <div class="remote-service-item-main">
+        <div class="remote-service-item-top">
+          <span class="remote-platform-badge">${platformLabel}</span>
+          <span class="remote-service-count">${models.length} model groups</span>
+        </div>
+        <h3>${platformLabel}</h3>
+        <p class="remote-service-item-copy">${buildRemoteModelPreview(models)}</p>
+        <div class="remote-model-strip">
+          ${visibleModels.map((model) => `<span class="remote-model-chip">${model}</span>`).join('')}
+          ${extraModels ? `<span class="remote-model-chip remote-model-chip-more">+${extraModels} more</span>` : ''}
+        </div>
+      </div>
+      <div class="remote-service-item-actions">
+        <a class="remote-service-action remote-service-action-primary" href="${buildRemoteServiceMessageUrl('job', platform, models)}" target="_blank" rel="noreferrer">Do Job</a>
+        <a class="remote-service-action remote-service-action-secondary" href="${buildRemoteServiceMessageUrl('buy', platform, models)}" target="_blank" rel="noreferrer">Buy</a>
+      </div>
+    </article>
+  `
+}
+
 const renderBrandHomeGrid = (content = downloadHomeCategories) =>
   content.length
     ? `<div class="download-home-grid">${content.map((item) => renderDownloadHomeCard(item)).join('')}</div>`
@@ -53,55 +104,27 @@ const getOrderedHomeBrands = <T extends { brandId?: string }>(items: T[]) => {
   return [...leadItems, ...extraItems]
 }
 
-const renderRemoteServiceSection = () => {
-  const groups = groupRemoteServiceEntries(remoteServiceQualcommEntries)
+const renderRemoteServiceSection = (groups: Array<[string, string[]]>) => {
+  const platformFamilies = groups.length
 
   return `
-    <section class="remote-service-section py-5">
+    <section class="remote-service-section py-4">
       <div class="container">
         <div class="remote-service-shell">
-          <div class="remote-service-head">
+          <div class="remote-service-list-head">
             <div>
-              <p class="eyebrow">Remote Service</p>
-              <h2 class="section-title"><i class="fas fa-laptop-medical me-2 text-primary"></i>Qualcomm ID Instant Coverage</h2>
-              <p class="remote-service-copy">Fast remote support for supported Huawei, Honor, and Qualcomm-based service jobs. Select the matching platform family below before confirming the job.</p>
+              <p class="eyebrow">Service List</p>
+              <h2 class="section-title"><i class="fas fa-laptop-medical me-2 text-primary"></i>Choose platform and start service</h2>
+              <p class="remote-service-copy">Setiap platform sekarang tampil sebagai list yang lebih ringan. Pilih platform Qualcomm yang cocok, lalu langsung tekan Do Job atau Buy.</p>
             </div>
-            <div class="remote-service-contact-row">
-              <a class="remote-service-contact remote-service-contact-whatsapp" href="https://wa.me/6282234370999" target="_blank" rel="noreferrer"><i class="fab fa-whatsapp"></i><span>WhatsApp</span></a>
-              <a class="remote-service-contact remote-service-contact-facebook" href="https://www.facebook.com/anggaaosunlocker" target="_blank" rel="noreferrer"><i class="fab fa-facebook-f"></i><span>Facebook</span></a>
-              <a class="remote-service-contact remote-service-contact-web" href="https://aosunlocker.com" target="_blank" rel="noreferrer"><i class="fas fa-globe"></i><span>Website</span></a>
-            </div>
-          </div>
-          <div class="remote-service-highlight-row">
-            <div class="remote-service-highlight-card">
-              <span class="remote-service-highlight-label">Service Type</span>
-              <strong>Qualcomm ID Instant</strong>
-            </div>
-            <div class="remote-service-highlight-card">
-              <span class="remote-service-highlight-label">Coverage</span>
-              <strong>${remoteServiceQualcommEntries.length} supported model groups</strong>
-            </div>
-            <div class="remote-service-highlight-card">
-              <span class="remote-service-highlight-label">Delivery</span>
-              <strong>Remote workflow with direct support response</strong>
+            <div class="remote-service-list-summary">
+              <strong>${platformFamilies}</strong>
+              <span>platform families</span>
+              <small>${remoteServiceQualcommEntries.length} supported model groups</small>
             </div>
           </div>
-          <div class="remote-service-grid">
-            ${groups
-              .map(
-                ([platform, models]) => `
-                  <article class="remote-platform-card searchable">
-                    <div class="remote-platform-head">
-                      <span class="remote-platform-badge">${platform.replaceAll('_', ' ')}</span>
-                      <strong>${models.length} model groups</strong>
-                    </div>
-                    <div class="remote-model-chip-grid">
-                      ${models.map((model) => `<span class="remote-model-chip">${model}</span>`).join('')}
-                    </div>
-                  </article>
-                `,
-              )
-              .join('')}
+          <div class="remote-service-list">
+            ${groups.map((group) => renderRemoteServiceRow(group)).join('')}
           </div>
         </div>
       </div>
@@ -113,22 +136,24 @@ export const renderRemoteServicePage = () => {
   const app = document.querySelector<HTMLDivElement>('#app')
   if (!app) return
 
+  const groups = groupRemoteServiceEntries(remoteServiceQualcommEntries)
+
   document.title = 'Remote Service | AOSUNLOCKER Huawei Lab'
 
   app.innerHTML = renderSiteChrome(
     `
       <main class="remote-service-page">
         <section class="remote-service-hero">
-          <div class="container py-5">
+          <div class="container py-4">
             <div class="remote-service-hero-shell">
               <div class="remote-service-hero-copy">
                 <p class="eyebrow">Remote Service</p>
-                <h1 class="remote-service-hero-title">Qualcomm ID instant service coverage for supported Huawei and Honor platforms.</h1>
-                <p class="remote-service-hero-text">A dedicated page for fast remote support, Qualcomm-based ID jobs, and direct service-side communication. Browse supported platform families below, then move straight into WhatsApp, Facebook, or website contact.</p>
+                <h1 class="remote-service-hero-title">Qualcomm ID remote service for Huawei and Honor devices.</h1>
+                <p class="remote-service-hero-text">Halaman ini saya ringkas supaya lebih enak dibaca. Tidak pakai tabel padat lagi. Cukup pilih platform Qualcomm di bawah, lalu langsung tekan Do Job atau Buy.</p>
                 <div class="remote-service-hero-cta">
-                  <a class="hero-cta-button hero-cta-button-amber" href="https://wa.me/6282234370999" target="_blank" rel="noreferrer">Start WhatsApp Order</a>
-                  <a class="hero-cta-button hero-cta-button-light" href="https://www.facebook.com/anggaaosunlocker" target="_blank" rel="noreferrer">Open Facebook</a>
-                  <a class="hero-cta-button hero-cta-button-ghost" href="https://aosunlocker.com" target="_blank" rel="noreferrer">Visit Website</a>
+                  <a class="hero-cta-button hero-cta-button-amber" href="https://wa.me/6282234370999?text=Hello%20bro%2C%20I%20want%20Qualcomm%20ID%20remote%20service." target="_blank" rel="noreferrer">Do Job</a>
+                  <a class="hero-cta-button hero-cta-button-light" href="https://wa.me/6282234370999?text=Hello%20bro%2C%20I%20want%20to%20buy%20Qualcomm%20ID%20remote%20service." target="_blank" rel="noreferrer">Buy</a>
+                  <a class="hero-cta-button hero-cta-button-ghost" href="https://www.facebook.com/anggaaosunlocker" target="_blank" rel="noreferrer">Open Facebook</a>
                 </div>
               </div>
               <div class="remote-service-hero-side">
@@ -138,21 +163,21 @@ export const renderRemoteServicePage = () => {
                   <p>supported model groups</p>
                 </article>
                 <article class="remote-hero-stat-card">
-                  <span class="remote-hero-stat-label">Workflow</span>
-                  <strong>Instant</strong>
-                  <p>remote support handling</p>
+                  <span class="remote-hero-stat-label">Platforms</span>
+                  <strong>${groups.length}</strong>
+                  <p>Qualcomm families ready</p>
                 </article>
                 <article class="remote-hero-stat-card">
-                  <span class="remote-hero-stat-label">Scope</span>
-                  <strong>Huawei / Honor</strong>
-                  <p>Qualcomm-based device families</p>
+                  <span class="remote-hero-stat-label">Flow</span>
+                  <strong>Fast</strong>
+                  <p>Do Job or Buy directly</p>
                 </article>
               </div>
             </div>
           </div>
         </section>
 
-        ${renderRemoteServiceSection()}
+        ${renderRemoteServiceSection(groups)}
 
         <section class="py-5">
           <div class="container">
