@@ -2767,6 +2767,14 @@ h6 {
   border-color: rgba(107, 227, 164, 0.14);
 }
 
+.download-home-card-brand-generic {
+  background:
+    radial-gradient(circle at top left, rgba(72, 157, 255, 0.08), transparent 26%),
+    radial-gradient(circle at bottom right, rgba(160, 174, 255, 0.06), transparent 20%),
+    linear-gradient(180deg, rgba(13, 19, 31, 0.96), rgba(8, 12, 20, 0.94));
+  border-color: rgba(120, 150, 210, 0.12);
+}
+
 .download-home-card-brand-huawei::before {
   background: linear-gradient(90deg, rgba(229, 83, 75, 0), rgba(255, 140, 127, 0.95), rgba(229, 83, 75, 0));
 }
@@ -2782,6 +2790,10 @@ h6 {
 
 .download-home-card-brand-free-download::before {
   background: linear-gradient(90deg, rgba(107, 227, 164, 0), rgba(185, 255, 215, 0.94), rgba(107, 227, 164, 0));
+}
+
+.download-home-card-brand-generic::before {
+  background: linear-gradient(90deg, rgba(120, 150, 210, 0), rgba(176, 202, 255, 0.94), rgba(120, 150, 210, 0));
 }
 
 .download-home-card:hover {
@@ -2823,6 +2835,13 @@ h6 {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.024),
     0 16px 30px rgba(22, 92, 60, 0.16);
+}
+
+.download-home-card-brand-generic:hover {
+  border-color: rgba(120, 150, 210, 0.2);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.024),
+    0 16px 30px rgba(29, 49, 92, 0.16);
 }
 
 .download-home-card::after {
@@ -2917,6 +2936,27 @@ h6 {
   text-wrap: pretty;
 }
 
+.download-home-card-brand-generic .download-home-kicker {
+  font-size: 0.58rem;
+  padding: 0.22rem 0.46rem;
+  letter-spacing: 0.1em;
+}
+
+.download-home-card-brand-generic h3 {
+  font-size: 1.12rem;
+  line-height: 1.06;
+  text-wrap: pretty;
+}
+
+.download-home-card-brand-generic p {
+  font-size: 0.84rem;
+  max-width: 22ch;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .download-home-icon,
 .model-folder-art {
   width: 78px;
@@ -2958,6 +2998,12 @@ h6 {
   border-radius: 1.23rem;
   pointer-events: none;
   border: 1px solid rgba(255, 255, 255, 0.025);
+}
+
+.download-home-icon-brand-generic {
+  background:
+    radial-gradient(circle at top left, rgba(99, 133, 255, 0.16), transparent 34%),
+    linear-gradient(180deg, rgba(19, 29, 48, 0.94), rgba(10, 15, 24, 0.96));
 }
 
 .download-home-icon-brand-huawei {

@@ -50,7 +50,7 @@ const getBrandMeta = (brandId: BrandId) => {
 
   return {
     label,
-    description: `Open ${label} firmware files, repair packages, and service downloads.`,
+    description: `Open ${label} firmware and support files.`,
   }
 }
 

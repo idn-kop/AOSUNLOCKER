@@ -142,14 +142,14 @@ const getBrandCardDescription = (brandId: string) => {
   }
 
   if (normalized === 'tools') {
-    return 'Tools, repair packs, and support files.'
+    return 'Tools and support files.'
   }
 
   if (normalized === 'solution' || normalized === 'aos-firmware') {
-    return 'Repair packs, firmware, and service files.'
+    return 'Service and repair files.'
   }
 
-  return 'Firmware, repair packs, and support files.'
+  return 'Firmware and support files.'
 }
 
 const buildCategoryDescription = (_brandLabel?: string, _fullTitle?: string, _hasChildren?: boolean) => ''

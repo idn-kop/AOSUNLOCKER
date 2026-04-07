@@ -67,6 +67,34 @@ const isFreeBrand = (brandId?: string) => {
   return normalized === 'free-download' || normalized === 'free'
 }
 
+const isCoreBrand = (brandId?: string) => {
+  const normalized = String(brandId || '').trim().toLowerCase()
+  return (
+    normalized === 'huawei' ||
+    normalized === 'honor' ||
+    normalized === 'solution' ||
+    normalized === 'aos-firmware' ||
+    normalized === 'tools' ||
+    normalized === 'free-download' ||
+    normalized === 'free'
+  )
+}
+
+const formatBrandDisplayTitle = (value: string) =>
+  String(value || '')
+    .replace(/[-_]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => {
+      if (/^[A-Z0-9]{2,4}$/.test(word)) return word
+
+      const lower = word.toLowerCase()
+      return lower.charAt(0).toUpperCase() + lower.slice(1)
+    })
+    .join(' ')
+
 const getBrandArtwork = (brandId?: string) => {
   if (brandId === 'huawei') {
     return {
@@ -408,7 +436,15 @@ const getDownloadHomeKicker = (item: DownloadCategoryCard) => {
       return 'Huawei Files'
     }
 
-    return `${item.title} Files`
+    if (isSolutionBrand(item.brandId)) {
+      return 'Service Files'
+    }
+
+    if (isToolsBrand(item.brandId)) {
+      return 'Tools Files'
+    }
+
+    return 'Support Files'
   }
 
   if (item.kind === 'android') {
@@ -423,12 +459,26 @@ const getDownloadHomeTitle = (item: DownloadCategoryCard) => {
     return 'Free Download'
   }
 
+  if (item.kind === 'brand' && !isCoreBrand(item.brandId)) {
+    return formatBrandDisplayTitle(item.title)
+  }
+
   return item.title
 }
 
+const getDownloadHomeBrandCardClass = (brandId?: string) => {
+  if (!brandId) return ''
+  return `download-home-card-brand download-home-card-brand-${brandId}${isCoreBrand(brandId) ? '' : ' download-home-card-brand-generic'}`
+}
+
+const getDownloadHomeBrandIconClass = (brandId?: string) => {
+  if (!brandId) return ''
+  return `download-home-icon-brand download-home-icon-brand-${brandId}${isCoreBrand(brandId) ? '' : ' download-home-icon-brand-generic'}`
+}
+
 export const renderDownloadHomeCard = (item: DownloadCategoryCard) => `
-  <a class="download-home-card ${item.kind === 'brand' ? `download-home-card-brand download-home-card-brand-${item.brandId}` : ''}" href="${item.href}">
-    <div class="download-home-icon ${item.kind === 'android' ? 'download-home-icon-android' : ''} ${item.kind === 'brand' ? `download-home-icon-brand download-home-icon-brand-${item.brandId}` : ''}">
+  <a class="download-home-card ${item.kind === 'brand' ? getDownloadHomeBrandCardClass(item.brandId) : ''}" href="${item.href}">
+    <div class="download-home-icon ${item.kind === 'android' ? 'download-home-icon-android' : ''} ${item.kind === 'brand' ? getDownloadHomeBrandIconClass(item.brandId) : ''}">
       ${
         item.kind === 'android'
           ? '<i class="fab fa-android"></i>'
