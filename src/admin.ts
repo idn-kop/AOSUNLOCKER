@@ -660,14 +660,14 @@ const renderEditorMarkup = () => `
         <p class="admin-eyebrow">Folder</p>
         <h2 class="admin-section-title" id="categoryFormTitle">Create Folder / Subfolder</h2>
         <p class="admin-section-copy">Pilih brand dulu, lalu isi parent folder kalau item ini memang subfolder.</p>
-        <form id="categoryForm" class="admin-form-grid">
+        <form id="categoryForm" class="admin-form-grid" autocomplete="off">
           <label class="admin-field">
             <span class="admin-label">Folder ID</span>
-            <input id="categoryId" class="admin-input" type="text" placeholder="auto-generated if blank" />
+            <input id="categoryId" class="admin-input" type="text" placeholder="auto-generated if blank" autocomplete="off" autocapitalize="none" spellcheck="false" data-lpignore="true" />
           </label>
           <label class="admin-field">
             <span class="admin-label">Folder label</span>
-            <input id="categoryLabel" class="admin-input" type="text" placeholder="Removed ID" />
+            <input id="categoryLabel" class="admin-input" type="text" placeholder="Removed ID" autocomplete="off" autocapitalize="words" spellcheck="false" data-lpignore="true" />
           </label>
           <label class="admin-field">
             <span class="admin-label">Brand</span>
@@ -688,10 +688,10 @@ const renderEditorMarkup = () => `
         <p class="admin-eyebrow">File</p>
         <h2 class="admin-section-title" id="fileFormTitle">Create File</h2>
         <p class="admin-section-copy">Field penting dibuat singkat supaya tambah file dari HP lebih cepat. Detail lain tetap ada di bagian advanced.</p>
-        <form id="fileForm" class="admin-form-grid">
+        <form id="fileForm" class="admin-form-grid" autocomplete="off">
           <label class="admin-field admin-span-2">
             <span class="admin-label">Title</span>
-            <input id="fileTitle" class="admin-input" type="text" placeholder="Huawei Mate50..." />
+            <input id="fileTitle" class="admin-input" type="text" placeholder="Huawei Mate50..." autocomplete="off" autocapitalize="words" spellcheck="false" />
           </label>
           <label class="admin-field admin-span-2">
             <span class="admin-label">Drive URL</span>
@@ -721,7 +721,7 @@ const renderEditorMarkup = () => `
             <div class="admin-disclosure-content admin-form-grid">
               <label class="admin-field admin-span-2">
                 <span class="admin-label">File ID</span>
-                <input id="fileId" class="admin-input" type="text" placeholder="auto-generated if blank" />
+                <input id="fileId" class="admin-input" type="text" placeholder="auto-generated if blank" autocomplete="off" autocapitalize="none" spellcheck="false" data-lpignore="true" />
               </label>
               <label class="admin-field admin-span-2">
                 <span class="admin-label">Subtitle</span>
@@ -1052,14 +1052,14 @@ const renderShellLegacy = () => {
               <p class="admin-eyebrow">Folder</p>
               <h2 class="admin-section-title" id="categoryFormTitle">Create Folder / Subfolder</h2>
               <p class="admin-section-copy">Select a brand, then choose an optional parent folder only if this should become a subfolder.</p>
-              <form id="categoryForm" class="admin-form-grid">
+              <form id="categoryForm" class="admin-form-grid" autocomplete="off">
                 <label class="admin-field">
                   <span class="admin-label">Folder ID</span>
-                  <input id="categoryId" class="admin-input" type="text" placeholder="auto-generated if blank" />
+                  <input id="categoryId" class="admin-input" type="text" placeholder="auto-generated if blank" autocomplete="off" autocapitalize="none" spellcheck="false" data-lpignore="true" />
                 </label>
                 <label class="admin-field">
                   <span class="admin-label">Folder label</span>
-                  <input id="categoryLabel" class="admin-input" type="text" placeholder="Removed ID" />
+                  <input id="categoryLabel" class="admin-input" type="text" placeholder="Removed ID" autocomplete="off" autocapitalize="words" spellcheck="false" data-lpignore="true" />
                 </label>
                 <label class="admin-field">
                   <span class="admin-label">Brand</span>
@@ -1080,14 +1080,14 @@ const renderShellLegacy = () => {
               <p class="admin-eyebrow">File</p>
               <h2 class="admin-section-title" id="fileFormTitle">Create File</h2>
               <p class="admin-section-copy">Main fields stay visible. Open advanced details only when you need subtitles, notes, size, price, or counters.</p>
-              <form id="fileForm" class="admin-form-grid">
+              <form id="fileForm" class="admin-form-grid" autocomplete="off">
                 <label class="admin-field">
                   <span class="admin-label">File ID</span>
-                  <input id="fileId" class="admin-input" type="text" placeholder="auto-generated if blank" />
+                  <input id="fileId" class="admin-input" type="text" placeholder="auto-generated if blank" autocomplete="off" autocapitalize="none" spellcheck="false" data-lpignore="true" />
                 </label>
                 <label class="admin-field">
                   <span class="admin-label">Title</span>
-                  <input id="fileTitle" class="admin-input" type="text" placeholder="Huawei Mate50..." />
+                  <input id="fileTitle" class="admin-input" type="text" placeholder="Huawei Mate50..." autocomplete="off" autocapitalize="words" spellcheck="false" />
                 </label>
                 <label class="admin-field">
                   <span class="admin-label">Brand</span>
