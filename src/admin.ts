@@ -161,6 +161,8 @@ const state = {
   accessGrants: [] as AdminAccessGrant[],
   accessLoading: false,
   selectedAccessFileId: '',
+  accessFilterBrandId: '',
+  accessFilterCategoryId: '',
   editingBrandId: '',
   editingCategoryId: '',
   editingFileId: '',
@@ -274,6 +276,62 @@ const getBuyFiles = () =>
   getKnownFiles()
     .filter((file) => normalizeFileStatus(file.status) === 'buy')
     .sort((left, right) => left.title.localeCompare(right.title))
+
+const getCategoryLineageIds = (categoryId: string) => {
+  const lineage = new Set<string>()
+  let current = getCategoryById(categoryId)
+
+  while (current?.id) {
+    lineage.add(current.id)
+    current = toText(current.parentCategoryId) ? getCategoryById(current.parentCategoryId) : null
+  }
+
+  return Array.from(lineage)
+}
+
+const getFilteredBuyFiles = (
+  filters: { brandId?: string; categoryId?: string } = {
+    brandId: state.accessFilterBrandId,
+    categoryId: state.accessFilterCategoryId,
+  },
+) => {
+  const brandId = toText(filters.brandId || '')
+  const categoryId = toText(filters.categoryId || '')
+
+  let files = getBuyFiles()
+
+  if (brandId) {
+    files = files.filter((file) => file.brandId === brandId)
+  }
+
+  if (categoryId) {
+    const acceptedCategoryIds = new Set([categoryId, ...getDescendantCategoryIds(categoryId)])
+    files = files.filter((file) => acceptedCategoryIds.has(file.categoryId))
+  }
+
+  return files
+}
+
+const getAccessFilterBrands = () => {
+  const allowedBrandIds = new Set(getBuyFiles().map((file) => file.brandId).filter(Boolean))
+  return getBootstrapBrands().filter((brand) => allowedBrandIds.has(brand.id))
+}
+
+const getAccessFilterCategories = (brandId = state.accessFilterBrandId) => {
+  const scopedFiles = getBuyFiles().filter((file) => !brandId || file.brandId === brandId)
+  const allowedCategoryIds = new Set<string>()
+
+  scopedFiles.forEach((file) => {
+    getCategoryLineageIds(file.categoryId).forEach((categoryId) => {
+      allowedCategoryIds.add(categoryId)
+    })
+  })
+
+  return getBootstrapCategories().filter((category) => {
+    if (brandId && category.brandId !== brandId) return false
+    return allowedCategoryIds.has(category.id)
+  })
+}
 
 const getRootCategoriesForBrand = (brandId: string) =>
   getCategoriesForBrand(brandId).filter((category) => !toText(category.parentCategoryId))
@@ -1108,7 +1166,7 @@ const renderFilesMarkup = () => `
 
 const renderAccessMarkup = () => {
   const selectedFileId = ensureSelectedAccessFileId()
-  const buyFiles = getBuyFiles()
+  const buyFiles = getFilteredBuyFiles()
   const selectedFile = buyFiles.find((file) => file.id === selectedFileId) || null
 
   return `
@@ -1122,6 +1180,17 @@ const renderAccessMarkup = () => {
               <p class="admin-section-copy">Pilih file jualan, lalu grant unlock link unik setelah pembeli bayar.</p>
             </div>
           </div>
+          <div class="admin-form-grid" data-columns="2">
+            <label class="admin-field">
+              <span class="admin-label">Brand</span>
+              <select id="accessFilterBrand" class="admin-select"></select>
+            </label>
+            <label class="admin-field">
+              <span class="admin-label">Folder</span>
+              <select id="accessFilterCategory" class="admin-select"></select>
+            </label>
+          </div>
+          <p id="accessFilterSummary" class="admin-subtle"></p>
           <div id="accessFileList" class="admin-list"></div>
         </article>
 
@@ -1978,15 +2047,21 @@ const renderAccessFileList = () => {
   const mount = byId<HTMLDivElement>('accessFileList')
   if (!mount) return
 
-  const buyFiles = getBuyFiles()
+  const filteredFiles = getFilteredBuyFiles()
+  const allBuyFiles = getBuyFiles()
   ensureSelectedAccessFileId()
 
-  if (!buyFiles.length) {
+  if (!allBuyFiles.length) {
     mount.innerHTML = `<article class="admin-list-item"><div class="admin-empty">Belum ada file dengan status Request Access.</div></article>`
     return
   }
 
-  mount.innerHTML = buyFiles
+  if (!filteredFiles.length) {
+    mount.innerHTML = `<article class="admin-list-item"><div class="admin-empty">Tidak ada file yang cocok dengan filter Brand/Folder ini.</div></article>`
+    return
+  }
+
+  mount.innerHTML = filteredFiles
     .map((file) => {
       const isActive = state.selectedAccessFileId === file.id
       return `
@@ -2055,10 +2130,29 @@ const renderAccessWorkspace = () => {
   const meta = byId<HTMLDivElement>('accessSelectedMeta')
   const form = byId<HTMLFormElement>('accessGrantForm')
   const empty = byId<HTMLDivElement>('accessGrantEmpty')
+  const summary = byId<HTMLParagraphElement>('accessFilterSummary')
   const editButton = form?.querySelector<HTMLButtonElement>('[data-action="open-access-file-edit"]')
-  const selectedFile = getBuyFiles().find((file) => file.id === ensureSelectedAccessFileId()) || null
+
+  syncAccessFilterOptions()
+  const filteredFiles = getFilteredBuyFiles()
+  const selectedFile = filteredFiles.find((file) => file.id === ensureSelectedAccessFileId()) || null
 
   renderAccessFileList()
+
+  if (summary) {
+    const scope = [
+      state.accessFilterBrandId ? `brand ${getBrandById(state.accessFilterBrandId)?.label || state.accessFilterBrandId}` : '',
+      state.accessFilterCategoryId
+        ? `folder ${getCategoryById(state.accessFilterCategoryId)?.fullLabel || getCategoryById(state.accessFilterCategoryId)?.label || state.accessFilterCategoryId}`
+        : '',
+    ]
+      .filter(Boolean)
+      .join(' / ')
+
+    summary.textContent = scope
+      ? `Showing ${filteredFiles.length} Request Access file(s) in ${scope}.`
+      : `Showing ${filteredFiles.length} Request Access file(s) across all brands.`
+  }
 
   if (!title || !copy || !meta || !form || !empty) {
     renderAccessGrantHistory()
@@ -2710,7 +2804,8 @@ const ensureFocusStillValid = () => {
 }
 
 const ensureSelectedAccessFileId = () => {
-  const buyFiles = getBuyFiles()
+  ensureAccessFiltersStillValid()
+  const buyFiles = getFilteredBuyFiles()
 
   if (state.selectedAccessFileId && buyFiles.some((file) => file.id === state.selectedAccessFileId)) {
     return state.selectedAccessFileId
@@ -2720,9 +2815,66 @@ const ensureSelectedAccessFileId = () => {
   return state.selectedAccessFileId
 }
 
+const ensureAccessFiltersStillValid = () => {
+  const buyFiles = getBuyFiles()
+  const allowedBrandIds = new Set(buyFiles.map((file) => file.brandId).filter(Boolean))
+
+  if (state.accessFilterBrandId && !allowedBrandIds.has(state.accessFilterBrandId)) {
+    state.accessFilterBrandId = ''
+  }
+
+  if (!state.accessFilterCategoryId) return
+
+  const scopedFiles = buyFiles.filter((file) => !state.accessFilterBrandId || file.brandId === state.accessFilterBrandId)
+  const acceptedIds = new Set<string>()
+
+  scopedFiles.forEach((file) => {
+    acceptedIds.add(file.categoryId)
+    getDescendantCategoryIds(file.categoryId).forEach((categoryId) => acceptedIds.add(categoryId))
+    getCategoryLineageIds(file.categoryId).forEach((categoryId) => acceptedIds.add(categoryId))
+  })
+
+  if (!acceptedIds.has(state.accessFilterCategoryId)) {
+    state.accessFilterCategoryId = ''
+  }
+}
+
+const syncAccessFilterOptions = () => {
+  const brandSelect = byId<HTMLSelectElement>('accessFilterBrand')
+  const categorySelect = byId<HTMLSelectElement>('accessFilterCategory')
+
+  const brandOptions = [
+    { value: '', label: 'All brands' },
+    ...getAccessFilterBrands().map((brand) => ({
+      value: brand.id,
+      label: `${brand.label} (${brand.id})`,
+    })),
+  ]
+
+  setSelectOptions(brandSelect, brandOptions, state.accessFilterBrandId)
+  state.accessFilterBrandId = toText(brandSelect?.value || '')
+
+  const categoryOptions = [
+    { value: '', label: state.accessFilterBrandId ? 'All folders in this brand' : 'All folders' },
+    ...getAccessFilterCategories().map((category) => ({
+      value: category.id,
+      label: category.fullLabel || category.label,
+    })),
+  ]
+
+  setSelectOptions(categorySelect, categoryOptions, state.accessFilterCategoryId)
+  state.accessFilterCategoryId = toText(categorySelect?.value || '')
+}
+
+const setAccessFiltersFromFile = (file: AdminFile | null) => {
+  state.accessFilterBrandId = toText(file?.brandId || '')
+  state.accessFilterCategoryId = toText(file?.categoryId || '')
+}
+
 const applyBootstrap = (payload: BootstrapResponse) => {
   state.bootstrap = payload
   ensureFocusStillValid()
+  ensureAccessFiltersStillValid()
   ensureSelectedAccessFileId()
   if (!state.focusBrandId) {
     state.focusBrandId = payload.brands[0]?.id || ''
@@ -2747,6 +2899,7 @@ const loadBootstrap = async () => {
 const loadFileIndex = async () => {
   const data = await requestAdmin<FilesResponse>('files', { method: 'GET' })
   state.fileIndex = data.files ?? []
+  ensureAccessFiltersStillValid()
   ensureSelectedAccessFileId()
   renderStats()
   renderDashboardBrands()
@@ -3853,6 +4006,35 @@ const bindStaticEvents = () => {
     }
   })
 
+  byId<HTMLSelectElement>('accessFilterBrand')?.addEventListener('change', async (event) => {
+    state.accessFilterBrandId = toText((event.currentTarget as HTMLSelectElement).value)
+    state.accessFilterCategoryId = ''
+    ensureSelectedAccessFileId()
+    resetAccessGrantForm()
+
+    if (state.selectedAccessFileId) {
+      await loadAccessGrants(state.selectedAccessFileId)
+      return
+    }
+
+    state.accessGrants = []
+    renderAccessWorkspace()
+  })
+
+  byId<HTMLSelectElement>('accessFilterCategory')?.addEventListener('change', async (event) => {
+    state.accessFilterCategoryId = toText((event.currentTarget as HTMLSelectElement).value)
+    ensureSelectedAccessFileId()
+    resetAccessGrantForm()
+
+    if (state.selectedAccessFileId) {
+      await loadAccessGrants(state.selectedAccessFileId)
+      return
+    }
+
+    state.accessGrants = []
+    renderAccessWorkspace()
+  })
+
   byId<HTMLDivElement>('accessGrantHistory')?.addEventListener('click', async (event) => {
     const target = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]')
     if (!target) return
@@ -3914,6 +4096,8 @@ const bindStaticEvents = () => {
       }
 
       if (target.dataset.action === 'manage-file-access') {
+        const file = getKnownFiles().find((item) => item.id === fileId) || null
+        setAccessFiltersFromFile(file)
         state.selectedAccessFileId = fileId
         revealWorkspace('access', { scroll: true })
         resetAccessGrantForm()
