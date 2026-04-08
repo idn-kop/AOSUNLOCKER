@@ -1240,9 +1240,10 @@ const renderAccessMarkup = () => {
             <label class="admin-field">
               <span class="admin-label">Expire after</span>
               <select id="accessExpiresHours" class="admin-select">
+                <option value="1">1 hour</option>
+                <option value="6">6 hours</option>
                 <option value="24">24 hours</option>
                 <option value="48">48 hours</option>
-                <option value="72">72 hours</option>
                 <option value="168">7 days</option>
               </select>
             </label>
@@ -2979,7 +2980,7 @@ const openFilesWorkspace = async ({ brandId = '', categoryId = '' }: { brandId?:
 const resetAccessGrantForm = () => {
   setInputValue('accessBuyerEmail', '')
   setInputValue('accessBuyerName', '')
-  setInputValue('accessExpiresHours', '24')
+  setInputValue('accessExpiresHours', '1')
   setInputValue('accessMaxUses', '1')
   setInputValue('accessNote', '')
 }
