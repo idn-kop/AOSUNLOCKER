@@ -1,5 +1,5 @@
 import { anaAn00Files, downloadHomeCategories, huaweiUpdateFolders, solutionCategories, solutionFilesByCategory } from './download-data'
-import type { BrandId, DownloadListFile, SolutionCategory, TickerItem } from './data-types'
+import type { BrandId, DownloadFileStatus, DownloadListFile, SolutionCategory, TickerItem } from './data-types'
 
 declare global {
   interface Window {
@@ -133,6 +133,16 @@ const toDisplayLabel = (value: string) =>
     .replace(/[-_]+/g, ' ')
     .replace(/\b\w/g, (char) => char.toUpperCase())
     .trim()
+
+const normalizeFileStatus = (value?: string): DownloadFileStatus => {
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase()
+
+  if (normalized === 'buy') return 'buy'
+  if (normalized === 'draft') return 'draft'
+  return 'published'
+}
 
 const getBrandCardDescription = (brandId: string) => {
   const normalized = String(brandId || '').trim().toLowerCase()
@@ -507,6 +517,7 @@ const normalizeFile = (file: PublicFileRecord): DownloadListFile => ({
   downloads: String(file.downloads || '0'),
   price: String(file.price || ''),
   featured: Boolean(file.featured),
+  status: normalizeFileStatus(file.status),
 })
 
 const parseSortDate = (file: PublicFileRecord) => {
@@ -1066,7 +1077,7 @@ export const loadFileById = async (fileId: string) => {
       category: fallbackCategory,
       driveUrl: '',
       price: localFileMatch?.file.price || '',
-      status: '',
+      status: normalizeFileStatus(localFileMatch?.file.status),
     }
   }
 
@@ -1084,7 +1095,7 @@ export const loadFileById = async (fileId: string) => {
           category: localFileMatch.category,
           driveUrl: '',
           price: localFileMatch.file.price || '',
-          status: '',
+          status: normalizeFileStatus(localFileMatch.file.status),
         }
       }
 
@@ -1094,7 +1105,7 @@ export const loadFileById = async (fileId: string) => {
         category: fallbackCategory,
         driveUrl: '',
         price: '',
-        status: '',
+        status: normalizeFileStatus('draft'),
       }
     }
 
@@ -1108,7 +1119,7 @@ export const loadFileById = async (fileId: string) => {
       ),
       driveUrl: String(file.driveUrl || ''),
       price: String(file.price || ''),
-      status: String(file.status || ''),
+      status: normalizeFileStatus(file.status),
     }
   } catch (error) {
     console.warn('File detail could not be loaded.', error)
@@ -1120,7 +1131,7 @@ export const loadFileById = async (fileId: string) => {
         category: localFileMatch.category,
         driveUrl: '',
         price: localFileMatch.file.price || '',
-        status: '',
+        status: normalizeFileStatus(localFileMatch.file.status),
       }
     }
 
@@ -1130,7 +1141,7 @@ export const loadFileById = async (fileId: string) => {
       category: fallbackCategory,
       driveUrl: '',
       price: '',
-      status: '',
+      status: normalizeFileStatus('draft'),
     }
   }
 }

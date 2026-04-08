@@ -42,7 +42,7 @@ type AdminFile = {
   price: string
   driveUrl: string
   featured: boolean
-  status: 'published' | 'draft'
+  status: 'published' | 'draft' | 'buy'
   createdAt: string
   updatedAt: string
 }
@@ -189,6 +189,22 @@ const formatTimestamp = (value: string) => {
     minute: '2-digit',
   })
 }
+
+const normalizeFileStatus = (value: string): AdminFile['status'] => {
+  const normalized = toText(value).toLowerCase()
+  if (normalized === 'buy') return 'buy'
+  if (normalized === 'published') return 'published'
+  return 'draft'
+}
+
+const getFileStatusLabel = (value: string) => {
+  const normalized = normalizeFileStatus(value)
+  if (normalized === 'buy') return 'Buy'
+  if (normalized === 'published') return 'Download'
+  return 'Draft'
+}
+
+const getFileStatusTone = (value: string) => normalizeFileStatus(value)
 
 const sortBrands = (brands: AdminBrand[]) =>
   [...brands].sort((left, right) => left.label.localeCompare(right.label))
@@ -842,8 +858,9 @@ const renderEditorMarkup = () => `
           <label class="admin-field">
             <span class="admin-label">Status</span>
             <select id="fileStatus" class="admin-select">
-              <option value="draft">draft</option>
-              <option value="published">published</option>
+              <option value="draft">Draft</option>
+              <option value="buy">Buy</option>
+              <option value="published">Download</option>
             </select>
           </label>
           <details id="fileAdvancedDetails" class="admin-disclosure admin-span-2">
@@ -1026,7 +1043,8 @@ const renderFilesMarkup = () => `
           <span class="admin-label">Filter status</span>
           <select id="filterStatus" class="admin-select">
             <option value="">All status</option>
-            <option value="published">Published only</option>
+            <option value="published">Download only</option>
+            <option value="buy">Buy only</option>
             <option value="draft">Draft only</option>
           </select>
         </label>
@@ -1235,8 +1253,9 @@ const renderShellLegacy = () => {
                 <label class="admin-field">
                   <span class="admin-label">Status</span>
                   <select id="fileStatus" class="admin-select">
-                    <option value="draft">draft</option>
-                    <option value="published">published</option>
+                    <option value="draft">Draft</option>
+                    <option value="buy">Buy</option>
+                    <option value="published">Download</option>
                   </select>
                 </label>
                 <details id="fileAdvancedDetails" class="admin-disclosure admin-span-2">
@@ -1339,7 +1358,7 @@ const renderShellLegacy = () => {
 
           <article class="admin-card admin-data-card admin-workspace-panel" data-workspace-panel="files" hidden>
             <p class="admin-eyebrow">Files</p>
-            <h2 class="admin-section-title">Published and draft files</h2>
+            <h2 class="admin-section-title">Draft, Buy, and Download files</h2>
             <p class="admin-section-copy">Filter the list, open a link, or send an item into the editor without leaving this view.</p>
             <div class="admin-filter-row">
               <label class="admin-field">
@@ -1354,7 +1373,8 @@ const renderShellLegacy = () => {
                 <span class="admin-label">Filter status</span>
                 <select id="filterStatus" class="admin-select">
                   <option value="">All status</option>
-                  <option value="published">Published only</option>
+                  <option value="published">Download only</option>
+                  <option value="buy">Buy only</option>
                   <option value="draft">Draft only</option>
                 </select>
               </label>
@@ -1609,7 +1629,7 @@ const renderDashboardRecentFiles = () => {
           <div class="admin-list-item-head">
             <div>
               <div class="admin-file-title">${escapeHtml(file.title)}</div>
-              <div class="admin-file-meta">${escapeHtml(file.brandLabel)} / ${escapeHtml(file.categoryLabel)} / ${escapeHtml(file.status)}</div>
+              <div class="admin-file-meta">${escapeHtml(file.brandLabel)} / ${escapeHtml(file.categoryLabel)} / ${escapeHtml(getFileStatusLabel(file.status))}</div>
               <div class="admin-subtle">Updated ${escapeHtml(formatTimestamp(file.updatedAt))}</div>
             </div>
             <div class="admin-actions">
@@ -1810,7 +1830,7 @@ const renderCatalogInspector = () => {
           </td>
           <td data-label="Price">${escapeHtml(file.price || 'free')}</td>
           <td data-label="Status">
-            <span class="admin-file-chip" data-tone="${escapeHtml(file.status)}">${escapeHtml(file.status)}</span>
+            <span class="admin-file-chip" data-tone="${escapeHtml(getFileStatusTone(file.status))}">${escapeHtml(getFileStatusLabel(file.status))}</span>
           </td>
           <td data-label="Link">
             <a class="admin-link-button" href="${escapeHtml(file.driveUrl || '#')}" target="_blank" rel="noreferrer">Open Link</a>
@@ -1922,7 +1942,7 @@ const renderFileTableLegacy = () => {
             <div class="admin-file-meta">${escapeHtml(file.brandLabel)} · ${escapeHtml(file.size || '-')}</div>
           </td>
           <td>
-            <span class="admin-file-chip" data-tone="${escapeHtml(file.status)}">${escapeHtml(file.status)}</span>
+            <span class="admin-file-chip" data-tone="${escapeHtml(getFileStatusTone(file.status))}">${escapeHtml(getFileStatusLabel(file.status))}</span>
             ${file.featured ? `<div class="admin-subtle" style="margin-top:8px">Featured</div>` : ''}
           </td>
           <td>
@@ -1970,7 +1990,7 @@ const renderFileTable = () => {
             <div class="admin-file-meta">${escapeHtml(file.brandLabel)} / ${escapeHtml(file.size || '-')}</div>
           </td>
           <td data-label="Status">
-            <span class="admin-file-chip" data-tone="${escapeHtml(file.status)}">${escapeHtml(file.status)}</span>
+            <span class="admin-file-chip" data-tone="${escapeHtml(getFileStatusTone(file.status))}">${escapeHtml(getFileStatusLabel(file.status))}</span>
             ${file.featured ? `<div class="admin-subtle" style="margin-top:8px">Featured</div>` : ''}
           </td>
           <td data-label="Traffic">
@@ -2009,7 +2029,7 @@ const renderSearchResultsLegacy = () => {
           <div class="admin-search-item-head">
             <div>
               <div class="admin-file-title">${escapeHtml(file.title)}</div>
-              <div class="admin-search-meta">${escapeHtml(file.brandLabel)} · ${escapeHtml(file.categoryLabel)} · ${escapeHtml(file.status)}</div>
+              <div class="admin-search-meta">${escapeHtml(file.brandLabel)} · ${escapeHtml(file.categoryLabel)} · ${escapeHtml(getFileStatusLabel(file.status))}</div>
             </div>
             <div class="admin-actions">
               <button class="admin-button admin-button-secondary" type="button" data-action="edit-search-file" data-id="${escapeHtml(file.id)}">Edit</button>
@@ -2040,7 +2060,7 @@ const renderSearchResults = () => {
           <div class="admin-search-item-head">
             <div>
               <div class="admin-file-title">${escapeHtml(file.title)}</div>
-              <div class="admin-search-meta">${escapeHtml(file.brandLabel)} / ${escapeHtml(file.categoryLabel)} / ${escapeHtml(file.status)}</div>
+              <div class="admin-search-meta">${escapeHtml(file.brandLabel)} / ${escapeHtml(file.categoryLabel)} / ${escapeHtml(getFileStatusLabel(file.status))}</div>
             </div>
             <div class="admin-actions">
               <button class="admin-button admin-button-secondary" type="button" data-action="edit-search-file" data-id="${escapeHtml(file.id)}">Edit</button>

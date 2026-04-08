@@ -6,6 +6,7 @@ import {
 } from './download-data'
 import { fileMap } from './portal-data'
 import {
+  buildBuyRequestHref,
   renderDownloadHomeCard,
   renderBrandDownloadCard,
   renderContactAdminPanel,
@@ -36,7 +37,7 @@ import {
   syncLiveCacheVersion,
   warmBrandCategoryData,
 } from './live-data'
-import type { BrandId, DownloadListFile, SolutionCategory } from './data-types'
+import type { BrandId, DownloadFileStatus, DownloadListFile, SolutionCategory } from './data-types'
 
 type ToolbarSortField = 'date' | 'title'
 type ToolbarSortOrder = 'desc' | 'asc'
@@ -111,6 +112,7 @@ const getCategoryViewSignature = (
       file.downloads,
       file.price || '',
       file.featured ? '1' : '0',
+      file.status || 'published',
     ]),
   })
 
@@ -198,6 +200,7 @@ type DownloadCurrent = {
   downloads: string
   price?: string
   featured?: boolean
+  status?: DownloadFileStatus
   backLabel: string
   backHref: string
 }
@@ -283,7 +286,7 @@ const renderSolutionFileResults = (files: typeof anaAn00Files, view: ToolbarView
   if (!files.length) {
     return renderDownloadEmptyState(
       `No ${categoryTitle} files yet`,
-      'No published files are available in this category yet.',
+      'No available files are listed in this category yet.',
     )
   }
 
@@ -314,7 +317,7 @@ const renderBrandHubGrid = (content = downloadHomeCategories) =>
     ? `<div class="download-home-grid">${content.map((item: (typeof downloadHomeCategories)[number]) => renderDownloadHomeCard(item)).join('')}</div>`
     : renderDownloadEmptyState(
         'No brand folders available yet',
-        'Published brand folders will appear here automatically as soon as they are available.',
+        'Folders will appear here automatically as soon as they are ready.',
       )
 
 const renderSolutionBrandStage = (brandLabel: string, brandDescription: string, content: string) => `
@@ -706,7 +709,7 @@ export const renderSolutionFilesPage = async () => {
               : !childCategories.length
                 ? renderDownloadEmptyState(
                     `No ${activeCategory.title} files yet`,
-                    'No published files are available in this folder yet.',
+                    'No available files are listed in this folder yet.',
                   )
                 : ''
           }
@@ -1060,7 +1063,7 @@ export const renderDownloadFlowDetailPage = async () => {
             ${renderDownloadEmptyState(
               isMissingLiveFile ? 'This file is not available yet' : 'This file is temporarily unavailable',
               isMissingLiveFile
-                ? 'A matching file is not available yet. It will appear here automatically once published.'
+                ? 'A matching file is not available yet. It will appear here automatically once it is ready.'
                 : 'The file source could not be reached right now. Please try again in a moment.',
             )}
           </section>
@@ -1091,7 +1094,7 @@ export const renderDownloadFlowDetailPage = async () => {
             ${renderDownloadHeaderBar('Solution Files', '/downloads.html')}
             ${renderDownloadEmptyState(
               'This file is not available',
-              'A matching published file could not be found right now.',
+              'A matching file could not be found right now.',
             )}
           </section>
         </div>
@@ -1114,13 +1117,28 @@ export const renderDownloadFlowDetailPage = async () => {
     downloads: liveCurrent.downloads,
     price: liveResult.price,
     featured: liveCurrent.featured,
+    status: (liveCurrent.status || liveResult.status || 'published') as DownloadFileStatus,
     backLabel: activeSolutionCategory?.fullTitle ?? activeSolutionCategory?.title ?? 'Solution Files',
     backHref: `/solution-files.html?brand=${activeSolutionCategory?.brandId ?? 'huawei'}&category=${activeSolutionCategory?.id ?? 'fix-reboot'}`,
   }
 
   document.title = `${current.title} | Huawei Downloads`
   const downloadHref = buildGoogleDriveDownloadUrl(liveResult.driveUrl || '')
-  const downloadLabel = current.price && current.price.toLowerCase() !== 'free' ? `Download (${current.price})` : 'Download'
+  const isBuyOnly = current.status === 'buy'
+  const orderHref = buildBuyRequestHref({
+    id,
+    title: current.title,
+    brandId: activeSolutionCategory?.brandId,
+    price: current.price,
+  })
+  const actionHref = isBuyOnly ? orderHref : downloadHref
+  const actionLabel = isBuyOnly
+    ? current.price && current.price.toLowerCase() !== 'free'
+      ? `Buy (${current.price})`
+      : 'Buy'
+    : current.price && current.price.toLowerCase() !== 'free'
+      ? `Download (${current.price})`
+      : 'Download'
 
   const breadcrumbs = [
     { label: 'Downloads', href: '/downloads.html' },
@@ -1144,7 +1162,7 @@ export const renderDownloadFlowDetailPage = async () => {
                   current.price
                     ? current.price.toLowerCase() === 'free'
                       ? '<span class="file-badge file-badge-free">Available</span>'
-                      : `<span class="file-badge file-badge-premium">Access</span><span class="file-badge file-badge-price">${current.price}</span>`
+                      : `<span class="file-badge file-badge-premium">${isBuyOnly ? 'Buy' : 'Access'}</span><span class="file-badge file-badge-price">${current.price}</span>`
                     : ''
                 }
                 <span class="download-stars">${renderStars()}</span>
@@ -1155,18 +1173,18 @@ export const renderDownloadFlowDetailPage = async () => {
               <div><strong>Filesize</strong><span>${current.size}</span></div>
               <div><strong>Visits</strong><span>${current.visits}</span></div>
               <div><strong>Downloads</strong><span id="downloadCountValue">${current.downloads}</span></div>
-                ${current.price ? `<div><strong>Access</strong><span>${current.price.toLowerCase() === 'free' ? 'Available' : current.price}</span></div>` : ''}
+                ${current.price ? `<div><strong>${isBuyOnly ? 'Order' : 'Access'}</strong><span>${current.price.toLowerCase() === 'free' ? 'Available' : current.price}</span></div>` : ''}
               </div>
             <div class="download-cta-strip">
               <span class="download-cta-pill"><i class="fas fa-circle-check"></i>Verified package</span>
-              <span class="download-cta-pill"><i class="fas fa-gauge-high"></i>Download counter enabled</span>
+              <span class="download-cta-pill"><i class="fas ${isBuyOnly ? 'fa-lock' : 'fa-gauge-high'}"></i>${isBuyOnly ? 'Order required' : 'Download counter enabled'}</span>
               <span class="download-cta-pill"><i class="fas fa-headset"></i>Support available</span>
             </div>
-            <a class="download-big-button" id="downloadActionButton" data-file-id="${id}" href="${downloadHref || '#'}" ${downloadHref ? 'target="_blank" rel="noreferrer"' : ''}>
-              <i class="fas fa-download" aria-hidden="true"></i>
-              <span class="download-button-label">${downloadLabel}</span>
+            <a class="download-big-button${isBuyOnly ? ' download-big-button-buy' : ''}" id="downloadActionButton" data-file-id="${id}" href="${actionHref || '#'}" ${actionHref ? 'target="_blank" rel="noreferrer"' : ''}>
+              <i class="fas ${isBuyOnly ? 'fa-bag-shopping' : 'fa-download'}" aria-hidden="true"></i>
+              <span class="download-button-label">${actionLabel}</span>
             </a>
-            <p class="download-cta-note">Direct access opens the linked file instantly. For paid access or manual assistance, use the support options below.</p>
+            <p class="download-cta-note">${isBuyOnly ? 'This file is listed for order only. Use WhatsApp below to buy access, then we can handle the delivery manually.' : 'Direct access opens the linked file instantly. For paid access or manual assistance, use the support options below.'}</p>
             ${renderContactAdminPanel()}
           </div>
         </section>
@@ -1182,7 +1200,7 @@ export const renderDownloadFlowDetailPage = async () => {
 
   downloadButton?.addEventListener('click', () => {
     const targetFileId = downloadButton.dataset.fileId
-    if (!targetFileId) return
+    if (!targetFileId || isBuyOnly || !downloadHref) return
 
     void incrementDownloadCount(targetFileId).then((nextValue) => {
       if (nextValue && downloadCountValue) {

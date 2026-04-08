@@ -96,7 +96,10 @@ export type DownloadListFile = {
   downloads: string
   price?: string
   featured?: boolean
+  status?: DownloadFileStatus
 }
+
+export type DownloadFileStatus = 'draft' | 'buy' | 'published'
 
 export type SolutionCategory = {
   id: string

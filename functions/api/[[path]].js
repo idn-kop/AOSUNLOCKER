@@ -164,6 +164,25 @@ const buildFileId = (categoryId, title) => {
   return `${categoryId}-${base}`;
 };
 
+const normalizeFileStatus = (value, fallback = 'draft') => {
+  const normalized = toText(value).toLowerCase();
+  if (normalized === 'published') return 'published';
+  if (normalized === 'buy') return 'buy';
+  if (normalized === 'draft') return 'draft';
+
+  const safeFallback = toText(fallback).toLowerCase();
+  if (safeFallback === 'published' || safeFallback === 'buy' || safeFallback === 'draft') {
+    return safeFallback;
+  }
+
+  return 'draft';
+};
+
+const sanitizePublicFileRecord = (file) => {
+  if (!file) return null;
+  return normalizeFileStatus(file.status) === 'buy' ? { ...file, driveUrl: '' } : file;
+};
+
 const extractBearerToken = (request) => {
   const authorization = toText(request.headers.get('authorization'));
   const match = authorization.match(/^Bearer\s+(.+)$/i);
@@ -231,7 +250,7 @@ const mapFileRecord = (row) => ({
   price: toText(row.price),
   driveUrl: toText(row.driveUrl),
   featured: Number(row.featured || 0) === 1,
-  status: toText(row.status) || 'draft',
+  status: normalizeFileStatus(row.status),
   createdAt: toText(row.createdAt),
   updatedAt: toText(row.updatedAt),
 });
@@ -502,10 +521,10 @@ const getFileRows = async (db, options = {}) => {
   const bindings = [];
 
   if (publishedOnly) {
-    clauses.push(`f.status = 'published'`);
+    clauses.push(`f.status IN ('published', 'buy')`);
   } else if (status) {
     clauses.push('f.status = ?');
-    bindings.push(toText(status) === 'published' ? 'published' : 'draft');
+    bindings.push(normalizeFileStatus(status));
   }
 
   if (brandId) {
@@ -584,7 +603,7 @@ const getFileById = async (db, fileId, options = {}) => {
       INNER JOIN brands b ON b.id = f.brand_id
       INNER JOIN categories c ON c.id = f.category_id
       WHERE f.id = ?
-      ${publishedOnly ? `AND f.status = 'published'` : ''}
+      ${publishedOnly ? `AND f.status IN ('published', 'buy')` : ''}
       LIMIT 1
     `,
     [toText(fileId)],
@@ -668,6 +687,7 @@ const validateFilePayload = async (db, payload, originalId = '') => {
   const title = toText(payload.title);
   const driveUrl = toText(payload.driveUrl);
   const customId = toText(payload.id);
+  const status = normalizeFileStatus(payload.status || 'draft');
 
   if (!brandId) {
     throw new Error('Brand is required.');
@@ -681,7 +701,7 @@ const validateFilePayload = async (db, payload, originalId = '') => {
     throw new Error('Title is required.');
   }
 
-  if (!driveUrl) {
+  if (status === 'published' && !driveUrl) {
     throw new Error('Drive URL is required.');
   }
 
@@ -716,7 +736,7 @@ const validateFilePayload = async (db, payload, originalId = '') => {
     price: toText(payload.price),
     driveUrl,
     featured: Boolean(payload.featured),
-    status: toText(payload.status || 'draft') === 'published' ? 'published' : 'draft',
+    status,
   };
 };
 
@@ -748,15 +768,17 @@ const handlePublicGet = async (context, url) => {
   }
 
   if (view === 'files') {
+    const files = await getFiles(db, {
+      brandId: url.searchParams.get('brand'),
+      categoryId: url.searchParams.get('category'),
+      publishedOnly: true,
+    });
+
     return json({
       ok: true,
       brandId: toText(url.searchParams.get('brand')),
       categoryId: toText(url.searchParams.get('category')),
-      files: await getFiles(db, {
-        brandId: url.searchParams.get('brand'),
-        categoryId: url.searchParams.get('category'),
-        publishedOnly: true,
-      }),
+      files: files.map(sanitizePublicFileRecord),
     });
   }
 
@@ -764,7 +786,7 @@ const handlePublicGet = async (context, url) => {
     const file = await getFileById(db, url.searchParams.get('id'), { publishedOnly: true });
     return json({
       ok: Boolean(file),
-      file,
+      file: sanitizePublicFileRecord(file),
     });
   }
 
@@ -795,7 +817,7 @@ const handlePublicGet = async (context, url) => {
   return json({
     ok: true,
     categories: await getCategories(db, ''),
-    files: await getFiles(db, { publishedOnly: true }),
+    files: (await getFiles(db, { publishedOnly: true })).map(sanitizePublicFileRecord),
   });
 };
 

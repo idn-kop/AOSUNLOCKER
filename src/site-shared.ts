@@ -1,6 +1,7 @@
 import type {
   DownloadBrandCard,
   DownloadCategoryCard,
+  DownloadFileStatus,
   DownloadListFile,
   DownloadModelFolder,
   FeatureCard,
@@ -191,6 +192,40 @@ const globeSvg = `
 `
 
 const primarySiteUrl = 'https://aosunlocker.com'
+const supportWhatsAppUrl = 'https://wa.me/6282234370999'
+
+type PublicFileAction = {
+  href: string
+  label: string
+  icon: string
+  className: string
+  targetAttributes: string
+}
+
+export const buildBuyRequestHref = (item: Pick<DownloadListFile, 'id' | 'title' | 'brandId' | 'price'>) =>
+  `${supportWhatsAppUrl}?text=${encodeURIComponent(
+    [
+      'Hello bro, I want buy access for this file:',
+      item.title,
+      item.brandId ? `Brand: ${formatBrandDisplayTitle(item.brandId)}` : '',
+      item.price ? `Price: ${item.price}` : '',
+      `Page: ${primarySiteUrl}/download.html?file=${encodeURIComponent(item.id)}`,
+    ]
+      .filter(Boolean)
+      .join('\n'),
+  )}`
+
+const getPublicFileAction = (item: DownloadListFile): PublicFileAction => {
+  const isBuyOnly = (item.status as DownloadFileStatus | undefined) === 'buy'
+
+  return {
+    href: isBuyOnly ? buildBuyRequestHref(item) : `/download.html?file=${encodeURIComponent(item.id)}`,
+    label: isBuyOnly ? 'Buy' : 'Download',
+    icon: isBuyOnly ? 'fa-bag-shopping' : 'fa-download',
+    className: isBuyOnly ? 'download-small-button download-small-button-buy' : 'download-small-button',
+    targetAttributes: isBuyOnly ? 'target="_blank" rel="noreferrer"' : '',
+  }
+}
 
 const renderMiniSocialLinks = (extraClass = '') => `
   <div class="mini-social-links ${extraClass}".trim() aria-label="AOSUNLOCKER social links">
@@ -562,7 +597,10 @@ export const renderModelFolderCard = (item: DownloadModelFolder) => `
   </a>
 `
 
-export const renderDownloadListRow = (item: DownloadListFile) => `
+export const renderDownloadListRow = (item: DownloadListFile) => {
+  const action = getPublicFileAction(item)
+
+  return `
   <article class="download-list-row">
     <div class="download-list-icon">
       ${renderAssetImage({
@@ -589,15 +627,19 @@ export const renderDownloadListRow = (item: DownloadListFile) => `
       </div>
     </div>
     <div class="download-list-action">
-      <a class="download-small-button" href="/download.html?file=${item.id}">
-        <i class="fas fa-download" aria-hidden="true"></i>
-        <span class="download-button-label">Download</span>
+      <a class="${action.className}" href="${action.href}" ${action.targetAttributes}>
+        <i class="fas ${action.icon}" aria-hidden="true"></i>
+        <span class="download-button-label">${action.label}</span>
       </a>
     </div>
   </article>
 `
+}
 
-export const renderDownloadGridCard = (item: DownloadListFile) => `
+export const renderDownloadGridCard = (item: DownloadListFile) => {
+  const action = getPublicFileAction(item)
+
+  return `
   <article class="download-grid-card">
     <div class="download-grid-icon">
       ${renderAssetImage({
@@ -626,12 +668,13 @@ export const renderDownloadGridCard = (item: DownloadListFile) => `
       ${item.date ? `<span>Date: ${item.date}</span>` : ''}
       <span>Size: ${item.size}</span>
     </div>
-    <a class="download-small-button" href="/download.html?file=${item.id}">
-      <i class="fas fa-download" aria-hidden="true"></i>
-      <span class="download-button-label">Download</span>
+    <a class="${action.className}" href="${action.href}" ${action.targetAttributes}>
+      <i class="fas ${action.icon}" aria-hidden="true"></i>
+      <span class="download-button-label">${action.label}</span>
     </a>
   </article>
 `
+}
 
 export const renderDownloadEmptyState = (title: string, copy: string) => `
   <div class="download-empty-state">
