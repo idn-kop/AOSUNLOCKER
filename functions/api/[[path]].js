@@ -98,7 +98,10 @@ const formatBytesLabel = (rawBytes) => {
   return `${value.toFixed(digits)} ${units[power]}`;
 };
 
-const normalizeEmail = (value) => toText(value).toLowerCase();
+const normalizeGrantIdentity = (value) => {
+  const raw = toText(value);
+  return raw.includes('@') ? raw.toLowerCase() : raw;
+};
 
 const addHoursIso = (hours) => {
   const safeHours = Math.max(1, Number(hours || 24));
@@ -719,7 +722,7 @@ const mapAccessGrantRecord = (row) => ({
   brandLabel: toText(row.brandLabel),
   categoryId: toText(row.categoryId),
   categoryLabel: toText(row.categoryLabel),
-  buyerEmail: normalizeEmail(row.buyerEmail),
+  buyerEmail: normalizeGrantIdentity(row.buyerEmail),
   buyerName: toText(row.buyerName),
   note: toText(row.note),
   maxUses: toInt(row.maxUses, 1),
@@ -822,7 +825,7 @@ const getAccessGrants = async (db, options = {}) => {
 
 const validateGrantRequest = async (db, payload) => {
   const fileId = toText(payload.fileId);
-  const buyerEmail = normalizeEmail(payload.buyerEmail);
+  const buyerEmail = normalizeGrantIdentity(payload.buyerEmail);
   const buyerName = toText(payload.buyerName);
   const note = toText(payload.note);
   const maxUses = Math.max(1, Math.min(10, toInt(payload.maxUses, 1)));
@@ -832,8 +835,8 @@ const validateGrantRequest = async (db, payload) => {
     throw new Error('File is required.');
   }
 
-  if (!buyerEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyerEmail)) {
-    throw new Error('A valid buyer email is required.');
+  if (!buyerEmail || buyerEmail.length < 2) {
+    throw new Error('Buyer email, name, or WhatsApp is required.');
   }
 
   const file = await getFileById(db, fileId, { publishedOnly: false });

@@ -1230,8 +1230,8 @@ const renderAccessMarkup = () => {
           <div id="accessSelectedMeta" class="admin-pill-row"></div>
           <form id="accessGrantForm" class="admin-form-grid"${selectedFile ? '' : ' hidden'}>
             <label class="admin-field admin-span-2">
-              <span class="admin-label">Buyer email</span>
-              <input id="accessBuyerEmail" class="admin-input" type="email" placeholder="buyer@email.com" />
+              <span class="admin-label">Buyer email / name / WhatsApp</span>
+              <input id="accessBuyerEmail" class="admin-input" type="text" placeholder="buyer@email.com / Budi / 0812xxxx" />
             </label>
             <label class="admin-field">
               <span class="admin-label">Buyer name</span>
