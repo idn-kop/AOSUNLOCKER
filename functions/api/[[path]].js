@@ -17,7 +17,16 @@ const errorResponse = (status, message) =>
     { status },
   );
 
-const PUBLIC_ROUTE_ALIASES = new Set(['status', 'brands', 'categories', 'files', 'file', 'increment']);
+const PUBLIC_ROUTE_ALIASES = new Set([
+  'status',
+  'brands',
+  'categories',
+  'files',
+  'file',
+  'increment',
+  'unlock',
+  'unlock-download',
+]);
 
 const nowIso = () => new Date().toISOString();
 
@@ -87,6 +96,71 @@ const formatBytesLabel = (rawBytes) => {
   const digits = power >= 2 ? 2 : 0;
 
   return `${value.toFixed(digits)} ${units[power]}`;
+};
+
+const normalizeEmail = (value) => toText(value).toLowerCase();
+
+const addHoursIso = (hours) => {
+  const safeHours = Math.max(1, Number(hours || 24));
+  return new Date(Date.now() + safeHours * 60 * 60 * 1000).toISOString();
+};
+
+const createGrantToken = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID().replace(/-/g, '');
+  }
+
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
+};
+
+const toDriveDownloadUrl = (url) => {
+  const raw = toText(url);
+  if (!raw) return '';
+
+  const fileId = extractDriveFileIdFromUrl(raw);
+  if (fileId) {
+    return `https://drive.google.com/uc?export=download&id=${encodeURIComponent(fileId)}`;
+  }
+
+  return raw;
+};
+
+const buildUnlockPageUrl = (requestUrl, fileId, token) => {
+  const url = new URL(requestUrl);
+  url.pathname = '/download.html';
+  url.search = '';
+  url.searchParams.set('file', toText(fileId));
+  url.searchParams.set('access', toText(token));
+  return url.toString();
+};
+
+const buildUnlockDownloadUrl = (requestUrl, fileId, token) => {
+  const url = new URL(requestUrl);
+  url.pathname = '/api';
+  url.search = '';
+  url.searchParams.set('api', '1');
+  url.searchParams.set('view', 'unlock-download');
+  url.searchParams.set('id', toText(fileId));
+  url.searchParams.set('token', toText(token));
+  return url.toString();
+};
+
+const getGrantAvailability = (grant) => {
+  const maxUses = Math.max(1, toInt(grant?.maxUses, 1));
+  const useCount = toInt(grant?.useCount, 0);
+  const remainingUses = Math.max(maxUses - useCount, 0);
+  const revokedAt = toText(grant?.revokedAt);
+  const expiresAt = toText(grant?.expiresAt);
+  const expiresMs = expiresAt ? Date.parse(expiresAt) : Number.NaN;
+
+  return {
+    maxUses,
+    useCount,
+    remainingUses,
+    isRevoked: Boolean(revokedAt),
+    isExpired: Boolean(expiresAt && Number.isFinite(expiresMs) && expiresMs <= Date.now()),
+    isExhausted: remainingUses <= 0,
+  };
 };
 
 const extractDrivePreviewFromHtml = (html, driveFileId) => {
@@ -478,6 +552,31 @@ const touchPublicCacheVersion = async (db) => {
   return { version, updatedAt };
 };
 
+const ensureAccessGrantSchema = async (db) => {
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS file_access_grants (
+      token TEXT PRIMARY KEY,
+      file_id TEXT NOT NULL,
+      buyer_email TEXT NOT NULL,
+      buyer_name TEXT NOT NULL DEFAULT '',
+      note TEXT NOT NULL DEFAULT '',
+      max_uses INTEGER NOT NULL DEFAULT 1,
+      use_count INTEGER NOT NULL DEFAULT 0,
+      expires_at TEXT NOT NULL DEFAULT '',
+      last_used_at TEXT NOT NULL DEFAULT '',
+      revoked_at TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (file_id) REFERENCES files(id) ON UPDATE CASCADE ON DELETE CASCADE,
+      CHECK (max_uses >= 1),
+      CHECK (use_count >= 0)
+    );
+    CREATE INDEX IF NOT EXISTS idx_file_access_grants_file_id ON file_access_grants(file_id);
+    CREATE INDEX IF NOT EXISTS idx_file_access_grants_buyer_email ON file_access_grants(buyer_email);
+    CREATE INDEX IF NOT EXISTS idx_file_access_grants_updated_at ON file_access_grants(updated_at DESC);
+  `);
+};
+
 const getBrands = async (db) => {
   const rows = await queryAll(db, 'SELECT id, label FROM brands ORDER BY label COLLATE NOCASE ASC');
   return rows.map((row) => ({
@@ -612,6 +711,177 @@ const getFileById = async (db, fileId, options = {}) => {
   return row ? mapFileRecord(row) : null;
 };
 
+const mapAccessGrantRecord = (row) => ({
+  token: toText(row.token),
+  fileId: toText(row.fileId),
+  fileTitle: toText(row.fileTitle),
+  brandId: normalizeId(row.brandId),
+  brandLabel: toText(row.brandLabel),
+  categoryId: toText(row.categoryId),
+  categoryLabel: toText(row.categoryLabel),
+  buyerEmail: normalizeEmail(row.buyerEmail),
+  buyerName: toText(row.buyerName),
+  note: toText(row.note),
+  maxUses: toInt(row.maxUses, 1),
+  useCount: toInt(row.useCount, 0),
+  expiresAt: toText(row.expiresAt),
+  lastUsedAt: toText(row.lastUsedAt),
+  revokedAt: toText(row.revokedAt),
+  createdAt: toText(row.createdAt),
+  updatedAt: toText(row.updatedAt),
+});
+
+const serializeAccessGrant = (grant, requestUrl) => {
+  const availability = getGrantAvailability(grant);
+  return {
+    ...grant,
+    ...availability,
+    unlockUrl: buildUnlockPageUrl(requestUrl, grant.fileId, grant.token),
+  };
+};
+
+const getAccessGrantByToken = async (db, token) => {
+  const row = await queryFirst(
+    db,
+    `
+      SELECT
+        g.token AS token,
+        g.file_id AS fileId,
+        f.title AS fileTitle,
+        f.brand_id AS brandId,
+        b.label AS brandLabel,
+        f.category_id AS categoryId,
+        c.label AS categoryLabel,
+        g.buyer_email AS buyerEmail,
+        g.buyer_name AS buyerName,
+        g.note AS note,
+        g.max_uses AS maxUses,
+        g.use_count AS useCount,
+        g.expires_at AS expiresAt,
+        g.last_used_at AS lastUsedAt,
+        g.revoked_at AS revokedAt,
+        g.created_at AS createdAt,
+        g.updated_at AS updatedAt
+      FROM file_access_grants g
+      INNER JOIN files f ON f.id = g.file_id
+      INNER JOIN brands b ON b.id = f.brand_id
+      INNER JOIN categories c ON c.id = f.category_id
+      WHERE g.token = ?
+      LIMIT 1
+    `,
+    [toText(token)],
+  );
+
+  return row ? mapAccessGrantRecord(row) : null;
+};
+
+const getAccessGrants = async (db, options = {}) => {
+  const { fileId = '' } = options;
+  const bindings = [];
+  const clauses = [];
+
+  if (fileId) {
+    clauses.push('g.file_id = ?');
+    bindings.push(toText(fileId));
+  }
+
+  const whereClause = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+  const rows = await queryAll(
+    db,
+    `
+      SELECT
+        g.token AS token,
+        g.file_id AS fileId,
+        f.title AS fileTitle,
+        f.brand_id AS brandId,
+        b.label AS brandLabel,
+        f.category_id AS categoryId,
+        c.label AS categoryLabel,
+        g.buyer_email AS buyerEmail,
+        g.buyer_name AS buyerName,
+        g.note AS note,
+        g.max_uses AS maxUses,
+        g.use_count AS useCount,
+        g.expires_at AS expiresAt,
+        g.last_used_at AS lastUsedAt,
+        g.revoked_at AS revokedAt,
+        g.created_at AS createdAt,
+        g.updated_at AS updatedAt
+      FROM file_access_grants g
+      INNER JOIN files f ON f.id = g.file_id
+      INNER JOIN brands b ON b.id = f.brand_id
+      INNER JOIN categories c ON c.id = f.category_id
+      ${whereClause}
+      ORDER BY g.updated_at DESC, g.created_at DESC
+    `,
+    bindings,
+  );
+
+  return rows.map(mapAccessGrantRecord);
+};
+
+const validateGrantRequest = async (db, payload) => {
+  const fileId = toText(payload.fileId);
+  const buyerEmail = normalizeEmail(payload.buyerEmail);
+  const buyerName = toText(payload.buyerName);
+  const note = toText(payload.note);
+  const maxUses = Math.max(1, Math.min(10, toInt(payload.maxUses, 1)));
+  const expiresHours = Math.max(1, Math.min(168, toInt(payload.expiresHours, 24)));
+
+  if (!fileId) {
+    throw new Error('File is required.');
+  }
+
+  if (!buyerEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyerEmail)) {
+    throw new Error('A valid buyer email is required.');
+  }
+
+  const file = await getFileById(db, fileId, { publishedOnly: false });
+  if (!file) {
+    throw new Error('Selected file was not found.');
+  }
+
+  if (normalizeFileStatus(file.status) !== 'buy') {
+    throw new Error('Only Request Access files can receive grant links.');
+  }
+
+  return {
+    file,
+    buyerEmail,
+    buyerName,
+    note,
+    maxUses,
+    expiresAt: addHoursIso(expiresHours),
+  };
+};
+
+const resolveAccessGrant = async (db, token, fileId) => {
+  const grant = await getAccessGrantByToken(db, token);
+  if (!grant || grant.fileId !== toText(fileId)) {
+    return { ok: false, status: 404, message: 'Access grant was not found.' };
+  }
+
+  const file = await getFileById(db, grant.fileId, { publishedOnly: false });
+  if (!file || normalizeFileStatus(file.status) !== 'buy') {
+    return { ok: false, status: 404, message: 'This file is no longer available for request access.' };
+  }
+
+  const availability = getGrantAvailability(grant);
+  if (availability.isRevoked) {
+    return { ok: false, status: 403, message: 'This access grant has been revoked.' };
+  }
+
+  if (availability.isExpired) {
+    return { ok: false, status: 403, message: 'This access grant has expired.' };
+  }
+
+  if (availability.isExhausted) {
+    return { ok: false, status: 403, message: 'This access grant has no remaining downloads.' };
+  }
+
+  return { ok: true, file, grant, availability };
+};
+
 const countFiles = async (db) => {
   const row = await queryFirst(db, 'SELECT COUNT(*) AS count FROM files');
   return Number(row?.count || 0);
@@ -743,6 +1013,7 @@ const validateFilePayload = async (db, payload, originalId = '') => {
 const handlePublicGet = async (context, url) => {
   const db = context.env.DB;
   await db.exec('PRAGMA foreign_keys = ON;');
+  await ensureAccessGrantSchema(db);
 
   const view = toText(url.searchParams.get('view')) || 'catalog';
 
@@ -788,6 +1059,78 @@ const handlePublicGet = async (context, url) => {
       ok: Boolean(file),
       file: sanitizePublicFileRecord(file),
     });
+  }
+
+  if (view === 'unlock') {
+    const fileId = toText(url.searchParams.get('id'));
+    const token = toText(url.searchParams.get('token'));
+
+    if (!fileId || !token) {
+      return errorResponse(400, 'File id and access token are required.');
+    }
+
+    const result = await resolveAccessGrant(db, token, fileId);
+    if (!result.ok) {
+      return errorResponse(result.status, result.message);
+    }
+
+    return json({
+      ok: true,
+      access: {
+        fileId: result.file.id,
+        token: result.grant.token,
+        maxUses: result.availability.maxUses,
+        useCount: result.availability.useCount,
+        remainingUses: result.availability.remainingUses,
+        expiresAt: result.grant.expiresAt,
+        isExpired: result.availability.isExpired,
+        isRevoked: result.availability.isRevoked,
+        isExhausted: result.availability.isExhausted,
+        unlockDownloadUrl: buildUnlockDownloadUrl(context.request.url, result.file.id, result.grant.token),
+      },
+    });
+  }
+
+  if (view === 'unlock-download') {
+    const fileId = toText(url.searchParams.get('id'));
+    const token = toText(url.searchParams.get('token'));
+
+    if (!fileId || !token) {
+      return errorResponse(400, 'File id and access token are required.');
+    }
+
+    const result = await resolveAccessGrant(db, token, fileId);
+    if (!result.ok) {
+      return errorResponse(result.status, result.message);
+    }
+
+    const now = nowIso();
+    const updateGrant = await runStatement(
+      db,
+      `
+        UPDATE file_access_grants
+        SET use_count = use_count + 1, last_used_at = ?, updated_at = ?
+        WHERE token = ?
+          AND file_id = ?
+          AND revoked_at = ''
+          AND (expires_at = '' OR expires_at > ?)
+          AND use_count < max_uses
+      `,
+      [now, now, token, fileId, now],
+    );
+
+    if (!updateGrant.success || !updateGrant.meta?.changes) {
+      return errorResponse(403, 'This access grant is no longer valid for download.');
+    }
+
+    await runStatement(db, 'UPDATE files SET downloads = downloads + 1, updated_at = ? WHERE id = ?', [now, fileId]);
+
+    const downloadUrl = toDriveDownloadUrl(result.file.driveUrl);
+    if (!downloadUrl) {
+      return errorResponse(404, 'Download link is missing for this file.');
+    }
+
+    return Response.redirect(downloadUrl, 302);
   }
 
   if (view === 'increment') {
@@ -1180,6 +1523,63 @@ const handleAdminFileDelete = async (db, fileId) => {
   return handleAdminBootstrap(db);
 };
 
+const handleAdminAccessGrantList = async (db, requestUrl, fileId) =>
+  json({
+    ok: true,
+    fileId: toText(fileId),
+    grants: (await getAccessGrants(db, { fileId })).map((grant) => serializeAccessGrant(grant, requestUrl)),
+  });
+
+const handleAdminAccessGrantCreate = async (db, requestUrl, payload) => {
+  let clean;
+  try {
+    clean = await validateGrantRequest(db, payload);
+  } catch (error) {
+    return errorResponse(400, error.message);
+  }
+
+  const timestamp = nowIso();
+  const token = createGrantToken();
+  await runStatement(
+    db,
+    `
+      INSERT INTO file_access_grants (
+        token, file_id, buyer_email, buyer_name, note, max_uses, use_count,
+        expires_at, last_used_at, revoked_at, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, 0, ?, '', '', ?, ?)
+    `,
+    [token, clean.file.id, clean.buyerEmail, clean.buyerName, clean.note, clean.maxUses, clean.expiresAt, timestamp, timestamp],
+  );
+
+  return json({
+    ok: true,
+    fileId: clean.file.id,
+    grant: serializeAccessGrant(await getAccessGrantByToken(db, token), requestUrl),
+    grants: (await getAccessGrants(db, { fileId: clean.file.id })).map((grant) => serializeAccessGrant(grant, requestUrl)),
+  });
+};
+
+const handleAdminAccessGrantDelete = async (db, requestUrl, token) => {
+  const existing = await getAccessGrantByToken(db, token);
+  if (!existing) {
+    return errorResponse(404, 'Access grant was not found.');
+  }
+
+  if (!toText(existing.revokedAt)) {
+    await runStatement(
+      db,
+      'UPDATE file_access_grants SET revoked_at = ?, updated_at = ? WHERE token = ?',
+      [nowIso(), nowIso(), toText(token)],
+    );
+  }
+
+  return json({
+    ok: true,
+    fileId: existing.fileId,
+    grants: (await getAccessGrants(db, { fileId: existing.fileId })).map((grant) => serializeAccessGrant(grant, requestUrl)),
+  });
+};
+
 const handleAdminRequest = async (context, url, pathParts) => {
   const db = context.env.DB;
   const authError = await assertAdmin(context.request, context.env, db);
@@ -1188,6 +1588,7 @@ const handleAdminRequest = async (context, url, pathParts) => {
   }
 
   await db.exec('PRAGMA foreign_keys = ON;');
+  await ensureAccessGrantSchema(db);
 
   if (context.request.method === 'GET' && pathParts.length === 3 && pathParts[2] === 'bootstrap') {
     return await handleAdminBootstrap(db);
@@ -1230,6 +1631,10 @@ const handleAdminRequest = async (context, url, pathParts) => {
     return json(runIntegrityScan(brands, categories, files));
   }
 
+  if (context.request.method === 'GET' && pathParts.length === 3 && pathParts[2] === 'access-grants') {
+    return await handleAdminAccessGrantList(db, context.request.url, url.searchParams.get('file'));
+  }
+
   if (context.request.method === 'GET' && pathParts.length === 3 && pathParts[2] === 'link-preview') {
     return await handleAdminLinkPreview(url.searchParams.get('url'));
   }
@@ -1266,12 +1671,20 @@ const handleAdminRequest = async (context, url, pathParts) => {
     return await handleAdminFileCreate(db, await parseJsonBody(context.request));
   }
 
+  if (context.request.method === 'POST' && pathParts.length === 3 && pathParts[2] === 'access-grants') {
+    return await handleAdminAccessGrantCreate(db, context.request.url, await parseJsonBody(context.request));
+  }
+
   if (context.request.method === 'PUT' && pathParts.length === 4 && pathParts[2] === 'files') {
     return await handleAdminFileUpdate(db, pathParts[3], await parseJsonBody(context.request));
   }
 
   if (context.request.method === 'DELETE' && pathParts.length === 4 && pathParts[2] === 'files') {
     return await handleAdminFileDelete(db, pathParts[3]);
+  }
+
+  if (context.request.method === 'DELETE' && pathParts.length === 4 && pathParts[2] === 'access-grants') {
+    return await handleAdminAccessGrantDelete(db, context.request.url, pathParts[3]);
   }
 
   return errorResponse(404, 'Admin route was not found.');
@@ -1294,7 +1707,7 @@ const normalizePublicRoute = (url, pathParts) => {
 
   url.searchParams.set('view', routeKey);
 
-  if ((routeKey === 'file' || routeKey === 'increment') && !toText(url.searchParams.get('id')) && pathParts[2]) {
+  if ((routeKey === 'file' || routeKey === 'increment' || routeKey === 'unlock' || routeKey === 'unlock-download') && !toText(url.searchParams.get('id')) && pathParts[2]) {
     url.searchParams.set('id', toText(pathParts[2]));
   }
 

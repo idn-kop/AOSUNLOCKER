@@ -83,6 +83,36 @@ type LinkPreviewResponse = {
   driveFileId?: string
 }
 
+type AdminAccessGrant = {
+  token: string
+  fileId: string
+  fileTitle: string
+  brandLabel: string
+  categoryLabel: string
+  buyerEmail: string
+  buyerName: string
+  note: string
+  maxUses: number
+  useCount: number
+  remainingUses: number
+  expiresAt: string
+  lastUsedAt: string
+  revokedAt: string
+  createdAt: string
+  updatedAt: string
+  isExpired: boolean
+  isRevoked: boolean
+  isExhausted: boolean
+  unlockUrl: string
+}
+
+type AccessGrantsResponse = {
+  ok: boolean
+  fileId: string
+  grants: AdminAccessGrant[]
+  grant?: AdminAccessGrant
+}
+
 type IntegrityResponse = {
   ok: boolean
   checkedAt: string
@@ -104,7 +134,7 @@ type IntegrityResponse = {
 }
 
 type ComposerMode = 'brand' | 'category' | 'file'
-type WorkspaceMode = 'dashboard' | 'catalog' | 'files' | 'tools'
+type WorkspaceMode = 'dashboard' | 'catalog' | 'files' | 'access' | 'tools'
 type BannerTone = 'neutral' | 'success' | 'warning' | 'error'
 
 const TOKEN_STORAGE_KEY = 'aosunlocker-admin-token'
@@ -128,6 +158,9 @@ const state = {
   searchResults: [] as AdminFile[],
   searchSummary: '',
   integrity: null as IntegrityResponse | null,
+  accessGrants: [] as AdminAccessGrant[],
+  accessLoading: false,
+  selectedAccessFileId: '',
   editingBrandId: '',
   editingCategoryId: '',
   editingFileId: '',
@@ -199,7 +232,7 @@ const normalizeFileStatus = (value: string): AdminFile['status'] => {
 
 const getFileStatusLabel = (value: string) => {
   const normalized = normalizeFileStatus(value)
-  if (normalized === 'buy') return 'Buy'
+  if (normalized === 'buy') return 'Request Access'
   if (normalized === 'published') return 'Download'
   return 'Draft'
 }
@@ -236,6 +269,11 @@ const getKnownFiles = () => {
 
   return Array.from(registry.values())
 }
+
+const getBuyFiles = () =>
+  getKnownFiles()
+    .filter((file) => normalizeFileStatus(file.status) === 'buy')
+    .sort((left, right) => left.title.localeCompare(right.title))
 
 const getRootCategoriesForBrand = (brandId: string) =>
   getCategoriesForBrand(brandId).filter((category) => !toText(category.parentCategoryId))
@@ -717,6 +755,7 @@ const renderSidebarMarkup = () => `
     <nav class="admin-sidebar-nav" aria-label="Admin sections">
       <button class="admin-nav-button" type="button" data-workspace-mode="catalog">Catalog</button>
       <button class="admin-nav-button" type="button" data-workspace-mode="files">Files</button>
+      <button class="admin-nav-button" type="button" data-workspace-mode="access">Buy Access</button>
       <button class="admin-nav-button" type="button" data-workspace-mode="tools">Tools</button>
     </nav>
 
@@ -859,7 +898,7 @@ const renderEditorMarkup = () => `
             <span class="admin-label">Status</span>
             <select id="fileStatus" class="admin-select">
               <option value="draft">Draft</option>
-              <option value="buy">Buy</option>
+              <option value="buy">Request Access</option>
               <option value="published">Download</option>
             </select>
           </label>
@@ -1044,7 +1083,7 @@ const renderFilesMarkup = () => `
           <select id="filterStatus" class="admin-select">
             <option value="">All status</option>
             <option value="published">Download only</option>
-            <option value="buy">Buy only</option>
+            <option value="buy">Request Access only</option>
             <option value="draft">Draft only</option>
           </select>
         </label>
@@ -1067,12 +1106,94 @@ const renderFilesMarkup = () => `
   </section>
 `
 
+const renderAccessMarkup = () => {
+  const selectedFileId = ensureSelectedAccessFileId()
+  const buyFiles = getBuyFiles()
+  const selectedFile = buyFiles.find((file) => file.id === selectedFileId) || null
+
+  return `
+    <section class="admin-workspace-panel" data-workspace-panel="access" hidden>
+      <div class="admin-browser-grid">
+        <article class="admin-card admin-panel-card admin-explorer-card">
+          <div class="admin-card-head">
+            <div>
+              <p class="admin-eyebrow">Buy Access</p>
+              <h2 class="admin-section-title admin-section-title-sm">Request Access files</h2>
+              <p class="admin-section-copy">Pilih file jualan, lalu grant unlock link unik setelah pembeli bayar.</p>
+            </div>
+          </div>
+          <div id="accessFileList" class="admin-list"></div>
+        </article>
+
+        <article class="admin-card admin-panel-card admin-inspector-card">
+          <div class="admin-card-head">
+            <div>
+              <p class="admin-eyebrow">Grant Access</p>
+              <h2 id="accessSelectedTitle" class="admin-section-title admin-section-title-sm">${escapeHtml(selectedFile?.title || 'Pilih file')}</h2>
+              <p id="accessSelectedCopy" class="admin-section-copy">${
+                selectedFile
+                  ? 'Isi email pembeli, set expiry dan limit download, lalu copy unlock link yang dibuat.'
+                  : 'Pilih satu file Request Access di kiri untuk mulai grant.'
+              }</p>
+            </div>
+          </div>
+          <div id="accessSelectedMeta" class="admin-pill-row"></div>
+          <form id="accessGrantForm" class="admin-form-grid"${selectedFile ? '' : ' hidden'}>
+            <label class="admin-field admin-span-2">
+              <span class="admin-label">Buyer email</span>
+              <input id="accessBuyerEmail" class="admin-input" type="email" placeholder="buyer@email.com" />
+            </label>
+            <label class="admin-field">
+              <span class="admin-label">Buyer name</span>
+              <input id="accessBuyerName" class="admin-input" type="text" placeholder="Optional name" />
+            </label>
+            <label class="admin-field">
+              <span class="admin-label">Expire after</span>
+              <select id="accessExpiresHours" class="admin-select">
+                <option value="24">24 hours</option>
+                <option value="48">48 hours</option>
+                <option value="72">72 hours</option>
+                <option value="168">7 days</option>
+              </select>
+            </label>
+            <label class="admin-field">
+              <span class="admin-label">Max download</span>
+              <select id="accessMaxUses" class="admin-select">
+                <option value="1">1 time</option>
+                <option value="2">2 times</option>
+                <option value="3">3 times</option>
+              </select>
+            </label>
+            <label class="admin-field admin-span-2">
+              <span class="admin-label">Admin note</span>
+              <textarea id="accessNote" class="admin-textarea" placeholder="Optional note for this buyer or order"></textarea>
+            </label>
+            <div class="admin-action-row admin-span-2">
+              <button id="accessGrantButton" class="admin-button admin-button-primary" type="submit">Grant Access</button>
+              <button class="admin-button admin-button-secondary" type="button" data-action="open-access-file-edit"${selectedFile ? ` data-id="${escapeHtml(selectedFile.id)}"` : ''}>Edit File</button>
+            </div>
+          </form>
+          <div id="accessGrantEmpty" class="admin-empty"${selectedFile ? ' hidden' : ''}>No Request Access file selected yet.</div>
+          <div class="admin-card-head admin-card-head-tight">
+            <div>
+              <h3 class="admin-subpanel-title">Grant history</h3>
+              <p class="admin-muted">Unlock link akan muncul di sini setelah Anda grant.</p>
+            </div>
+          </div>
+          <div id="accessGrantHistory" class="admin-list"></div>
+        </article>
+      </div>
+    </section>
+  `
+}
+
 const renderMobileQuickbarMarkup = () => `
   <nav class="admin-mobile-quickbar" aria-label="Mobile quick actions">
     <button class="admin-button admin-button-primary" type="button" data-composer-mode="file" data-composer-reset="true" data-open-workspace="catalog">Tambah File</button>
     <button class="admin-button admin-button-secondary" type="button" data-composer-mode="category" data-composer-reset="true" data-open-workspace="catalog">Tambah Folder</button>
     <button class="admin-button admin-button-secondary" type="button" data-workspace-mode="catalog">Lihat Catalog</button>
     <button class="admin-button admin-button-secondary" type="button" data-workspace-mode="files">Lihat Files</button>
+    <button class="admin-button admin-button-secondary" type="button" data-workspace-mode="access">Buy Access</button>
   </nav>
 `
 
@@ -1473,6 +1594,7 @@ const renderShell = () => {
           ${renderDashboardMarkup()}
           ${renderCatalogMarkup()}
           ${renderFilesMarkup()}
+          ${renderAccessMarkup()}
           ${renderToolsMarkup()}
         </section>
       </div>
@@ -1516,6 +1638,11 @@ const renderWorkspaceHeader = () => {
       eyebrow: 'Files',
       title: 'Link, price, dan status file',
       copy: 'Gunakan filter brand dan folder supaya daftar file lebih jelas dan tidak bercampur.',
+    },
+    access: {
+      eyebrow: 'Buy Access',
+      title: 'Grant unlock link untuk file jualan',
+      copy: 'Pilih file Request Access, lalu grant link unik ke email pembeli tanpa perlu ubah file jadi public global.',
     },
     tools: {
       eyebrow: 'Tools',
@@ -1845,6 +1972,124 @@ const renderCatalogInspector = () => {
       `,
     )
     .join('')
+}
+
+const renderAccessFileList = () => {
+  const mount = byId<HTMLDivElement>('accessFileList')
+  if (!mount) return
+
+  const buyFiles = getBuyFiles()
+  ensureSelectedAccessFileId()
+
+  if (!buyFiles.length) {
+    mount.innerHTML = `<article class="admin-list-item"><div class="admin-empty">Belum ada file dengan status Request Access.</div></article>`
+    return
+  }
+
+  mount.innerHTML = buyFiles
+    .map((file) => {
+      const isActive = state.selectedAccessFileId === file.id
+      return `
+        <article class="admin-list-item${isActive ? ' is-active' : ''}">
+          <div class="admin-list-item-head">
+            <div>
+              <div class="admin-file-title">${escapeHtml(file.title)}</div>
+              <div class="admin-file-meta">${escapeHtml(file.brandLabel)} / ${escapeHtml(file.categoryLabel)}</div>
+              <div class="admin-subtle">${escapeHtml(file.price || 'Price not set')}</div>
+            </div>
+            <div class="admin-actions">
+              <button class="admin-button admin-button-secondary" type="button" data-action="select-access-file" data-id="${escapeHtml(file.id)}">Grant</button>
+            </div>
+          </div>
+        </article>
+      `
+    })
+    .join('')
+}
+
+const renderAccessGrantHistory = () => {
+  const mount = byId<HTMLDivElement>('accessGrantHistory')
+  if (!mount) return
+
+  if (state.accessLoading) {
+    mount.innerHTML = `<article class="admin-list-item"><div class="admin-empty">Loading grant history...</div></article>`
+    return
+  }
+
+  if (!state.selectedAccessFileId) {
+    mount.innerHTML = `<article class="admin-list-item"><div class="admin-empty">Pilih file dulu untuk lihat grant history.</div></article>`
+    return
+  }
+
+  if (!state.accessGrants.length) {
+    mount.innerHTML = `<article class="admin-list-item"><div class="admin-empty">Belum ada grant untuk file ini.</div></article>`
+    return
+  }
+
+  mount.innerHTML = state.accessGrants
+    .map((grant) => {
+      const tone = grant.isRevoked ? 'Draft' : grant.isExpired ? 'Expired' : grant.isExhausted ? 'Used up' : 'Active'
+      return `
+        <article class="admin-search-item">
+          <div class="admin-search-item-head">
+            <div>
+              <div class="admin-file-title">${escapeHtml(grant.buyerEmail)}</div>
+              <div class="admin-search-meta">${escapeHtml(grant.buyerName || 'No name')} / ${escapeHtml(String(grant.remainingUses))} left / ${escapeHtml(formatTimestamp(grant.expiresAt || ''))}</div>
+              <div class="admin-subtle">${escapeHtml(grant.note || 'No note')}</div>
+            </div>
+            <div class="admin-actions">
+              <span class="admin-file-chip" data-tone="${grant.isRevoked || grant.isExpired || grant.isExhausted ? 'draft' : 'published'}">${escapeHtml(tone)}</span>
+              <button class="admin-button admin-button-secondary" type="button" data-action="copy-access-link" data-id="${escapeHtml(grant.token)}">Copy Link</button>
+              <button class="admin-button admin-button-danger" type="button" data-action="revoke-access-link" data-id="${escapeHtml(grant.token)}">Revoke</button>
+            </div>
+          </div>
+        </article>
+      `
+    })
+    .join('')
+}
+
+const renderAccessWorkspace = () => {
+  const title = byId<HTMLHeadingElement>('accessSelectedTitle')
+  const copy = byId<HTMLParagraphElement>('accessSelectedCopy')
+  const meta = byId<HTMLDivElement>('accessSelectedMeta')
+  const form = byId<HTMLFormElement>('accessGrantForm')
+  const empty = byId<HTMLDivElement>('accessGrantEmpty')
+  const editButton = form?.querySelector<HTMLButtonElement>('[data-action="open-access-file-edit"]')
+  const selectedFile = getBuyFiles().find((file) => file.id === ensureSelectedAccessFileId()) || null
+
+  renderAccessFileList()
+
+  if (!title || !copy || !meta || !form || !empty) {
+    renderAccessGrantHistory()
+    return
+  }
+
+  if (!selectedFile) {
+    title.textContent = 'Pilih file'
+    copy.textContent = 'Pilih satu file Request Access di kiri untuk mulai grant.'
+    meta.innerHTML = ''
+    form.hidden = true
+    empty.hidden = false
+    renderAccessGrantHistory()
+    return
+  }
+
+  title.textContent = selectedFile.title
+  copy.textContent = 'Grant link unlock unik ke email pembeli. File tetap public sebagai Request Access, tapi download hanya jalan lewat link grant.'
+  meta.innerHTML = [
+    `<span class="admin-pill">Brand: ${escapeHtml(selectedFile.brandLabel)}</span>`,
+    `<span class="admin-pill">Folder: ${escapeHtml(selectedFile.categoryLabel)}</span>`,
+    `<span class="admin-pill">Price: ${escapeHtml(selectedFile.price || 'free')}</span>`,
+  ].join('')
+  form.hidden = false
+  empty.hidden = true
+
+  if (editButton) {
+    editButton.dataset.id = selectedFile.id
+  }
+
+  renderAccessGrantHistory()
 }
 
 const renderBrandList = () => {
@@ -2464,9 +2709,21 @@ const ensureFocusStillValid = () => {
   }
 }
 
+const ensureSelectedAccessFileId = () => {
+  const buyFiles = getBuyFiles()
+
+  if (state.selectedAccessFileId && buyFiles.some((file) => file.id === state.selectedAccessFileId)) {
+    return state.selectedAccessFileId
+  }
+
+  state.selectedAccessFileId = buyFiles[0]?.id || ''
+  return state.selectedAccessFileId
+}
+
 const applyBootstrap = (payload: BootstrapResponse) => {
   state.bootstrap = payload
   ensureFocusStillValid()
+  ensureSelectedAccessFileId()
   if (!state.focusBrandId) {
     state.focusBrandId = payload.brands[0]?.id || ''
   }
@@ -2476,6 +2733,7 @@ const applyBootstrap = (payload: BootstrapResponse) => {
   renderDashboardHealth()
   renderCatalogExplorer()
   renderCatalogInspector()
+  renderAccessWorkspace()
   syncBrandOptions()
   ensureFormsStillValid()
   renderWorkspaceHeader()
@@ -2489,12 +2747,14 @@ const loadBootstrap = async () => {
 const loadFileIndex = async () => {
   const data = await requestAdmin<FilesResponse>('files', { method: 'GET' })
   state.fileIndex = data.files ?? []
+  ensureSelectedAccessFileId()
   renderStats()
   renderDashboardBrands()
   renderDashboardRecentFiles()
   renderDashboardHealth()
   renderCatalogExplorer()
   renderCatalogInspector()
+  renderAccessWorkspace()
 }
 
 const loadFiles = async () => {
@@ -2521,6 +2781,7 @@ const loadFiles = async () => {
     state.filesLoading = false
     renderFileTable()
     renderCatalogInspector()
+    renderAccessWorkspace()
   }
 }
 
@@ -2536,11 +2797,100 @@ const openFilesWorkspace = async ({ brandId = '', categoryId = '' }: { brandId?:
   await loadFiles()
 }
 
+const resetAccessGrantForm = () => {
+  setInputValue('accessBuyerEmail', '')
+  setInputValue('accessBuyerName', '')
+  setInputValue('accessExpiresHours', '24')
+  setInputValue('accessMaxUses', '1')
+  setInputValue('accessNote', '')
+}
+
+const loadAccessGrants = async (fileId = state.selectedAccessFileId) => {
+  const normalizedFileId = toText(fileId)
+  state.selectedAccessFileId = normalizedFileId
+  state.accessLoading = true
+  renderAccessWorkspace()
+
+  try {
+    if (!normalizedFileId) {
+      state.accessGrants = []
+      return
+    }
+
+    const params = new URLSearchParams()
+    params.set('file', normalizedFileId)
+    const data = await requestAdmin<AccessGrantsResponse>('access-grants', { method: 'GET' }, params)
+    state.accessGrants = data.grants ?? []
+  } finally {
+    state.accessLoading = false
+    renderAccessWorkspace()
+  }
+}
+
 const refreshAllData = async () => {
   await loadBootstrap()
   await loadFileIndex()
   await loadFiles()
+  ensureSelectedAccessFileId()
+  await loadAccessGrants()
   renderDashboardHealth()
+}
+
+const submitAccessGrantForm = async (button: HTMLButtonElement | null) => {
+  const fileId = ensureSelectedAccessFileId()
+  if (!fileId) {
+    throw new Error('Pick a Request Access file first.')
+  }
+
+  const payload = {
+    fileId,
+    buyerEmail: getInputValue('accessBuyerEmail'),
+    buyerName: getInputValue('accessBuyerName'),
+    expiresHours: getInputValue('accessExpiresHours'),
+    maxUses: getInputValue('accessMaxUses'),
+    note: getInputValue('accessNote'),
+  }
+
+  const release = setButtonBusy(button, 'Granting...')
+  try {
+    const response = await requestAdmin<AccessGrantsResponse>('access-grants', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+
+    state.accessGrants = response.grants ?? []
+    renderAccessWorkspace()
+    resetAccessGrantForm()
+
+    if (response.grant?.unlockUrl) {
+      await navigator.clipboard.writeText(response.grant.unlockUrl)
+      setBanner('Access granted and unlock link copied.', 'success')
+    } else {
+      setBanner('Access granted successfully.', 'success')
+    }
+  } finally {
+    release()
+  }
+}
+
+const revokeAccessGrant = async (token: string) => {
+  const grant = state.accessGrants.find((item) => item.token === token)
+  if (!grant) return
+
+  const confirmed = await openConfirmDialog(
+    'Revoke access link',
+    `Revoke unlock link for "${grant.buyerEmail}"? Mereka tidak akan bisa pakai link ini lagi.`,
+    'Revoke Access',
+  )
+  if (!confirmed) return
+
+  const response = await requestAdmin<AccessGrantsResponse>(`access-grants/${encodeURIComponent(token)}`, {
+    method: 'DELETE',
+  })
+
+  state.accessGrants = response.grants ?? []
+  renderAccessWorkspace()
+  setBanner(`Access link for "${grant.buyerEmail}" revoked.`, 'success')
 }
 
 const submitBrandForm = async (button: HTMLButtonElement | null) => {
@@ -3103,6 +3453,9 @@ const bindStaticEvents = () => {
     const openWorkspace = target.dataset.openWorkspace as WorkspaceMode | undefined
     if (openWorkspace) {
       revealWorkspace(openWorkspace)
+      if (openWorkspace === 'access' && state.token) {
+        void loadAccessGrants()
+      }
     }
 
     const composerMode = target.dataset.composerMode as ComposerMode | undefined
@@ -3120,6 +3473,9 @@ const bindStaticEvents = () => {
     const workspaceMode = target.dataset.workspaceMode as WorkspaceMode | undefined
     if (workspaceMode) {
       revealWorkspace(workspaceMode, { scroll: true })
+      if (workspaceMode === 'access' && state.token) {
+        void loadAccessGrants()
+      }
     }
   })
 
@@ -3299,6 +3655,16 @@ const bindStaticEvents = () => {
     }
   })
 
+  byId<HTMLFormElement>('accessGrantForm')?.addEventListener('submit', async (event) => {
+    event.preventDefault()
+    try {
+      await submitAccessGrantForm(byId<HTMLButtonElement>('accessGrantButton'))
+    } catch (error) {
+      console.error(error)
+      setBanner(error instanceof Error ? error.message : 'Grant access failed.', 'error')
+    }
+  })
+
   ;['filterBrand', 'filterCategory', 'filterStatus'].forEach((id) => {
     byId<HTMLSelectElement>(id)?.addEventListener('change', async () => {
       if (id === 'filterBrand') {
@@ -3475,6 +3841,41 @@ const bindStaticEvents = () => {
     }
   })
 
+  byId<HTMLDivElement>('accessFileList')?.addEventListener('click', async (event) => {
+    const target = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]')
+    if (!target) return
+
+    if (target.dataset.action === 'select-access-file') {
+      state.selectedAccessFileId = target.dataset.id || ''
+      renderAccessWorkspace()
+      resetAccessGrantForm()
+      await loadAccessGrants()
+    }
+  })
+
+  byId<HTMLDivElement>('accessGrantHistory')?.addEventListener('click', async (event) => {
+    const target = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]')
+    if (!target) return
+
+    const token = target.dataset.id || ''
+
+    try {
+      if (target.dataset.action === 'copy-access-link') {
+        const grant = state.accessGrants.find((item) => item.token === token)
+        if (!grant?.unlockUrl) return
+        await navigator.clipboard.writeText(grant.unlockUrl)
+        setBanner('Unlock link copied.', 'success')
+      }
+
+      if (target.dataset.action === 'revoke-access-link') {
+        await revokeAccessGrant(token)
+      }
+    } catch (error) {
+      console.error(error)
+      setBanner(error instanceof Error ? error.message : 'Grant action failed.', 'error')
+    }
+  })
+
   byId<HTMLTableSectionElement>('catalogFileTableBody')?.addEventListener('click', async (event) => {
     const target = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]')
     if (!target) return
@@ -3512,6 +3913,13 @@ const bindStaticEvents = () => {
         }
       }
 
+      if (target.dataset.action === 'manage-file-access') {
+        state.selectedAccessFileId = fileId
+        revealWorkspace('access', { scroll: true })
+        resetAccessGrantForm()
+        await loadAccessGrants(fileId)
+      }
+
       if (target.dataset.action === 'delete-file') {
         await deleteFile(fileId)
       }
@@ -3542,6 +3950,18 @@ const bindStaticEvents = () => {
       setBanner(error instanceof Error ? error.message : 'Search action failed.', 'error')
     }
   })
+
+  byId<HTMLFormElement>('accessGrantForm')?.addEventListener('click', (event) => {
+    const target = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]')
+    if (!target) return
+
+    if (target.dataset.action === 'open-access-file-edit') {
+      const file = getKnownFiles().find((item) => item.id === (target.dataset.id || ''))
+      if (file) {
+        populateFileForm(file)
+      }
+    }
+  })
 }
 
 void [
@@ -3567,6 +3987,7 @@ const bootstrapAdmin = async () => {
   renderDashboardHealth()
   renderCatalogExplorer()
   renderCatalogInspector()
+  renderAccessWorkspace()
   renderFileTable()
   renderSearchResults()
   renderIntegrityResults()
@@ -3575,6 +3996,7 @@ const bootstrapAdmin = async () => {
   resetBrandForm()
   resetCategoryForm()
   resetFileForm()
+  resetAccessGrantForm()
   bindStaticEvents()
   syncViewModes()
 

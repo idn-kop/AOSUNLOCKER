@@ -205,7 +205,7 @@ type PublicFileAction = {
 export const buildBuyRequestHref = (item: Pick<DownloadListFile, 'id' | 'title' | 'brandId' | 'price'>) =>
   `${supportWhatsAppUrl}?text=${encodeURIComponent(
     [
-      'Hello bro, I want buy access for this file:',
+      'Hello bro, I want request access for this file:',
       item.title,
       item.brandId ? `Brand: ${formatBrandDisplayTitle(item.brandId)}` : '',
       item.price ? `Price: ${item.price}` : '',
@@ -219,11 +219,11 @@ const getPublicFileAction = (item: DownloadListFile): PublicFileAction => {
   const isBuyOnly = (item.status as DownloadFileStatus | undefined) === 'buy'
 
   return {
-    href: isBuyOnly ? buildBuyRequestHref(item) : `/download.html?file=${encodeURIComponent(item.id)}`,
-    label: isBuyOnly ? 'Buy' : 'Download',
-    icon: isBuyOnly ? 'fa-bag-shopping' : 'fa-download',
+    href: `/download.html?file=${encodeURIComponent(item.id)}`,
+    label: isBuyOnly ? 'Request Access' : 'Download',
+    icon: isBuyOnly ? 'fa-key' : 'fa-download',
     className: isBuyOnly ? 'download-small-button download-small-button-buy' : 'download-small-button',
-    targetAttributes: isBuyOnly ? 'target="_blank" rel="noreferrer"' : '',
+    targetAttributes: '',
   }
 }
 

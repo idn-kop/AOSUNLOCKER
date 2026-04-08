@@ -31,6 +31,7 @@ import {
   loadCategoriesByBrand,
   loadFileById,
   loadFilesByCategory,
+  loadRequestAccessGrant,
   peekBrandFolders,
   peekCategoriesByBrand,
   peekFilesByCategory,
@@ -1019,6 +1020,7 @@ export const renderDownloadFlowDetailPage = async () => {
 
   const params = new URLSearchParams(window.location.search)
   const id = params.get('file') ?? 'ana-an00-harmony3-remove-id'
+  const accessToken = String(params.get('access') || '').trim()
 
   document.title = 'Download | Huawei Downloads'
 
@@ -1125,20 +1127,50 @@ export const renderDownloadFlowDetailPage = async () => {
   document.title = `${current.title} | Huawei Downloads`
   const downloadHref = buildGoogleDriveDownloadUrl(liveResult.driveUrl || '')
   const isBuyOnly = current.status === 'buy'
-  const orderHref = buildBuyRequestHref({
+  const requestAccessHref = buildBuyRequestHref({
     id,
     title: current.title,
     brandId: activeSolutionCategory?.brandId,
     price: current.price,
   })
-  const actionHref = isBuyOnly ? orderHref : downloadHref
+
+  const accessGrantResult =
+    isBuyOnly && accessToken
+      ? await loadRequestAccessGrant(id, accessToken)
+      : { ok: false, access: null, message: '' }
+
+  const grantedAccess = Boolean(accessGrantResult.ok && accessGrantResult.access?.unlockDownloadUrl)
+  const remainingGrantUses = accessGrantResult.access?.remainingUses ?? 0
+  const actionHref = isBuyOnly
+    ? grantedAccess
+      ? String(accessGrantResult.access?.unlockDownloadUrl || '')
+      : requestAccessHref
+    : downloadHref
   const actionLabel = isBuyOnly
-    ? current.price && current.price.toLowerCase() !== 'free'
-      ? `Buy (${current.price})`
-      : 'Buy'
+    ? grantedAccess
+      ? 'Download Now'
+      : current.price && current.price.toLowerCase() !== 'free'
+        ? `Request Access (${current.price})`
+        : 'Request Access'
     : current.price && current.price.toLowerCase() !== 'free'
       ? `Download (${current.price})`
       : 'Download'
+  const accessSummary = isBuyOnly
+    ? grantedAccess
+      ? remainingGrantUses > 0
+        ? `${remainingGrantUses} download${remainingGrantUses === 1 ? '' : 's'} left`
+        : 'Unlock ready'
+      : 'Request required'
+    : current.price?.toLowerCase() === 'free'
+      ? 'Available'
+      : current.price || ''
+  const ctaNote = isBuyOnly
+    ? grantedAccess
+      ? `Access granted for this link.${accessGrantResult.access?.expiresAt ? ` Expires ${new Date(accessGrantResult.access.expiresAt).toLocaleString('en-GB', { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })}.` : ''}`
+      : accessToken
+        ? accessGrantResult.message || 'This unlock link is no longer valid. Request a fresh access link from admin.'
+        : 'This file needs a granted access link. Tap Request Access below, then after payment you will receive your unlock link by email.'
+    : 'Direct access opens the linked file instantly. For paid access or manual assistance, use the support options below.'
 
   const breadcrumbs = [
     { label: 'Downloads', href: '/downloads.html' },
@@ -1162,7 +1194,7 @@ export const renderDownloadFlowDetailPage = async () => {
                   current.price
                     ? current.price.toLowerCase() === 'free'
                       ? '<span class="file-badge file-badge-free">Available</span>'
-                      : `<span class="file-badge file-badge-premium">${isBuyOnly ? 'Buy' : 'Access'}</span><span class="file-badge file-badge-price">${current.price}</span>`
+                      : `<span class="file-badge file-badge-premium">${isBuyOnly ? (grantedAccess ? 'Access Granted' : 'Request Access') : 'Access'}</span><span class="file-badge file-badge-price">${current.price}</span>`
                     : ''
                 }
                 <span class="download-stars">${renderStars()}</span>
@@ -1173,18 +1205,18 @@ export const renderDownloadFlowDetailPage = async () => {
               <div><strong>Filesize</strong><span>${current.size}</span></div>
               <div><strong>Visits</strong><span>${current.visits}</span></div>
               <div><strong>Downloads</strong><span id="downloadCountValue">${current.downloads}</span></div>
-                ${current.price ? `<div><strong>${isBuyOnly ? 'Order' : 'Access'}</strong><span>${current.price.toLowerCase() === 'free' ? 'Available' : current.price}</span></div>` : ''}
+                ${current.price || isBuyOnly ? `<div><strong>Access</strong><span>${accessSummary}</span></div>` : ''}
               </div>
             <div class="download-cta-strip">
               <span class="download-cta-pill"><i class="fas fa-circle-check"></i>Verified package</span>
-              <span class="download-cta-pill"><i class="fas ${isBuyOnly ? 'fa-lock' : 'fa-gauge-high'}"></i>${isBuyOnly ? 'Order required' : 'Download counter enabled'}</span>
+              <span class="download-cta-pill"><i class="fas ${isBuyOnly ? (grantedAccess ? 'fa-unlock-keyhole' : 'fa-envelope-open-text') : 'fa-gauge-high'}"></i>${isBuyOnly ? (grantedAccess ? 'Unlock active' : 'Request access first') : 'Download counter enabled'}</span>
               <span class="download-cta-pill"><i class="fas fa-headset"></i>Support available</span>
             </div>
             <a class="download-big-button${isBuyOnly ? ' download-big-button-buy' : ''}" id="downloadActionButton" data-file-id="${id}" href="${actionHref || '#'}" ${actionHref ? 'target="_blank" rel="noreferrer"' : ''}>
-              <i class="fas ${isBuyOnly ? 'fa-bag-shopping' : 'fa-download'}" aria-hidden="true"></i>
+              <i class="fas ${isBuyOnly ? (grantedAccess ? 'fa-download' : 'fa-key') : 'fa-download'}" aria-hidden="true"></i>
               <span class="download-button-label">${actionLabel}</span>
             </a>
-            <p class="download-cta-note">${isBuyOnly ? 'This file is listed for order only. Use WhatsApp below to buy access, then we can handle the delivery manually.' : 'Direct access opens the linked file instantly. For paid access or manual assistance, use the support options below.'}</p>
+            <p class="download-cta-note">${ctaNote}</p>
             ${renderContactAdminPanel()}
           </div>
         </section>
@@ -1200,7 +1232,7 @@ export const renderDownloadFlowDetailPage = async () => {
 
   downloadButton?.addEventListener('click', () => {
     const targetFileId = downloadButton.dataset.fileId
-    if (!targetFileId || isBuyOnly || !downloadHref) return
+    if (!targetFileId || isBuyOnly || grantedAccess || !downloadHref) return
 
     void incrementDownloadCount(targetFileId).then((nextValue) => {
       if (nextValue && downloadCountValue) {

@@ -101,6 +101,42 @@ export type DownloadListFile = {
 
 export type DownloadFileStatus = 'draft' | 'buy' | 'published'
 
+export type DownloadAccessGrant = {
+  token: string
+  fileId: string
+  fileTitle?: string
+  brandLabel?: string
+  categoryLabel?: string
+  buyerEmail: string
+  buyerName?: string
+  note?: string
+  maxUses: number
+  useCount: number
+  remainingUses: number
+  expiresAt?: string
+  lastUsedAt?: string
+  revokedAt?: string
+  createdAt?: string
+  updatedAt?: string
+  isExpired?: boolean
+  isRevoked?: boolean
+  isExhausted?: boolean
+  unlockUrl?: string
+}
+
+export type DownloadAccessGrantPreview = {
+  fileId: string
+  token: string
+  maxUses: number
+  useCount: number
+  remainingUses: number
+  expiresAt?: string
+  isExpired: boolean
+  isRevoked: boolean
+  isExhausted: boolean
+  unlockDownloadUrl?: string
+}
+
 export type SolutionCategory = {
   id: string
   brandId: BrandId

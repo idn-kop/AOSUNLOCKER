@@ -1,5 +1,12 @@
 import { anaAn00Files, downloadHomeCategories, huaweiUpdateFolders, solutionCategories, solutionFilesByCategory } from './download-data'
-import type { BrandId, DownloadFileStatus, DownloadListFile, SolutionCategory, TickerItem } from './data-types'
+import type {
+  BrandId,
+  DownloadAccessGrantPreview,
+  DownloadFileStatus,
+  DownloadListFile,
+  SolutionCategory,
+  TickerItem,
+} from './data-types'
 
 declare global {
   interface Window {
@@ -55,6 +62,7 @@ type PublicFilesResponse = {
 type PublicFileResponse = {
   ok?: boolean
   file?: PublicFileRecord | null
+  message?: string
 }
 
 type PublicStatusResponse = {
@@ -65,6 +73,12 @@ type PublicStatusResponse = {
 type IncrementResponse = {
   ok?: boolean
   downloads?: string
+}
+
+type PublicUnlockResponse = {
+  ok?: boolean
+  access?: DownloadAccessGrantPreview
+  message?: string
 }
 
 export type SearchCatalogEntry = {
@@ -111,7 +125,7 @@ const formatDateValue = (value: string) => {
   return `${day}-${month}-${year}`
 }
 
-const buildApiUrl = (view: string, params?: Record<string, string>) => {
+export const buildApiUrl = (view: string, params?: Record<string, string>) => {
   const baseUrl = getPublicApiBaseUrl()
   if (!baseUrl) return ''
 
@@ -1161,6 +1175,55 @@ export const incrementDownloadCount = async (fileId: string) => {
     return null
   }
 }
+
+export const loadRequestAccessGrant = async (fileId: string, token: string) => {
+  const normalizedFileId = String(fileId || '').trim()
+  const normalizedToken = String(token || '').trim()
+  const url = buildApiUrl('unlock', { id: normalizedFileId, token: normalizedToken })
+
+  if (!url || !normalizedFileId || !normalizedToken) {
+    return {
+      ok: false,
+      access: null,
+      message: 'Missing file id or access token.',
+    }
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      cache: 'no-store',
+    })
+    const data = (await response.json()) as PublicUnlockResponse
+
+    if (!response.ok || !data.ok || !data.access) {
+      return {
+        ok: false,
+        access: null,
+        message: String(data.message || 'Access grant is not valid anymore.'),
+      }
+    }
+
+    return {
+      ok: true,
+      access: data.access,
+      message: '',
+    }
+  } catch (error) {
+    console.warn('Access grant could not be loaded.', error)
+    return {
+      ok: false,
+      access: null,
+      message: 'Access grant could not be verified right now.',
+    }
+  }
+}
+
+export const buildUnlockDownloadUrl = (fileId: string, token: string) =>
+  buildApiUrl('unlock-download', {
+    id: String(fileId || '').trim(),
+    token: String(token || '').trim(),
+  })
 
 export const warmRouteDataFromHref = (href: string, intent: 'hover' | 'navigation' = 'navigation') => {
   try {

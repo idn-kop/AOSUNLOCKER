@@ -38,10 +38,28 @@ CREATE TABLE IF NOT EXISTS files (
   updated_at TEXT NOT NULL,
   FOREIGN KEY (brand_id) REFERENCES brands(id) ON UPDATE CASCADE ON DELETE RESTRICT,
   FOREIGN KEY (category_id) REFERENCES categories(id) ON UPDATE CASCADE ON DELETE RESTRICT,
-  CHECK (status IN ('published', 'draft')),
+  CHECK (status IN ('published', 'buy', 'draft')),
   CHECK (featured IN (0, 1)),
   CHECK (visits >= 0),
   CHECK (downloads >= 0)
+);
+
+CREATE TABLE IF NOT EXISTS file_access_grants (
+  token TEXT PRIMARY KEY,
+  file_id TEXT NOT NULL,
+  buyer_email TEXT NOT NULL,
+  buyer_name TEXT NOT NULL DEFAULT '',
+  note TEXT NOT NULL DEFAULT '',
+  max_uses INTEGER NOT NULL DEFAULT 1,
+  use_count INTEGER NOT NULL DEFAULT 0,
+  expires_at TEXT NOT NULL DEFAULT '',
+  last_used_at TEXT NOT NULL DEFAULT '',
+  revoked_at TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (file_id) REFERENCES files(id) ON UPDATE CASCADE ON DELETE CASCADE,
+  CHECK (max_uses >= 1),
+  CHECK (use_count >= 0)
 );
 
 CREATE TABLE IF NOT EXISTS meta (
@@ -56,6 +74,9 @@ CREATE INDEX IF NOT EXISTS idx_files_brand_id ON files(brand_id);
 CREATE INDEX IF NOT EXISTS idx_files_category_id ON files(category_id);
 CREATE INDEX IF NOT EXISTS idx_files_status ON files(status);
 CREATE INDEX IF NOT EXISTS idx_files_updated_at ON files(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_file_access_grants_file_id ON file_access_grants(file_id);
+CREATE INDEX IF NOT EXISTS idx_file_access_grants_buyer_email ON file_access_grants(buyer_email);
+CREATE INDEX IF NOT EXISTS idx_file_access_grants_updated_at ON file_access_grants(updated_at DESC);
 
 INSERT INTO brands (id, label, created_at, updated_at)
 VALUES
