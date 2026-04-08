@@ -553,28 +553,28 @@ const touchPublicCacheVersion = async (db) => {
 };
 
 const ensureAccessGrantSchema = async (db) => {
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS file_access_grants (
-      token TEXT PRIMARY KEY,
-      file_id TEXT NOT NULL,
-      buyer_email TEXT NOT NULL,
-      buyer_name TEXT NOT NULL DEFAULT '',
-      note TEXT NOT NULL DEFAULT '',
-      max_uses INTEGER NOT NULL DEFAULT 1,
-      use_count INTEGER NOT NULL DEFAULT 0,
-      expires_at TEXT NOT NULL DEFAULT '',
-      last_used_at TEXT NOT NULL DEFAULT '',
-      revoked_at TEXT NOT NULL DEFAULT '',
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL,
-      FOREIGN KEY (file_id) REFERENCES files(id) ON UPDATE CASCADE ON DELETE CASCADE,
-      CHECK (max_uses >= 1),
-      CHECK (use_count >= 0)
-    );
-    CREATE INDEX IF NOT EXISTS idx_file_access_grants_file_id ON file_access_grants(file_id);
-    CREATE INDEX IF NOT EXISTS idx_file_access_grants_buyer_email ON file_access_grants(buyer_email);
-    CREATE INDEX IF NOT EXISTS idx_file_access_grants_updated_at ON file_access_grants(updated_at DESC);
-  `);
+  await runStatement(
+    db,
+    `
+      CREATE TABLE IF NOT EXISTS file_access_grants (
+        token TEXT PRIMARY KEY,
+        file_id TEXT NOT NULL,
+        buyer_email TEXT NOT NULL,
+        buyer_name TEXT NOT NULL DEFAULT '',
+        note TEXT NOT NULL DEFAULT '',
+        max_uses INTEGER NOT NULL DEFAULT 1,
+        use_count INTEGER NOT NULL DEFAULT 0,
+        expires_at TEXT NOT NULL DEFAULT '',
+        last_used_at TEXT NOT NULL DEFAULT '',
+        revoked_at TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    `,
+  );
+  await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_file_access_grants_file_id ON file_access_grants(file_id)');
+  await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_file_access_grants_buyer_email ON file_access_grants(buyer_email)');
+  await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_file_access_grants_updated_at ON file_access_grants(updated_at DESC)');
 };
 
 const getBrands = async (db) => {
