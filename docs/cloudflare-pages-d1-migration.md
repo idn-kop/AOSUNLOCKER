@@ -64,6 +64,7 @@ npx wrangler d1 execute aosunlocker --remote --file migrations/generated/import-
 
 - `public/site-config.js` now points to `/api` and `/api/admin`.
 - The admin token is not baked into the frontend code.
-- The admin panel stores the token only in the current browser `localStorage`.
+- The admin panel stores the token only in the current browser tab `sessionStorage`.
 - Public cache refresh is handled by the API automatically after every write.
 - If you need a manual bump, use the `Refresh Public Cache` button in `/admin.html`.
+- For stronger protection, put `/admin` and `/api/admin/*` behind Cloudflare Access and add a rate-limit rule in the dashboard.

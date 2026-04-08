@@ -24,6 +24,7 @@ import {
   renderStars,
   setupSearchAndScroll,
 } from './site-shared'
+import { escapeAttribute, escapeHtml, sanitizeUrl } from './html-safe'
 import {
   hasLiveApi,
   incrementDownloadCount,
@@ -332,8 +333,8 @@ const renderSolutionBrandStage = (brandLabel: string, brandDescription: string, 
       <section class="download-stage-card">
         ${renderDownloadHeaderBar('Downloads', '/downloads.html')}
         <div class="download-stage-head">
-          <h1>${brandLabel}</h1>
-          <p>${brandDescription}</p>
+          <h1>${escapeHtml(brandLabel)}</h1>
+          <p>${escapeHtml(brandDescription)}</p>
         </div>
         ${content}
       </section>
@@ -671,10 +672,10 @@ export const renderSolutionFilesPage = async () => {
         backHref,
         `
           <div class="download-stage-head">
-            <h1>${activeCategory.fullTitle || activeCategory.title}</h1>
+            <h1>${escapeHtml(activeCategory.fullTitle || activeCategory.title)}</h1>
             ${
               activeCategory.description
-                ? `<p>${activeCategory.description}</p>`
+                ? `<p>${escapeHtml(activeCategory.description)}</p>`
                 : ''
             }
           </div>
@@ -862,7 +863,7 @@ export const renderSolutionFilesPage = async () => {
         `
           <div class="download-stage-head">
             <h1>Loading folder</h1>
-            <p>Preparing folders and files for ${brand.label}.</p>
+            <p>Preparing folders and files for ${escapeHtml(brand.label)}.</p>
           </div>
           ${renderDownloadLoadingState(
             'Loading folder',
@@ -1171,6 +1172,8 @@ export const renderDownloadFlowDetailPage = async () => {
         ? accessGrantResult.message || 'This unlock link is no longer valid. Request a fresh access link from admin.'
         : 'This file needs a granted access link. Tap Request Access below, then after payment you will receive your unlock link by email.'
     : 'Direct access opens the linked file instantly. For paid access or manual assistance, use the support options below.'
+  const safeActionHref = sanitizeUrl(actionHref || '#')
+  const safeFileId = escapeAttribute(id)
 
   const breadcrumbs = [
     { label: 'Downloads', href: '/downloads.html' },
@@ -1187,36 +1190,36 @@ export const renderDownloadFlowDetailPage = async () => {
         <section class="download-stage-card">
           ${renderDownloadHeaderBar(current.backLabel, current.backHref)}
           <div class="download-detail-panel">
-            <h1>${current.title}</h1>
+            <h1>${escapeHtml(current.title)}</h1>
               <div class="file-badge-row justify-content-center">
                 ${current.featured ? '<span class="file-badge file-badge-featured">Featured</span>' : ''}
                 ${
                   current.price
                     ? current.price.toLowerCase() === 'free'
                       ? '<span class="file-badge file-badge-free">Available</span>'
-                      : `<span class="file-badge file-badge-premium">${isBuyOnly ? (grantedAccess ? 'Access Granted' : 'Request Access') : 'Access'}</span><span class="file-badge file-badge-price">${current.price}</span>`
+                      : `<span class="file-badge file-badge-premium">${isBuyOnly ? (grantedAccess ? 'Access Granted' : 'Request Access') : 'Access'}</span><span class="file-badge file-badge-price">${escapeHtml(current.price)}</span>`
                     : ''
                 }
                 <span class="download-stars">${renderStars()}</span>
               </div>
-            <p class="download-detail-subtitle">${current.subtitle}</p>
+            <p class="download-detail-subtitle">${escapeHtml(current.subtitle)}</p>
             <div class="download-detail-table">
-              ${current.date ? `<div><strong>Date</strong><span>${current.date}</span></div>` : ''}
-              <div><strong>Filesize</strong><span>${current.size}</span></div>
-              <div><strong>Visits</strong><span>${current.visits}</span></div>
-              <div><strong>Downloads</strong><span id="downloadCountValue">${current.downloads}</span></div>
-                ${current.price || isBuyOnly ? `<div><strong>Access</strong><span>${accessSummary}</span></div>` : ''}
+              ${current.date ? `<div><strong>Date</strong><span>${escapeHtml(current.date)}</span></div>` : ''}
+              <div><strong>Filesize</strong><span>${escapeHtml(current.size)}</span></div>
+              <div><strong>Visits</strong><span>${escapeHtml(current.visits)}</span></div>
+              <div><strong>Downloads</strong><span id="downloadCountValue">${escapeHtml(current.downloads)}</span></div>
+                ${current.price || isBuyOnly ? `<div><strong>Access</strong><span>${escapeHtml(accessSummary)}</span></div>` : ''}
               </div>
             <div class="download-cta-strip">
               <span class="download-cta-pill"><i class="fas fa-circle-check"></i>Verified package</span>
               <span class="download-cta-pill"><i class="fas ${isBuyOnly ? (grantedAccess ? 'fa-unlock-keyhole' : 'fa-envelope-open-text') : 'fa-gauge-high'}"></i>${isBuyOnly ? (grantedAccess ? 'Unlock active' : 'Request access first') : 'Download counter enabled'}</span>
               <span class="download-cta-pill"><i class="fas fa-headset"></i>Support available</span>
             </div>
-            <a class="download-big-button${isBuyOnly ? ' download-big-button-buy' : ''}" id="downloadActionButton" data-file-id="${id}" href="${actionHref || '#'}" ${actionHref ? 'target="_blank" rel="noreferrer"' : ''}>
+            <a class="download-big-button${isBuyOnly ? ' download-big-button-buy' : ''}" id="downloadActionButton" data-file-id="${safeFileId}" href="${safeActionHref}" ${actionHref ? 'target="_blank" rel="noreferrer"' : ''}>
               <i class="fas ${isBuyOnly ? (grantedAccess ? 'fa-download' : 'fa-key') : 'fa-download'}" aria-hidden="true"></i>
-              <span class="download-button-label">${actionLabel}</span>
+              <span class="download-button-label">${escapeHtml(actionLabel)}</span>
             </a>
-            <p class="download-cta-note">${ctaNote}</p>
+            <p class="download-cta-note">${escapeHtml(ctaNote)}</p>
             ${renderContactAdminPanel()}
           </div>
         </section>

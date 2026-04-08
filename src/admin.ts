@@ -140,6 +140,37 @@ type BannerTone = 'neutral' | 'success' | 'warning' | 'error'
 const TOKEN_STORAGE_KEY = 'aosunlocker-admin-token'
 const API_STORAGE_KEY = 'aosunlocker-admin-api-base'
 
+const getStoredAdminToken = () => {
+  const sessionToken = window.sessionStorage.getItem(TOKEN_STORAGE_KEY) || ''
+  if (sessionToken) {
+    return sessionToken
+  }
+
+  const legacyToken = window.localStorage.getItem(TOKEN_STORAGE_KEY) || ''
+  if (legacyToken) {
+    window.sessionStorage.setItem(TOKEN_STORAGE_KEY, legacyToken)
+    window.localStorage.removeItem(TOKEN_STORAGE_KEY)
+  }
+
+  return legacyToken
+}
+
+const persistAdminToken = (token: string) => {
+  const normalized = toText(token)
+  if (normalized) {
+    window.sessionStorage.setItem(TOKEN_STORAGE_KEY, normalized)
+  } else {
+    window.sessionStorage.removeItem(TOKEN_STORAGE_KEY)
+  }
+
+  window.localStorage.removeItem(TOKEN_STORAGE_KEY)
+}
+
+const clearStoredAdminToken = () => {
+  window.sessionStorage.removeItem(TOKEN_STORAGE_KEY)
+  window.localStorage.removeItem(TOKEN_STORAGE_KEY)
+}
+
 const app = document.querySelector<HTMLDivElement>('#admin-app')
 
 if (!app) {
@@ -3309,7 +3340,7 @@ const handleConnectionSave = async (button: HTMLButtonElement | null) => {
   state.token = getInputValue('adminToken')
 
   window.localStorage.setItem(API_STORAGE_KEY, state.apiBaseUrl)
-  window.localStorage.setItem(TOKEN_STORAGE_KEY, state.token)
+  persistAdminToken(state.token)
   syncConnectionFields()
 
   const release = setButtonBusy(button, 'Connecting...')
@@ -3378,9 +3409,9 @@ const bindStaticEventsLegacy = () => {
 
   byId<HTMLButtonElement>('clearTokenButton')?.addEventListener('click', () => {
     state.token = ''
-    window.localStorage.removeItem(TOKEN_STORAGE_KEY)
+    clearStoredAdminToken()
     syncConnectionFields()
-    setBanner('Stored token cleared from this browser.', 'warning')
+    setBanner('Stored token cleared from this tab.', 'warning')
   })
 
   byId<HTMLButtonElement>('fileAutofillButton')?.addEventListener('click', () => {
@@ -3712,9 +3743,9 @@ const bindStaticEvents = () => {
 
   byId<HTMLButtonElement>('clearTokenButton')?.addEventListener('click', () => {
     state.token = ''
-    window.localStorage.removeItem(TOKEN_STORAGE_KEY)
+    clearStoredAdminToken()
     syncConnectionFields()
-    setBanner('Stored token cleared from this browser.', 'warning')
+    setBanner('Stored token cleared from this tab.', 'warning')
   })
 
   byId<HTMLButtonElement>('fileAutofillButton')?.addEventListener('click', () => {
@@ -4205,7 +4236,7 @@ void [
 
 const bootstrapAdmin = async () => {
   state.apiBaseUrl = window.localStorage.getItem(API_STORAGE_KEY) || getConfigAdminBaseUrl()
-  state.token = window.localStorage.getItem(TOKEN_STORAGE_KEY) || ''
+  state.token = getStoredAdminToken()
 
   renderShell()
   syncViewModes()

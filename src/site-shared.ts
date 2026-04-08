@@ -11,6 +11,7 @@ import type {
   TickerItem,
 } from './data-types'
 import type { SearchCatalogEntry } from './live-data'
+import { escapeAttribute, escapeHtml, sanitizeUrl } from './html-safe'
 import { loadGlobalSearchCatalog, loadHomepageTickers, peekHomepageTickers, warmRouteDataFromHref } from './live-data'
 
 const repeatForTicker = <T>(items: T[], minimum = 12) => {
@@ -42,12 +43,12 @@ const renderAssetImage = ({
   height,
 }: AssetImageOptions) => `
   <img
-    src="${src}"
-    alt="${alt}"
-    class="${className}"
-    loading="${loading}"
-    decoding="${decoding}"
-    fetchpriority="${fetchPriority}"
+    src="${sanitizeUrl(src, '/folder.svg')}"
+    alt="${escapeAttribute(alt)}"
+    class="${escapeAttribute(className)}"
+    loading="${escapeAttribute(loading)}"
+    decoding="${escapeAttribute(decoding)}"
+    fetchpriority="${escapeAttribute(fetchPriority)}"
     ${width ? `width="${width}"` : ''}
     ${height ? `height="${height}"` : ''}
   />
@@ -228,14 +229,14 @@ const getPublicFileAction = (item: DownloadListFile): PublicFileAction => {
 }
 
 const renderMiniSocialLinks = (extraClass = '') => `
-  <div class="mini-social-links ${extraClass}".trim() aria-label="AOSUNLOCKER social links">
-    <a class="mini-social-link mini-social-link-whatsapp" href="https://wa.me/6282234370999" target="_blank" rel="noreferrer" aria-label="WhatsApp admin" title="WhatsApp admin">
+  <div class="mini-social-links ${escapeAttribute(extraClass).trim()}" aria-label="AOSUNLOCKER social links">
+    <a class="mini-social-link mini-social-link-whatsapp" href="${sanitizeUrl('https://wa.me/6282234370999')}" target="_blank" rel="noreferrer" aria-label="WhatsApp admin" title="WhatsApp admin">
       ${whatsappSvg}
     </a>
-    <a class="mini-social-link mini-social-link-facebook" href="https://www.facebook.com/anggaaosunlocker" target="_blank" rel="noreferrer" aria-label="Facebook" title="Facebook">
+    <a class="mini-social-link mini-social-link-facebook" href="${sanitizeUrl('https://www.facebook.com/anggaaosunlocker')}" target="_blank" rel="noreferrer" aria-label="Facebook" title="Facebook">
       ${facebookSvg}
     </a>
-    <a class="mini-social-link mini-social-link-web" href="${primarySiteUrl}" target="_blank" rel="noreferrer" aria-label="Website" title="Website">
+    <a class="mini-social-link mini-social-link-web" href="${sanitizeUrl(primarySiteUrl)}" target="_blank" rel="noreferrer" aria-label="Website" title="Website">
       ${globeSvg}
     </a>
   </div>
@@ -270,8 +271,8 @@ export const renderTicker = (items: TickerItem[]) =>
       (item) => `
         <a href="/downloads.html" class="ticker-item">
           <i class="fas ${item.icon} me-2 ${item.icon === 'fa-fire' ? 'text-danger' : ''}"></i>
-          <span class="ticker-text">${item.title}</span>
-          <span class="${getTickerMetaClass(item.meta)}">${item.meta}</span>
+          <span class="ticker-text">${escapeHtml(item.title)}</span>
+          <span class="${getTickerMetaClass(item.meta)}">${escapeHtml(item.meta)}</span>
         </a>
       `,
     )
@@ -377,9 +378,9 @@ export const renderSimpleCard = (item: SimpleCard) => `
         <div class="icon-shell accent-${item.accent}">
           <i class="fas ${item.icon} text-white"></i>
         </div>
-        <h3 class="h6 fw-bold mb-2 text-dark">${item.title}</h3>
-        <p class="small text-muted mb-2">${item.subtitle}</p>
-        ${item.badge ? `<span class="badge pill accent-${item.accent}">${item.badge}</span>` : ''}
+        <h3 class="h6 fw-bold mb-2 text-dark">${escapeHtml(item.title)}</h3>
+        <p class="small text-muted mb-2">${escapeHtml(item.subtitle)}</p>
+        ${item.badge ? `<span class="badge pill accent-${item.accent}">${escapeHtml(item.badge)}</span>` : ''}
       </div>
     </article>
   </div>
@@ -387,13 +388,13 @@ export const renderSimpleCard = (item: SimpleCard) => `
 
 export const renderPageLinkCard = (item: SimpleCard) => `
   <div class="col-lg-3 col-md-6">
-    <a class="hub-card ${item.title in linkMap ? '' : 'pointer-events-none'}" href="${linkMap[item.title] ?? '#'}">
+    <a class="hub-card ${item.title in linkMap ? '' : 'pointer-events-none'}" href="${sanitizeUrl(linkMap[item.title] ?? '#')}">
       <div class="icon-shell accent-${item.accent}">
         <i class="fas ${item.icon} text-white"></i>
       </div>
-      <h3 class="h6 fw-bold mb-2 text-dark">${item.title}</h3>
-      <p class="small text-muted mb-3">${item.subtitle}</p>
-      ${item.badge ? `<span class="badge pill accent-${item.accent}">${item.badge}</span>` : ''}
+      <h3 class="h6 fw-bold mb-2 text-dark">${escapeHtml(item.title)}</h3>
+      <p class="small text-muted mb-3">${escapeHtml(item.subtitle)}</p>
+      ${item.badge ? `<span class="badge pill accent-${item.accent}">${escapeHtml(item.badge)}</span>` : ''}
     </a>
   </div>
 `
@@ -403,15 +404,15 @@ export const renderFirmware = (item: FirmwareCard) => `
     <article class="card tile-card border-0 shadow-lg rounded-4 overflow-hidden h-100 searchable">
       <div class="card-body p-4 d-flex flex-column">
         <div class="d-flex gap-2 mb-3 flex-wrap">
-          ${item.status.map((status) => `<span class="badge status-chip">${status}</span>`).join('')}
+          ${item.status.map((status) => `<span class="badge status-chip">${escapeHtml(status)}</span>`).join('')}
         </div>
-        <h3 class="h5 fw-semibold text-dark mb-3">${item.title}</h3>
-        <p class="small text-muted mb-3"><i class="fas fa-folder me-1 text-primary"></i>${item.brand}</p>
+        <h3 class="h5 fw-semibold text-dark mb-3">${escapeHtml(item.title)}</h3>
+        <p class="small text-muted mb-3"><i class="fas fa-folder me-1 text-primary"></i>${escapeHtml(item.brand)}</p>
         <div class="mt-auto d-flex justify-content-between align-items-end gap-3 flex-wrap">
-          <small class="text-muted fw-bold"><i class="fas fa-download me-1 text-info"></i>${item.downloads}</small>
-          <small class="text-muted soft-pill"><i class="fas fa-clock me-1 text-warning"></i>${item.age}</small>
+          <small class="text-muted fw-bold"><i class="fas fa-download me-1 text-info"></i>${escapeHtml(item.downloads)}</small>
+          <small class="text-muted soft-pill"><i class="fas fa-clock me-1 text-warning"></i>${escapeHtml(item.age)}</small>
         </div>
-        <a class="download-link mt-4" href="/download.html?file=${item.id}">Download</a>
+        <a class="download-link mt-4" href="${sanitizeUrl(`/download.html?file=${encodeURIComponent(item.id)}`)}">Download</a>
       </div>
     </article>
   </div>
@@ -423,8 +424,8 @@ export const renderFeature = (item: FeatureCard) => `
       <div class="feature-icon-circle bg-${item.tone}-subtle text-${item.tone}">
         <i class="fas ${item.icon}"></i>
       </div>
-      <h3 class="h5 fw-bold mb-3 text-dark">${item.title}</h3>
-      <p class="text-muted mb-0">${item.description}</p>
+      <h3 class="h5 fw-bold mb-3 text-dark">${escapeHtml(item.title)}</h3>
+      <p class="text-muted mb-0">${escapeHtml(item.description)}</p>
     </article>
   </div>
 `
@@ -434,18 +435,18 @@ export const renderDownloadBreadcrumbs = (items: Array<{ label: string; href?: s
     ${items
       .map((item) =>
         item.href
-          ? `<a href="${item.href}"><i class="fas fa-folder me-2"></i>${item.label}</a>`
-          : `<span><i class="fas fa-folder-open me-2"></i>${item.label}</span>`,
+          ? `<a href="${sanitizeUrl(item.href)}"><i class="fas fa-folder me-2"></i>${escapeHtml(item.label)}</a>`
+          : `<span><i class="fas fa-folder-open me-2"></i>${escapeHtml(item.label)}</span>`,
       )
       .join('')}
   </div>
 `
 
 const renderBackBlock = (title: string, href: string) => `
-  <a class="download-back" href="${href}">
+  <a class="download-back" href="${sanitizeUrl(href)}">
     <span class="download-back-icon"><i class="fas fa-caret-left"></i></span>
     <span>
-      <strong>${title}</strong>
+      <strong>${escapeHtml(title)}</strong>
       <small>Back</small>
     </span>
   </a>
@@ -521,7 +522,7 @@ const getDownloadHomeBrandIconClass = (brandId?: string) => {
 }
 
 export const renderDownloadHomeCard = (item: DownloadCategoryCard) => `
-  <a class="download-home-card ${item.kind === 'brand' ? getDownloadHomeBrandCardClass(item.brandId) : ''}" href="${item.href}">
+  <a class="download-home-card ${item.kind === 'brand' ? getDownloadHomeBrandCardClass(item.brandId) : ''}" href="${sanitizeUrl(item.href)}">
     <div class="download-home-icon ${item.kind === 'android' ? 'download-home-icon-android' : ''} ${item.kind === 'brand' ? getDownloadHomeBrandIconClass(item.brandId) : ''}">
       ${
         item.kind === 'android'
@@ -549,34 +550,34 @@ export const renderDownloadHomeCard = (item: DownloadCategoryCard) => `
       }
     </div>
     <div class="download-home-copy">
-      <span class="download-home-kicker">${getDownloadHomeKicker(item)}</span>
-      <h3>${getDownloadHomeTitle(item)}</h3>
-      <p>${item.description}</p>
+      <span class="download-home-kicker">${escapeHtml(getDownloadHomeKicker(item))}</span>
+      <h3>${escapeHtml(getDownloadHomeTitle(item))}</h3>
+      <p>${escapeHtml(item.description)}</p>
     </div>
     <span class="download-home-arrow" aria-hidden="true"><i class="fas fa-arrow-right"></i></span>
   </a>
 `
 
 export const renderBrandDownloadCard = (item: DownloadBrandCard) => `
-  <a class="brand-download-card" href="${item.href}">
+  <a class="brand-download-card" href="${sanitizeUrl(item.href)}">
     <div class="brand-download-art ${item.kind === 'tool' ? 'brand-download-art-tool' : ''}">
       ${
         item.kind === 'tool'
           ? '<i class="fas fa-gear"></i>'
-          : `<span class="brand-download-chip">${item.badge ?? 'HUAWEI'}</span><strong>HUAWEI</strong>`
+          : `<span class="brand-download-chip">${escapeHtml(item.badge ?? 'HUAWEI')}</span><strong>HUAWEI</strong>`
       }
     </div>
     <div class="brand-download-copy">
       <span class="brand-download-kicker">${item.kind === 'tool' ? 'Tool Access' : item.badge ? 'Premium Folder' : 'Service Folder'}</span>
-      <h3>${item.title}</h3>
-      <p>${item.subtitle}</p>
+      <h3>${escapeHtml(item.title)}</h3>
+      <p>${escapeHtml(item.subtitle)}</p>
     </div>
     <span class="brand-download-arrow" aria-hidden="true"><i class="fas fa-arrow-right"></i></span>
   </a>
 `
 
 export const renderModelFolderCard = (item: DownloadModelFolder) => `
-  <a class="model-folder-card" href="${item.href}">
+  <a class="model-folder-card" href="${sanitizeUrl(item.href)}">
     <div class="model-folder-art">
       ${renderAssetImage({
         src: '/folder.svg',
@@ -590,8 +591,8 @@ export const renderModelFolderCard = (item: DownloadModelFolder) => `
     </div>
     <div class="model-folder-copy">
       <span class="model-folder-kicker">Model Folder</span>
-      <h3>${item.title}</h3>
-      <p>${item.subtitle}</p>
+      <h3>${escapeHtml(item.title)}</h3>
+      <p>${escapeHtml(item.subtitle)}</p>
     </div>
     <span class="model-folder-arrow" aria-hidden="true"><i class="fas fa-arrow-right"></i></span>
   </a>
@@ -617,19 +618,19 @@ export const renderDownloadListRow = (item: DownloadListFile) => {
       <div class="file-badge-row">
         ${item.featured ? '<span class="file-badge file-badge-featured">Featured</span>' : ''}
       </div>
-      <h3>${item.title}</h3>
+      <h3>${escapeHtml(item.title)}</h3>
       <div class="download-stars">${starMarkup}</div>
-      <p>${item.subtitle}</p>
+      <p>${escapeHtml(item.subtitle)}</p>
       <div class="download-list-meta">
-        ${item.date ? `<span>Date: ${item.date}</span>` : ''}
-        <span>Size: ${item.size}</span>
-        ${item.price ? `<span>Access: ${item.price.toLowerCase() === 'free' ? 'Available' : item.price}</span>` : ''}
+        ${item.date ? `<span>Date: ${escapeHtml(item.date)}</span>` : ''}
+        <span>Size: ${escapeHtml(item.size)}</span>
+        ${item.price ? `<span>Access: ${escapeHtml(item.price.toLowerCase() === 'free' ? 'Available' : item.price)}</span>` : ''}
       </div>
     </div>
     <div class="download-list-action">
-      <a class="${action.className}" href="${action.href}" ${action.targetAttributes}>
+      <a class="${action.className}" href="${sanitizeUrl(action.href)}" ${action.targetAttributes}>
         <i class="fas ${action.icon}" aria-hidden="true"></i>
-        <span class="download-button-label">${action.label}</span>
+        <span class="download-button-label">${escapeHtml(action.label)}</span>
       </a>
     </div>
   </article>
@@ -658,19 +659,21 @@ export const renderDownloadGridCard = (item: DownloadListFile) => {
         item.price
           ? item.price.toLowerCase() === 'free'
             ? '<span class="file-badge file-badge-free">Available</span>'
-            : '<span class="file-badge file-badge-premium">Access</span><span class="file-badge file-badge-price">' + item.price + '</span>'
+            : '<span class="file-badge file-badge-premium">Access</span><span class="file-badge file-badge-price">' +
+              escapeHtml(item.price) +
+              '</span>'
           : ''
       }
     </div>
-    <h3>${item.title}</h3>
-    <p>${item.subtitle}</p>
+    <h3>${escapeHtml(item.title)}</h3>
+    <p>${escapeHtml(item.subtitle)}</p>
     <div class="download-list-meta">
-      ${item.date ? `<span>Date: ${item.date}</span>` : ''}
-      <span>Size: ${item.size}</span>
+      ${item.date ? `<span>Date: ${escapeHtml(item.date)}</span>` : ''}
+      <span>Size: ${escapeHtml(item.size)}</span>
     </div>
-    <a class="${action.className}" href="${action.href}" ${action.targetAttributes}>
+    <a class="${action.className}" href="${sanitizeUrl(action.href)}" ${action.targetAttributes}>
       <i class="fas ${action.icon}" aria-hidden="true"></i>
-      <span class="download-button-label">${action.label}</span>
+      <span class="download-button-label">${escapeHtml(action.label)}</span>
     </a>
   </article>
 `
@@ -679,16 +682,16 @@ export const renderDownloadGridCard = (item: DownloadListFile) => {
 export const renderDownloadEmptyState = (title: string, copy: string) => `
   <div class="download-empty-state">
     <div class="download-empty-icon"><i class="fas fa-folder-open"></i></div>
-    <h3>${title}</h3>
-    <p>${copy}</p>
+    <h3>${escapeHtml(title)}</h3>
+    <p>${escapeHtml(copy)}</p>
   </div>
 `
 
 export const renderDownloadLoadingState = (title: string, copy: string) => `
   <div class="download-loading-state" aria-live="polite">
     <div class="download-loading-spinner" aria-hidden="true"></div>
-    <h3>${title}</h3>
-    <p>${copy}</p>
+    <h3>${escapeHtml(title)}</h3>
+    <p>${escapeHtml(copy)}</p>
   </div>
 `
 
