@@ -163,6 +163,7 @@ const state = {
   selectedAccessFileId: '',
   accessFilterBrandId: '',
   accessFilterCategoryId: '',
+  accessFilterQuery: '',
   editingBrandId: '',
   editingCategoryId: '',
   editingFileId: '',
@@ -297,6 +298,7 @@ const getFilteredBuyFiles = (
 ) => {
   const brandId = toText(filters.brandId || '')
   const categoryId = toText(filters.categoryId || '')
+  const query = toText(state.accessFilterQuery).toLowerCase()
 
   let files = getBuyFiles()
 
@@ -309,7 +311,22 @@ const getFilteredBuyFiles = (
     files = files.filter((file) => acceptedCategoryIds.has(file.categoryId))
   }
 
+  if (query) {
+    files = files.filter((file) =>
+      [file.title, file.brandLabel, file.categoryLabel, file.price, file.id].some((value) =>
+        toText(value).toLowerCase().includes(query),
+      ),
+    )
+  }
+
   return files
+}
+
+const countBuyFilesForBrand = (brandId: string) => getBuyFiles().filter((file) => file.brandId === toText(brandId)).length
+
+const countBuyFilesForCategory = (categoryId: string) => {
+  const acceptedCategoryIds = new Set([toText(categoryId), ...getDescendantCategoryIds(categoryId)])
+  return getBuyFiles().filter((file) => acceptedCategoryIds.has(file.categoryId)).length
 }
 
 const getAccessFilterBrands = () => {
@@ -1188,6 +1205,10 @@ const renderAccessMarkup = () => {
             <label class="admin-field">
               <span class="admin-label">Folder</span>
               <select id="accessFilterCategory" class="admin-select"></select>
+            </label>
+            <label class="admin-field admin-span-2">
+              <span class="admin-label">Search file</span>
+              <input id="accessFilterQuery" class="admin-input" type="search" placeholder="Cari judul file, folder, price, atau ID" />
             </label>
           </div>
           <p id="accessFilterSummary" class="admin-subtle"></p>
@@ -2842,12 +2863,13 @@ const ensureAccessFiltersStillValid = () => {
 const syncAccessFilterOptions = () => {
   const brandSelect = byId<HTMLSelectElement>('accessFilterBrand')
   const categorySelect = byId<HTMLSelectElement>('accessFilterCategory')
+  const queryInput = byId<HTMLInputElement>('accessFilterQuery')
 
   const brandOptions = [
     { value: '', label: 'All brands' },
     ...getAccessFilterBrands().map((brand) => ({
       value: brand.id,
-      label: `${brand.label} (${brand.id})`,
+      label: `${brand.label} (${countBuyFilesForBrand(brand.id)})`,
     })),
   ]
 
@@ -2858,12 +2880,16 @@ const syncAccessFilterOptions = () => {
     { value: '', label: state.accessFilterBrandId ? 'All folders in this brand' : 'All folders' },
     ...getAccessFilterCategories().map((category) => ({
       value: category.id,
-      label: category.fullLabel || category.label,
+      label: `${category.fullLabel || category.label} (${countBuyFilesForCategory(category.id)})`,
     })),
   ]
 
   setSelectOptions(categorySelect, categoryOptions, state.accessFilterCategoryId)
   state.accessFilterCategoryId = toText(categorySelect?.value || '')
+
+  if (queryInput) {
+    queryInput.value = state.accessFilterQuery
+  }
 }
 
 const setAccessFiltersFromFile = (file: AdminFile | null) => {
@@ -4032,6 +4058,24 @@ const bindStaticEvents = () => {
     }
 
     state.accessGrants = []
+    renderAccessWorkspace()
+  })
+
+  byId<HTMLInputElement>('accessFilterQuery')?.addEventListener('input', async (event) => {
+    state.accessFilterQuery = toText((event.currentTarget as HTMLInputElement).value)
+    const previousFileId = state.selectedAccessFileId
+    ensureSelectedAccessFileId()
+
+    if (state.selectedAccessFileId && state.selectedAccessFileId !== previousFileId) {
+      resetAccessGrantForm()
+      await loadAccessGrants(state.selectedAccessFileId)
+      return
+    }
+
+    if (!state.selectedAccessFileId) {
+      state.accessGrants = []
+    }
+
     renderAccessWorkspace()
   })
 
