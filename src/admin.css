@@ -515,6 +515,44 @@ a {
   min-width: 0;
 }
 
+.admin-folder-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.admin-folder-toggle {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+  border: 1px solid rgba(61, 149, 209, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--admin-muted);
+  cursor: pointer;
+  transition: border-color 160ms ease, color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.admin-folder-toggle:hover {
+  border-color: rgba(61, 149, 209, 0.38);
+  color: var(--admin-text);
+  background: rgba(61, 149, 209, 0.08);
+}
+
+.admin-folder-toggle i {
+  font-size: 10px;
+}
+
+.admin-folder-toggle-spacer {
+  border-color: transparent;
+  background: transparent;
+  pointer-events: none;
+}
+
 .admin-folder-select {
   display: flex;
   align-items: flex-start;
@@ -951,6 +989,16 @@ a {
 
   .admin-folder-row {
     margin-left: calc(var(--folder-depth, 0) * 8px);
+  }
+
+  .admin-folder-line {
+    gap: 6px;
+  }
+
+  .admin-folder-toggle {
+    width: 22px;
+    height: 22px;
+    flex: 0 0 22px;
   }
 
   .admin-table-shell {

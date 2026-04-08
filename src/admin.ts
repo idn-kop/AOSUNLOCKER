@@ -138,6 +138,7 @@ const state = {
   fileAdvancedOpen: false,
   editorOpen: false,
   brandIdManual: false,
+  collapsedCategoryIds: new Set<string>(),
 }
 
 let confirmResolver: ((value: boolean) => void) | null = null
@@ -226,6 +227,28 @@ const getRootCategoriesForBrand = (brandId: string) =>
 const getChildCategories = (parentCategoryId: string) =>
   getBootstrapCategories().filter((category) => category.parentCategoryId === toText(parentCategoryId))
 
+const toggleCategoryCollapsed = (categoryId: string) => {
+  const normalized = toText(categoryId)
+  if (!normalized || !getChildCategories(normalized).length) return
+
+  if (state.collapsedCategoryIds.has(normalized)) {
+    state.collapsedCategoryIds.delete(normalized)
+  } else {
+    state.collapsedCategoryIds.add(normalized)
+  }
+}
+
+const expandCategoryAncestors = (categoryId: string) => {
+  let current = getCategoryById(categoryId)
+
+  while (current?.id) {
+    state.collapsedCategoryIds.delete(current.id)
+
+    const parentId = toText(current.parentCategoryId)
+    current = parentId ? getCategoryById(parentId) : null
+  }
+}
+
 const getDescendantCategoryIds = (categoryId: string): string[] => {
   const descendants = new Set<string>()
   const queue = [toText(categoryId)]
@@ -286,6 +309,7 @@ const setFocus = ({ brandId = '', categoryId = '' }: { brandId?: string; categor
     const category = getCategoryById(categoryId)
     state.focusCategoryId = category?.id || ''
     state.focusBrandId = category?.brandId || ''
+    if (category?.id) expandCategoryAncestors(category.id)
   } else {
     const brand = getBrandById(brandId)
     state.focusBrandId = brand?.id || ''
@@ -1643,20 +1667,30 @@ const renderCatalogExplorer = () => {
     const children = getChildCategories(category.id)
     const fileCount = countIndexedFilesForCategory(category.id)
     const isActive = state.focusCategoryId === category.id
+    const isCollapsed = children.length ? state.collapsedCategoryIds.has(category.id) : false
 
     return `
       <article class="admin-folder-row${isActive ? ' is-active' : ''}" style="--folder-depth:${depth}">
         <div class="admin-folder-main">
-          <button class="admin-folder-select" type="button" data-action="focus-category" data-id="${escapeHtml(category.id)}">
-            <span class="admin-folder-bullet"></span>
-            <span>
-              <strong>${escapeHtml(category.label)}</strong>
-              <span class="admin-folder-meta">${fileCount} file · ${children.length} subfolder</span>
-            </span>
-          </button>
+          <div class="admin-folder-line">
+            ${
+              children.length
+                ? `<button class="admin-folder-toggle${isCollapsed ? ' is-collapsed' : ''}" type="button" data-action="toggle-category" data-id="${escapeHtml(category.id)}" aria-label="${isCollapsed ? 'Expand' : 'Collapse'} ${escapeHtml(category.label)} subfolders">
+                    <i class="fas fa-chevron-${isCollapsed ? 'right' : 'down'}"></i>
+                  </button>`
+                : '<span class="admin-folder-toggle admin-folder-toggle-spacer" aria-hidden="true"></span>'
+            }
+            <button class="admin-folder-select" type="button" data-action="focus-category" data-id="${escapeHtml(category.id)}">
+              <span class="admin-folder-bullet"></span>
+              <span>
+                <strong>${escapeHtml(category.label)}</strong>
+                <span class="admin-folder-meta">${fileCount} file · ${children.length} subfolder</span>
+              </span>
+            </button>
+          </div>
         </div>
       </article>
-      ${children.length ? `<div class="admin-folder-children">${children.map((child) => renderCategoryBranch(child, depth + 1)).join('')}</div>` : ''}
+      ${children.length && !isCollapsed ? `<div class="admin-folder-children">${children.map((child) => renderCategoryBranch(child, depth + 1)).join('')}</div>` : ''}
     `
   }
 
@@ -3360,8 +3394,17 @@ const bindStaticEvents = () => {
         prepareNewCategoryForm(id, '')
       } else if (action === 'new-file-in-brand') {
         prepareNewFileForm(id, '')
+      } else if (action === 'toggle-category') {
+        toggleCategoryCollapsed(id)
+        renderCatalogExplorer()
       } else if (action === 'focus-category') {
-        setFocus({ categoryId: id })
+        const category = getCategoryById(id)
+        if (category && getChildCategories(id).length && state.focusCategoryId === id) {
+          toggleCategoryCollapsed(id)
+          renderCatalogExplorer()
+        } else {
+          setFocus({ categoryId: id })
+        }
       } else if (action === 'edit-category') {
         const category = getCategoryById(id)
         if (category) populateCategoryForm(category)
