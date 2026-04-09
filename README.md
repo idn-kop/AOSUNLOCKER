@@ -30,3 +30,4 @@ Cleaned repo for the Cloudflare migration.
 - Old GitHub Pages, Apps Script, and Google Sheets repo files were removed.
 - Lighthouse reports, temp files, and unused assets were removed.
 - Local-only clutter is now ignored in `.gitignore`.
+- Run `npm run verify:cloudflare` after deploys to confirm live security headers and preview DB separation.
