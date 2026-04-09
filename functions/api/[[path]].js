@@ -848,6 +848,10 @@ const validateGrantRequest = async (db, payload) => {
     throw new Error('Only Request Access files can receive grant links.');
   }
 
+  if (!toDriveDownloadUrl(file.driveUrl)) {
+    throw new Error('Request Access file needs a valid download link before grant access can be created.');
+  }
+
   return {
     file,
     buyerEmail,
@@ -1107,6 +1111,11 @@ const handlePublicGet = async (context, url) => {
       return errorResponse(result.status, result.message);
     }
 
+    const downloadUrl = toDriveDownloadUrl(result.file.driveUrl);
+    if (!downloadUrl) {
+      return errorResponse(404, 'Download link is missing for this file.');
+    }
+
     const now = nowIso();
     const updateGrant = await runStatement(
       db,
@@ -1127,11 +1136,6 @@ const handlePublicGet = async (context, url) => {
     }
 
     await runStatement(db, 'UPDATE files SET downloads = downloads + 1, updated_at = ? WHERE id = ?', [now, fileId]);
-
-    const downloadUrl = toDriveDownloadUrl(result.file.driveUrl);
-    if (!downloadUrl) {
-      return errorResponse(404, 'Download link is missing for this file.');
-    }
 
     return Response.redirect(downloadUrl, 302);
   }
