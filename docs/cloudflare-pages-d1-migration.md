@@ -23,6 +23,68 @@
 4. Use a long random token for `ADMIN_TOKEN`.
 5. Deploy the site so Pages serves the static frontend and the `functions/api/[[path]].js` API.
 
+## Mandatory hardening after first deploy
+
+### 1. Separate preview and production D1
+
+Do not leave `preview_database_id` equal to the production `database_id`.
+
+Recommended flow:
+
+1. Log in to Cloudflare CLI:
+
+```bash
+npx wrangler login
+```
+
+2. Create a preview database:
+
+```bash
+npx wrangler d1 create aosunlocker-preview
+```
+
+3. Copy the returned `database_id`.
+4. Update `preview_database_id` in `wrangler.jsonc`.
+5. In Cloudflare Pages, bind the preview environment to that preview D1 database.
+
+Risk if skipped:
+
+- Preview deploys can write to the same live D1 database used by production.
+- Test edits can leak into real customer data.
+
+### 2. Put admin behind Cloudflare Access
+
+Recommended dashboard path:
+
+1. Open `Cloudflare Dashboard`.
+2. Go to `Zero Trust`.
+3. Open `Access` > `Applications`.
+4. Click `Add an application`.
+5. Choose `Self-hosted`.
+6. Add these protected paths:
+   - `https://aosunlocker.com/admin*`
+   - `https://aosunlocker.com/api/admin*`
+7. Create an allow policy for only your email address or your team email list.
+
+Risk if skipped:
+
+- Admin still depends only on the bearer token.
+- Bots can still scan the admin surface and hammer the admin API.
+
+### 3. Verify the deployment
+
+Run this repo check:
+
+```bash
+npm run verify:cloudflare
+```
+
+Optional custom domain:
+
+```bash
+npm run verify:cloudflare -- --base-url=https://your-domain.com
+```
+
 ## Run the schema
 
 ```bash
@@ -68,3 +130,4 @@ npx wrangler d1 execute aosunlocker --remote --file migrations/generated/import-
 - Public cache refresh is handled by the API automatically after every write.
 - If you need a manual bump, use the `Refresh Public Cache` button in `/admin.html`.
 - For stronger protection, put `/admin` and `/api/admin/*` behind Cloudflare Access and add a rate-limit rule in the dashboard.
+- The `verify:cloudflare` script checks the live security headers and warns if `preview_database_id` still points at production.
