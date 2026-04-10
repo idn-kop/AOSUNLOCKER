@@ -21,6 +21,7 @@ import {
   renderFooterPayments,
   renderModelFolderCard,
   renderSiteChrome,
+  renderStars,
   setupSearchAndScroll,
 } from './site-shared'
 import { escapeAttribute, escapeHtml, sanitizeUrl } from './html-safe'
@@ -1199,6 +1200,7 @@ export const renderDownloadFlowDetailPage = async () => {
                       : `<span class="file-badge file-badge-premium">${isBuyOnly ? (grantedAccess ? 'Access Granted' : 'Request Access') : 'Access'}</span><span class="file-badge file-badge-price">${escapeHtml(current.price)}</span>`
                     : ''
                 }
+                <span class="download-stars">${renderStars()}</span>
               </div>
             <p class="download-detail-subtitle">${escapeHtml(current.subtitle)}</p>
             <div class="download-detail-table">

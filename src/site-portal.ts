@@ -1,5 +1,4 @@
 import { downloadHomeCategories } from './download-data'
-import { escapeHtml } from './html-safe'
 import { loadBrandFolders, peekBrandFolders, syncLiveCacheVersion, warmBrandCategoryData } from './live-data'
 import { pageLinks, pages, remoteServiceQualcommEntries, stats } from './portal-data'
 import {
@@ -39,33 +38,6 @@ const buildRemoteServiceMessageUrl = (
 
   return `https://wa.me/6282234370999?text=${encodeURIComponent(message)}`
 }
-
-const homeProofItems = [
-  {
-    icon: 'fa-key',
-    label: 'Token Access',
-    title: 'Buy files stay locked',
-    copy: 'Unlock links are issued only after access is granted, with expiry and revoke support.',
-  },
-  {
-    icon: 'fa-headset',
-    label: 'Direct Support',
-    title: 'WhatsApp help stays close',
-    copy: 'Users can move from file browsing to support without confusing extra steps or forced login.',
-  },
-  {
-    icon: 'fa-folder-tree',
-    label: 'Clean Catalog',
-    title: 'Folders stay easy to scan',
-    copy: 'Huawei, Honor, tools, and service folders stay grouped in a cleaner and lighter browsing flow.',
-  },
-  {
-    icon: 'fa-gauge-high',
-    label: 'Lightweight',
-    title: 'Pages stay fast',
-    copy: 'The public catalog keeps the interface lean so the important actions stay visible and quick.',
-  },
-]
 
 const buildRemoteModelPreview = (models: string[], limit = 4) => {
   const visible = models.slice(0, limit)
@@ -131,25 +103,6 @@ const getOrderedHomeBrands = <T extends { brandId?: string }>(items: T[]) => {
 
   return [...leadItems, ...extraItems]
 }
-
-const renderHomeProofRail = () => `
-  <div class="home-proof-rail" aria-label="Trust and access notes">
-    ${homeProofItems
-      .map(
-        (item) => `
-          <article class="home-proof-card searchable">
-            <span class="home-proof-icon"><i class="fas ${escapeHtml(item.icon)}" aria-hidden="true"></i></span>
-            <div class="home-proof-copy">
-              <span class="home-proof-label">${escapeHtml(item.label)}</span>
-              <strong>${escapeHtml(item.title)}</strong>
-              <p>${escapeHtml(item.copy)}</p>
-            </div>
-          </article>
-        `,
-      )
-      .join('')}
-  </div>
-`
 
 const renderRemoteServiceSection = (groups: Array<[string, string[]]>) => {
   const platformFamilies = groups.length
@@ -303,10 +256,7 @@ export const renderPage = async (pageKey: SitePageKey) => {
               ? `
                 <div class="downloads-home-head">
                   <p class="eyebrow">Download Firmware</p>
-                  <h2 class="section-title"><i class="fas fa-shield-halved me-2 text-primary"></i>Clean folders, direct support, and secure access</h2>
-                  <p class="downloads-home-copy">Browse the catalog through lighter cards and clearer actions, while buy-only files stay protected behind grant access links.</p>
                 </div>
-                ${renderHomeProofRail()}
                 <div class="downloads-home-shell" id="homeBrandMount">${renderBrandHomeGrid(getOrderedHomeBrands(downloadHomeCategories))}</div>
               `
               : `
