@@ -172,8 +172,6 @@ const linkMap: Record<string, string> = {
   'HarmonyOS Files': '/downloads.html',
 }
 
-const starMarkup = '&#9733;&#9733;&#9733;&#9733;&#9733;'
-
 const whatsappSvg = `
   <svg viewBox="0 0 24 24" aria-hidden="true">
     <path fill="currentColor" d="M12 2a10 10 0 0 0-8.7 14.94L2 22l5.21-1.29A10 10 0 1 0 12 2Zm0 18a8.01 8.01 0 0 1-4.08-1.12l-.29-.17-3.09.77.82-3.01-.19-.31A8 8 0 1 1 12 20Zm4.39-5.46c-.24-.12-1.41-.69-1.63-.77-.22-.08-.38-.12-.54.12-.16.24-.62.77-.76.93-.14.16-.28.18-.52.06-.24-.12-1-.37-1.91-1.17-.7-.62-1.18-1.38-1.32-1.62-.14-.24-.01-.37.1-.49.1-.1.24-.28.36-.42.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.54-1.3-.74-1.78-.2-.48-.4-.42-.54-.43h-.46c-.16 0-.42.06-.64.3-.22.24-.84.82-.84 2s.86 2.32.98 2.48c.12.16 1.7 2.6 4.12 3.64.58.25 1.03.39 1.38.5.58.18 1.11.15 1.53.09.47-.07 1.41-.58 1.61-1.14.2-.56.2-1.04.14-1.14-.06-.1-.22-.16-.46-.28Z"/>
@@ -227,6 +225,33 @@ const getPublicFileAction = (item: DownloadListFile): PublicFileAction => {
     targetAttributes: '',
   }
 }
+
+const formatFileDownloads = (value: string) => {
+  const count = Number(String(value || '').replace(/[^\d.-]/g, ''))
+  if (!Number.isFinite(count) || count <= 0) return 'New upload'
+  return `${count.toLocaleString('en-US')} downloads`
+}
+
+const getFileAccessLabel = (item: DownloadListFile) =>
+  (item.status as DownloadFileStatus | undefined) === 'buy' ? 'Grant access' : 'Direct download'
+
+const getFileAccessToneClass = (item: DownloadListFile) =>
+  (item.status as DownloadFileStatus | undefined) === 'buy'
+    ? 'download-signal-chip-access'
+    : 'download-signal-chip-live'
+
+const renderFileSignalRow = (item: DownloadListFile) => `
+  <div class="download-signal-row" aria-label="File signals">
+    <span class="download-signal-chip">
+      <i class="fas fa-download" aria-hidden="true"></i>
+      <span>${escapeHtml(formatFileDownloads(item.downloads))}</span>
+    </span>
+    <span class="download-signal-chip ${getFileAccessToneClass(item)}">
+      <i class="fas ${(item.status as DownloadFileStatus | undefined) === 'buy' ? 'fa-key' : 'fa-circle-check'}" aria-hidden="true"></i>
+      <span>${escapeHtml(getFileAccessLabel(item))}</span>
+    </span>
+  </div>
+`
 
 const renderMiniSocialLinks = (extraClass = '') => `
   <div class="mini-social-links ${escapeAttribute(extraClass).trim()}" aria-label="AOSUNLOCKER social links">
@@ -619,7 +644,7 @@ export const renderDownloadListRow = (item: DownloadListFile) => {
         ${item.featured ? '<span class="file-badge file-badge-featured">Featured</span>' : ''}
       </div>
       <h3>${escapeHtml(item.title)}</h3>
-      <div class="download-stars">${starMarkup}</div>
+      ${renderFileSignalRow(item)}
       <p>${escapeHtml(item.subtitle)}</p>
       <div class="download-list-meta">
         ${item.date ? `<span>Date: ${escapeHtml(item.date)}</span>` : ''}
@@ -667,6 +692,7 @@ export const renderDownloadGridCard = (item: DownloadListFile) => {
     </div>
     <h3>${escapeHtml(item.title)}</h3>
     <p>${escapeHtml(item.subtitle)}</p>
+    ${renderFileSignalRow(item)}
     <div class="download-list-meta">
       ${item.date ? `<span>Date: ${escapeHtml(item.date)}</span>` : ''}
       <span>Size: ${escapeHtml(item.size)}</span>
@@ -1463,4 +1489,3 @@ export const setupSearchAndScroll = () => {
   })
 }
 
-export const renderStars = () => starMarkup
