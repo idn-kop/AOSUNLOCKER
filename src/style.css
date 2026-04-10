@@ -3456,10 +3456,10 @@ h6 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.58rem;
-  padding: 0.48rem 1rem 0.48rem 0.82rem;
-  border-radius: 0.58rem;
-  border: 1px solid rgba(124, 145, 180, 0.3);
+  gap: 0.54rem;
+  padding: 0.44rem 0.96rem 0.44rem 0.78rem;
+  border-radius: 0.54rem;
+  border: 1px solid rgba(124, 145, 180, 0.42);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.995), rgba(248, 250, 252, 0.992) 52%, rgba(241, 246, 251, 0.985));
   color: #162334;
   font-weight: 700;
@@ -3468,20 +3468,21 @@ h6 {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.98),
     inset 0 -1px 0 rgba(203, 216, 230, 0.5),
+    0 0 0 1px rgba(189, 207, 230, 0.16),
     0 1px 0 rgba(255, 255, 255, 0.12),
     0 8px 18px rgba(4, 10, 18, 0.12);
 }
 
 .download-small-button {
-  min-width: 148px;
-  min-height: 42px;
+  min-width: 144px;
+  min-height: 40px;
   font-size: 0.9rem;
 }
 
 .download-big-button,
 .download-button {
-  min-height: 48px;
-  padding: 0.54rem 1.12rem 0.54rem 0.92rem;
+  min-height: 46px;
+  padding: 0.5rem 1.04rem 0.5rem 0.86rem;
   font-size: 1rem;
 }
 
@@ -3510,35 +3511,36 @@ h6 {
 .download-big-button:hover,
 .download-button:hover {
   color: #0f1b2a;
-  border-color: rgba(95, 158, 255, 0.4);
+  border-color: rgba(95, 158, 255, 0.5);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.998), rgba(250, 252, 255, 0.996) 52%, rgba(244, 248, 252, 0.99));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.99),
     inset 0 -1px 0 rgba(212, 225, 240, 0.58),
-    0 0 0 2px rgba(92, 184, 255, 0.22),
+    0 0 0 2px rgba(92, 184, 255, 0.2),
     0 12px 24px rgba(4, 10, 18, 0.15);
   transform: translateY(-1px);
 }
 
 .download-small-button-buy,
 .download-big-button-buy {
-  border-color: rgba(190, 154, 93, 0.34);
+  border-color: rgba(183, 142, 77, 0.56);
   background: linear-gradient(180deg, rgba(255, 254, 249, 0.998), rgba(252, 248, 239, 0.992) 52%, rgba(247, 240, 223, 0.985));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.99),
     inset 0 -1px 0 rgba(225, 210, 176, 0.54),
+    0 0 0 1px rgba(220, 195, 142, 0.18),
     0 1px 0 rgba(255, 255, 255, 0.12),
     0 8px 18px rgba(4, 10, 18, 0.12);
 }
 
 .download-small-button-buy:hover,
 .download-big-button-buy:hover {
-  border-color: rgba(201, 161, 88, 0.44);
+  border-color: rgba(194, 149, 79, 0.66);
   background: linear-gradient(180deg, rgba(255, 254, 251, 1), rgba(253, 249, 241, 0.996) 52%, rgba(248, 242, 228, 0.992));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 1),
     inset 0 -1px 0 rgba(229, 215, 181, 0.6),
-    0 0 0 2px rgba(224, 184, 112, 0.18),
+    0 0 0 2px rgba(224, 184, 112, 0.16),
     0 12px 24px rgba(4, 10, 18, 0.15);
 }
 
