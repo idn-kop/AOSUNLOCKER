@@ -3467,7 +3467,8 @@ h6 {
   letter-spacing: 0;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.92),
-    0 4px 12px rgba(4, 10, 18, 0.12);
+    0 0 0 2px rgba(63, 231, 255, 0.9),
+    0 6px 16px rgba(4, 10, 18, 0.14);
 }
 
 .download-small-button {
@@ -3495,8 +3496,13 @@ h6 {
 .download-big-button i,
 .download-button i {
   margin-right: 0 !important;
-  color: #238bff;
+  color: #21b8ff;
   font-size: 1.02rem;
+  text-shadow: 0 0 10px rgba(63, 231, 255, 0.24);
+  background: linear-gradient(180deg, #6ae8ff 0%, #26b7ff 48%, #238bff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .download-small-button:hover,
@@ -3506,7 +3512,9 @@ h6 {
   border-color: rgba(10, 16, 26, 0.88);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.92),
-    0 8px 16px rgba(4, 10, 18, 0.14);
+    0 0 0 2px rgba(63, 231, 255, 1),
+    0 10px 20px rgba(4, 10, 18, 0.16);
+  filter: saturate(1.01);
   transform: translateY(-1px);
 }
 
