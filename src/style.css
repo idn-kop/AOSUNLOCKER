@@ -3728,6 +3728,10 @@ h6 {
   max-width: 48ch;
 }
 
+.download-empty-button {
+  margin-top: 0.15rem;
+}
+
 .download-empty-icon {
   width: 68px;
   height: 68px;

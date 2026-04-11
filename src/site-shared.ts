@@ -203,18 +203,23 @@ type PublicFileAction = {
   targetAttributes: string
 }
 
+type DownloadEmptyStateAction = {
+  href: string
+  label: string
+  icon?: string
+}
+
+export const buildSupportWhatsAppHref = (lines: string[]) =>
+  `${supportWhatsAppUrl}?text=${encodeURIComponent(lines.filter(Boolean).join('\n'))}`
+
 export const buildBuyRequestHref = (item: Pick<DownloadListFile, 'id' | 'title' | 'brandId' | 'price'>) =>
-  `${supportWhatsAppUrl}?text=${encodeURIComponent(
-    [
-      'Hello bro, I want request access for this file:',
-      item.title,
-      item.brandId ? `Brand: ${formatBrandDisplayTitle(item.brandId)}` : '',
-      item.price ? `Price: ${item.price}` : '',
-      `Page: ${primarySiteUrl}/download.html?file=${encodeURIComponent(item.id)}`,
-    ]
-      .filter(Boolean)
-      .join('\n'),
-  )}`
+  buildSupportWhatsAppHref([
+    'Hello bro, I want request access for this file:',
+    item.title,
+    item.brandId ? `Brand: ${formatBrandDisplayTitle(item.brandId)}` : '',
+    item.price ? `Price: ${item.price}` : '',
+    `Page: ${primarySiteUrl}/download.html?file=${encodeURIComponent(item.id)}`,
+  ])
 
 const getPublicFileAction = (item: DownloadListFile): PublicFileAction => {
   const isBuyOnly = (item.status as DownloadFileStatus | undefined) === 'buy'
@@ -679,11 +684,19 @@ export const renderDownloadGridCard = (item: DownloadListFile) => {
 `
 }
 
-export const renderDownloadEmptyState = (title: string, copy: string) => `
+export const renderDownloadEmptyState = (title: string, copy: string, action?: DownloadEmptyStateAction) => `
   <div class="download-empty-state">
     <div class="download-empty-icon"><i class="fas fa-folder-open"></i></div>
     <h3>${escapeHtml(title)}</h3>
     <p>${escapeHtml(copy)}</p>
+    ${
+      action
+        ? `<a class="download-small-button download-empty-button" href="${sanitizeUrl(action.href)}" target="_blank" rel="noreferrer">
+            <i class="fab ${escapeHtml(action.icon || 'fa-whatsapp')}" aria-hidden="true"></i>
+            <span class="download-button-label">${escapeHtml(action.label)}</span>
+          </a>`
+        : ''
+    }
   </div>
 `
 

@@ -7,6 +7,7 @@ import {
 import { fileMap } from './portal-data'
 import {
   buildBuyRequestHref,
+  buildSupportWhatsAppHref,
   renderDownloadHomeCard,
   renderBrandDownloadCard,
   renderContactAdminPanel,
@@ -44,6 +45,13 @@ import type { BrandId, DownloadFileStatus, DownloadListFile, SolutionCategory } 
 type ToolbarSortField = 'date' | 'title'
 type ToolbarSortOrder = 'desc' | 'asc'
 type ToolbarView = 'list' | 'grid'
+
+const buildMissingContentSupportHref = (label: string, kind: 'files' | 'folders' = 'files') =>
+  buildSupportWhatsAppHref([
+    kind === 'folders' ? 'Hello bro, please add folders for this brand:' : 'Hello bro, please add files for this folder:',
+    label,
+    typeof window !== 'undefined' ? `Page: ${window.location.href}` : '',
+  ])
 
 const getBrandMeta = (brandId: BrandId) => {
   const normalized = String(brandId || '').trim() || 'brand'
@@ -284,11 +292,21 @@ const sortDownloadFiles = (files: typeof anaAn00Files, sortField: ToolbarSortFie
   })
 }
 
-const renderSolutionFileResults = (files: typeof anaAn00Files, view: ToolbarView, categoryTitle: string) => {
+const renderSolutionFileResults = (
+  files: typeof anaAn00Files,
+  view: ToolbarView,
+  categoryTitle: string,
+  requestLabel = categoryTitle,
+) => {
   if (!files.length) {
     return renderDownloadEmptyState(
       `No ${categoryTitle} files yet`,
-      'No available files are listed in this category yet.',
+      'No files are listed in this folder yet. If you need this package, contact admin and request it on WhatsApp.',
+      {
+        href: buildMissingContentSupportHref(requestLabel, 'files'),
+        label: 'Request on WhatsApp',
+        icon: 'fa-whatsapp',
+      },
     )
   }
 
@@ -319,7 +337,12 @@ const renderBrandHubGrid = (content = downloadHomeCategories) =>
     ? `<div class="download-home-grid">${content.map((item: (typeof downloadHomeCategories)[number]) => renderDownloadHomeCard(item)).join('')}</div>`
     : renderDownloadEmptyState(
         'No brand folders available yet',
-        'Folders will appear here automatically as soon as they are ready.',
+        'No folders are listed here yet. If you need one added, contact admin on WhatsApp.',
+        {
+          href: buildMissingContentSupportHref('Downloads', 'folders'),
+          label: 'Contact Admin on WhatsApp',
+          icon: 'fa-whatsapp',
+        },
       )
 
 const renderSolutionBrandStage = (brandLabel: string, brandDescription: string, content: string) => `
@@ -578,7 +601,12 @@ export const renderSolutionFilesPage = async () => {
           ? renderCategoryFolderGrid(brandId, visibleCategories)
           : renderDownloadEmptyState(
               `No ${brand.label} folders yet`,
-              `There are no ${brand.label} solution folders connected yet.`,
+              `No ${brand.label} folders are listed yet. If you need one added, contact admin on WhatsApp.`,
+              {
+                href: buildMissingContentSupportHref(brand.label, 'folders'),
+                label: 'Contact Admin on WhatsApp',
+                icon: 'fa-whatsapp',
+              },
             ),
       ),
       undefined,
@@ -711,7 +739,12 @@ export const renderSolutionFilesPage = async () => {
               : !childCategories.length
                 ? renderDownloadEmptyState(
                     `No ${activeCategory.title} files yet`,
-                    'No available files are listed in this folder yet.',
+                    'No files are listed in this folder yet. If you need this package, contact admin and request it on WhatsApp.',
+                    {
+                      href: buildMissingContentSupportHref(`${brand.label} / ${activeCategory.title}`, 'files'),
+                      label: 'Request on WhatsApp',
+                      icon: 'fa-whatsapp',
+                    },
                   )
                 : ''
           }
@@ -755,7 +788,12 @@ export const renderSolutionFilesPage = async () => {
 
       const sortedFiles = sortDownloadFiles(activeFiles, state.sortField, state.sortOrder)
       toolbarMount.innerHTML = renderDownloadToolbar(state.sortField, state.sortOrder, state.view)
-      resultsMount.innerHTML = renderSolutionFileResults(sortedFiles, state.view, activeCategory.title)
+      resultsMount.innerHTML = renderSolutionFileResults(
+        sortedFiles,
+        state.view,
+        activeCategory.title,
+        `${brand.label} / ${activeCategory.title}`,
+      )
       bindToolbar()
       syncUrl()
     }
