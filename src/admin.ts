@@ -220,6 +220,14 @@ const escapeHtml = (value: string) =>
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;')
 
+const DEFAULT_FILE_PRICE = '10$'
+const FILE_PRICE_OPTIONS = ['free', DEFAULT_FILE_PRICE, '20$', '25$']
+
+const renderFilePriceOptions = () =>
+  FILE_PRICE_OPTIONS.map(
+    (price) => `<option value="${escapeHtml(price)}"${price === DEFAULT_FILE_PRICE ? ' selected' : ''}>${escapeHtml(price)}</option>`,
+  ).join('')
+
 const toText = (value: unknown) => String(value || '').trim()
 
 const normalizeApiBaseUrl = (value: string) => {
@@ -850,6 +858,16 @@ const setSelectOptions = (
   select.value = hasExactValue ? nextValue : options[0]?.value || ''
 }
 
+const setFilePriceValue = (value = DEFAULT_FILE_PRICE) => {
+  const nextValue = toText(value) || DEFAULT_FILE_PRICE
+  const baseOptions = FILE_PRICE_OPTIONS.map((price) => ({ value: price, label: price }))
+  const options = baseOptions.some((option) => option.value === nextValue)
+    ? baseOptions
+    : [...baseOptions, { value: nextValue, label: `${nextValue} (custom)` }]
+
+  setSelectOptions(byId<HTMLSelectElement>('filePrice'), options, nextValue)
+}
+
 const renderSidebarMarkup = () => `
   <aside class="admin-sidebar admin-card">
     <div class="admin-sidebar-brand">
@@ -1033,7 +1051,7 @@ const renderEditorMarkup = () => `
               </label>
               <label class="admin-field">
                 <span class="admin-label">Price</span>
-                <input id="filePrice" class="admin-input" type="text" placeholder="free" />
+                <select id="filePrice" class="admin-select">${renderFilePriceOptions()}</select>
               </label>
               <label class="admin-field">
                 <span class="admin-label">Featured</span>
@@ -1522,7 +1540,7 @@ const renderShellLegacy = () => {
                     </label>
                     <label class="admin-field">
                       <span class="admin-label">Price</span>
-                      <input id="filePrice" class="admin-input" type="text" placeholder="free" />
+                      <select id="filePrice" class="admin-select">${renderFilePriceOptions()}</select>
                     </label>
                     <label class="admin-field">
                       <span class="admin-label">Featured</span>
@@ -2731,7 +2749,7 @@ const resetFileForm = () => {
   setInputValue('fileDriveUrl', '')
   setInputValue('fileDate', '')
   setInputValue('fileSize', '')
-  setInputValue('filePrice', 'free')
+  setFilePriceValue()
   setInputValue('fileVisits', '0')
   setInputValue('fileDownloads', '0')
   setInputValue('fileStatus', 'draft')
@@ -2771,7 +2789,7 @@ const prepareNewFileForm = (brandId = '', categoryId = '') => {
   setInputValue('fileDriveUrl', '')
   setInputValue('fileDate', '')
   setInputValue('fileSize', '')
-  setInputValue('filePrice', 'free')
+  setFilePriceValue()
   setInputValue('fileVisits', '0')
   setInputValue('fileDownloads', '0')
   setInputValue('fileStatus', 'draft')
@@ -2818,7 +2836,7 @@ const populateFileForm = (file: AdminFile) => {
   setInputValue('fileDriveUrl', file.driveUrl)
   setInputValue('fileDate', file.date)
   setInputValue('fileSize', file.size)
-  setInputValue('filePrice', file.price)
+  setFilePriceValue(file.price)
   setInputValue('fileVisits', file.visits)
   setInputValue('fileDownloads', file.downloads)
   setInputValue('fileStatus', file.status)
